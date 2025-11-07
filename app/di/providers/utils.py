@@ -36,7 +36,7 @@ class UtilsProvider(Provider):
             layout_batch_size=64,
             table_batch_size=4,
             
-            # # pdf 
+            # pdf 
             # do_picture_description=True,
             # picture_description_options=PictureDescriptionVlmOptions(
             #     repo_id="HuggingFaceTB/SmolVLM-256M-Instruct",

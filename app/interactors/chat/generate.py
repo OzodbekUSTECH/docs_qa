@@ -10,6 +10,7 @@ from app.dto.chat import GenerateChatRequest
 from app.entities.documents import Document
 from app.repositories.documents import DocumentsRepository
 from app.utils.tools.hybrid_search import hybrid_search
+from app.core.config import settings
 
 
 class GenerateChatResponseInteractor:
@@ -134,23 +135,6 @@ class GenerateChatResponseInteractor:
 
         # Если ничего не помогло, возвращаем строковое представление
         return {"_raw": str(event), "type": getattr(event, 'type', 'unknown')}
-
-    async def stream(self, request: GenerateChatRequest) -> AsyncIterator[bytes]:
-        agent = self._get_agent(request.model)
-
-        session_id = self._build_session_id(request.session_id, request.document_ids)
-        session = SQLiteSession(session_id)
-
-        document_hint = await self._describe_documents(request.document_ids)
-
-        user_prompt = request.prompt
-        if document_hint:
-            user_prompt = (
-                f"{request.prompt}\n\n"
-                "Document scope available for this chat:\n"
-                f"{document_hint}\n"
-                "Leverage the `hybrid_search` tool to inspect or refine these documents."
-            )
 
     @staticmethod
     def _is_text_delta_event(event_dict: dict) -> bool:
@@ -305,7 +289,8 @@ class GenerateChatResponseInteractor:
         agent = self._get_agent(request.model)
 
         session_id = self._build_session_id(request.session_id, request.document_ids)
-        session = SQLiteSession(session_id)
+        # Используем файловую базу данных вместо in-memory для сохранения истории
+        session = SQLiteSession(session_id, db_path=str(settings.sessions_db_path))
 
         document_hint = await self._describe_documents(request.document_ids)
 

@@ -2151,6 +2151,8 @@
                         console.log('Сессия не найдена ни локально, ни на сервере, очищаем текущую сессию');
                         setCurrentSession(null);
                         currentSessionId = null;
+                        // Пытаемся загрузить последнюю сессию
+                        await loadLastSession();
                     }
                 }
             } else {
@@ -2160,8 +2162,43 @@
                     setCurrentSession(null);
                     currentSessionId = null;
                 }
+                // Пытаемся загрузить последнюю сессию
+                await loadLastSession();
             }
         });
+
+        // Функция для загрузки последней сессии
+        async function loadLastSession() {
+            const sessions = loadSavedSessions();
+            // Фильтруем временные сессии
+            const permanentSessions = Object.keys(sessions).filter(id => !id.startsWith('temp-'));
+            
+            if (permanentSessions.length === 0) {
+                console.log('Нет сохранённых сессий для загрузки');
+                return;
+            }
+            
+            // Сортируем по дате обновления (последняя первая)
+            const sortedSessionIds = permanentSessions.sort((a, b) => {
+                const sessionA = sessions[a];
+                const sessionB = sessions[b];
+                const timeA = new Date(sessionA.updated_at || sessionA.created_at || 0).getTime();
+                const timeB = new Date(sessionB.updated_at || sessionB.created_at || 0).getTime();
+                return timeB - timeA;
+            });
+            
+            // Загружаем последнюю сессию
+            const lastSessionId = sortedSessionIds[0];
+            const lastSession = sessions[lastSessionId];
+            
+            // Проверяем, что в сессии есть сообщения
+            if (lastSession && lastSession.messages && lastSession.messages.length > 0) {
+                console.log('Автоматически загружаем последнюю сессию:', lastSessionId);
+                await loadSession(lastSessionId);
+            } else {
+                console.log('Последняя сессия не содержит сообщений');
+            }
+        }
     </script>
 </body>
 </html>

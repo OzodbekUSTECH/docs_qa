@@ -38,10 +38,6 @@ class DocumentChunk(Base,IdMixin):
     # FTS 
     content_tsv: Mapped[Optional[str]] = mapped_column(
         TSVECTOR,
-        Computed(
-            "to_tsvector('simple', unaccent(content))",
-            persisted=True
-        ),
         nullable=True
     )
     
