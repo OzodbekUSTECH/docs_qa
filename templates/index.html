@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Управление документами</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #38bdf8;
+            --accent-muted: rgba(56, 189, 248, 0.15);
+            --text: #e2e8f0;
+            --subtle: #94a3b8;
+            --border: rgba(148, 163, 184, 0.2);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            letter-spacing: 0.03em;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .nav-button {
+            padding: 8px 16px;
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 8px;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-button:hover {
+            background: rgba(56, 189, 248, 0.25);
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(350px, 0.35fr);
+            gap: 24px;
+            padding: 24px;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .main-panel {
+            display: flex;
+            flex-direction: column;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.35);
+        }
+
+        .panel-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-header h2 {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .search-bar {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .search-bar input {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: var(--text);
+            font-size: 0.96rem;
+            font-family: inherit;
+        }
+
+        .search-bar input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+        }
+
+        .table-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--subtle);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        tr:hover {
+            background: rgba(15, 23, 42, 0.3);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-pending {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+        }
+
+        .status-processing {
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent);
+        }
+
+        .status-completed {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+        }
+
+        .status-failed {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        button {
+            border: none;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        button.btn-info {
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        button.btn-info:hover:not(:disabled) {
+            background: rgba(56, 189, 248, 0.25);
+            border-color: var(--accent);
+        }
+
+        button.btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        button.btn-danger:hover:not(:disabled) {
+            background: rgba(239, 68, 68, 0.25);
+            border-color: var(--error);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .pagination {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .pagination button {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            background: rgba(15, 23, 42, 0.65);
+            color: var(--text);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: rgba(15, 23, 42, 0.85);
+            border-color: var(--accent);
+        }
+
+        .pagination button.active {
+            background: var(--accent);
+            color: var(--bg);
+            border-color: var(--accent);
+        }
+
+        .pagination-info {
+            margin: 0 12px;
+            color: var(--subtle);
+            font-size: 0.85rem;
+        }
+
+        .upload-panel {
+            display: flex;
+            flex-direction: column;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.35);
+        }
+
+        .upload-area {
+            flex: 1;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            margin: 24px;
+            background: rgba(15, 23, 42, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            min-height: 300px;
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent);
+            background: rgba(15, 23, 42, 0.5);
+        }
+
+        .upload-area.dragover {
+            border-color: var(--accent);
+            background: rgba(56, 189, 248, 0.1);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            opacity: 0.6;
+        }
+
+        .upload-text {
+            font-size: 1rem;
+            color: var(--text);
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .upload-hint {
+            font-size: 0.85rem;
+            color: var(--subtle);
+            text-align: center;
+        }
+
+        .upload-form {
+            padding: 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            color: var(--subtle);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-group select {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: var(--text);
+            font-size: 0.96rem;
+            font-family: inherit;
+        }
+
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+        }
+
+        button.btn-primary {
+            width: 100%;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, var(--accent), #6366f1);
+            color: var(--bg);
+            font-weight: 600;
+            box-shadow: 0 12px 20px rgba(56, 189, 248, 0.25);
+        }
+
+        button.btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 28px rgba(56, 189, 248, 0.35);
+        }
+
+        .file-list {
+            padding: 0 24px 24px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: rgba(15, 23, 42, 0.3);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .file-item-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-item-remove {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .message {
+            padding: 12px 24px;
+            margin: 0 24px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+        }
+
+        .message.error {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .message.success {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--subtle);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--subtle);
+        }
+
+        /* Модальное окно для просмотра контента */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: var(--card);
+            margin: 2% auto;
+            padding: 0;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 90%;
+            max-width: 1200px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: var(--text);
+        }
+
+        .modal-close {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: rgba(239, 68, 68, 0.25);
+            border-color: var(--error);
+        }
+
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+            color: var(--text);
+        }
+
+        .document-info {
+            margin-bottom: 24px;
+            padding: 16px;
+            background: rgba(15, 23, 42, 0.3);
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .document-info-item {
+            margin-bottom: 8px;
+        }
+
+        .document-info-item strong {
+            color: var(--accent);
+            margin-right: 8px;
+        }
+
+        .document-content {
+            background: rgba(15, 23, 42, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .document-content.markdown {
+            white-space: normal;
+            font-family: inherit;
+        }
+
+        .document-content.markdown h1 {
+            font-size: 1.5rem;
+            margin: 1.5em 0 0.5em 0;
+            color: var(--accent);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 0.5em;
+        }
+
+        .document-content.markdown h2 {
+            font-size: 1.3rem;
+            margin: 1.3em 0 0.5em 0;
+            color: var(--accent);
+        }
+
+        .document-content.markdown h3 {
+            font-size: 1.1rem;
+            margin: 1.1em 0 0.5em 0;
+            color: var(--text);
+        }
+
+        .document-content.markdown code {
+            background: rgba(15, 23, 42, 0.7);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: var(--accent);
+        }
+
+        .document-content.markdown pre {
+            background: rgba(15, 23, 42, 0.7);
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 8px 0;
+            border: 1px solid var(--border);
+        }
+
+        .document-content.markdown pre code {
+            background: transparent;
+            padding: 0;
+            color: var(--text);
+        }
+
+        .document-content.markdown strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .document-content.markdown em {
+            color: var(--subtle);
+            font-style: italic;
+        }
+
+        .document-content.markdown ul,
+        .document-content.markdown ol {
+            margin: 8px 0;
+            padding-left: 24px;
+        }
+
+        .document-content.markdown li {
+            margin: 4px 0;
+        }
+
+        .document-content.markdown p {
+            margin: 8px 0;
+        }
+
+        .document-content.markdown table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 12px 0;
+        }
+
+        .document-content.markdown table th,
+        .document-content.markdown table td {
+            border: 1px solid var(--border);
+            padding: 8px;
+            text-align: left;
+        }
+
+        .document-content.markdown table th {
+            background: rgba(15, 23, 42, 0.5);
+            font-weight: 600;
+        }
+
+        .document-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .document-content::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.3);
+            border-radius: 4px;
+        }
+
+        .document-content::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 4px;
+        }
+
+        .document-content::-webkit-scrollbar-thumb:hover {
+            background: #0ea5e9;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <h1>Управление документами</h1>
+            <a href="/chat" class="nav-button">💬 Чат</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="main-panel">
+            <div class="panel-header">
+                <h2>Список документов</h2>
+            </div>
+            <div id="message"></div>
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Поиск по имени файла..." onkeyup="handleSearch()">
+            </div>
+            <div class="table-container">
+                <div id="loading" class="loading">Загрузка...</div>
+                <table id="documentsTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Имя файла</th>
+                            <th>Тип</th>
+                            <th>Статус</th>
+                            <th>Дата создания</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="documentsTableBody">
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination" id="pagination"></div>
+        </div>
+
+        <div class="upload-panel">
+            <div class="panel-header">
+                <h2>Загрузка документов</h2>
+            </div>
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">Перетащите файлы сюда</div>
+                <div class="upload-hint">или нажмите для выбора</div>
+                <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx" style="display: none;">
+            </div>
+            <div class="file-list" id="fileList" style="display: none;"></div>
+            <div class="upload-form">
+                <div class="form-group">
+                    <label for="typeSelect">Тип документа</label>
+                    <select id="typeSelect">
+                        <option value="FINANCIAL">FINANCIAL</option>
+                        <option value="INVOICE">INVOICE</option>
+                        <option value="CONTRACT">CONTRACT</option>
+                        <option value="COO">COO</option>
+                        <option value="COA">COA</option>
+                        <option value="COW">COW</option>
+                        <option value="COQ">COQ</option>
+                        <option value="BL">BL</option>
+                        <option value="LC">LC</option>
+                        <option value="OTHER" selected>OTHER</option>
+                    </select>
+                </div>
+                <button class="btn-primary" id="uploadBtn" onclick="handleUpload()">Загрузить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для просмотра контента -->
+    <div id="contentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Просмотр документа</h3>
+                <button class="modal-close" onclick="closeContentModal()">✕ Закрыть</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <div class="loading">Загрузка...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/documents';
+        let currentPage = 1;
+        let pageSize = 10;
+        let totalPages = 1;
+        let searchTimeout;
+        let selectedFiles = [];
+
+        // Инициализация drag & drop
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files);
+            handleFileSelect(files);
+        });
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            handleFileSelect(files);
+        });
+
+        function handleFileSelect(files) {
+            const validFiles = files.filter(f => {
+                const ext = f.name.split('.').pop().toLowerCase();
+                return ['pdf', 'doc', 'docx'].includes(ext);
+            });
+
+            if (validFiles.length === 0) {
+                showMessage('Поддерживаются только файлы PDF, DOC, DOCX', 'error');
+                return;
+            }
+
+            selectedFiles = [...selectedFiles, ...validFiles];
+            renderFileList();
+        }
+
+        function renderFileList() {
+            if (selectedFiles.length === 0) {
+                fileList.style.display = 'none';
+                return;
+            }
+
+            fileList.style.display = 'block';
+            fileList.innerHTML = selectedFiles.map((file, idx) => `
+                <div class="file-item">
+                    <span class="file-item-name">${file.name}</span>
+                    <button class="file-item-remove" onclick="removeFile(${idx})">✕</button>
+                </div>
+            `).join('');
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            renderFileList();
+        }
+
+        // Загрузка документов
+        async function loadDocuments(page = 1, filename = '') {
+            try {
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('documentsTable').style.display = 'none';
+
+                const params = new URLSearchParams({
+                    page: page.toString(),
+                    size: pageSize.toString()
+                });
+
+                if (filename) {
+                    params.append('filename', filename);
+                }
+
+                const response = await fetch(`${API_BASE}/?${params}`);
+                
+                if (!response.ok) {
+                    const errorMessage = await parseErrorResponse(response);
+                    throw new Error(errorMessage);
+                }
+
+                const data = await response.json();
+                
+                currentPage = data.page;
+                totalPages = data.pages;
+                
+                renderTable(data.items);
+                renderPagination();
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('documentsTable').style.display = 'table';
+            } catch (error) {
+                showMessage('Ошибка загрузки документов: ' + error.message, 'error');
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('documentsTable').style.display = 'table';
+                document.getElementById('documentsTableBody').innerHTML = 
+                    '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--subtle);">Не удалось загрузить документы</td></tr>';
+            }
+        }
+
+        // Рендеринг таблицы
+        function renderTable(documents) {
+            const tbody = document.getElementById('documentsTableBody');
+            tbody.innerHTML = '';
+
+            if (documents.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--subtle);">Документы не найдены</td></tr>';
+                return;
+            }
+
+            documents.forEach(doc => {
+                const row = document.createElement('tr');
+                const statusClass = `status-${doc.status.toLowerCase()}`;
+                const createdAt = new Date(doc.created_at).toLocaleString('ru-RU');
+
+                row.innerHTML = `
+                    <td>${doc.id}</td>
+                    <td>${doc.filename}</td>
+                    <td>${doc.type}</td>
+                    <td><span class="status-badge ${statusClass}">${doc.status}</span></td>
+                    <td>${createdAt}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-info" onclick="viewDocument(${doc.id})">View</button>
+                            <button class="btn-danger" onclick="deleteDocument(${doc.id})">Delete</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Рендеринг пагинации
+        function renderPagination() {
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+
+            if (totalPages <= 1) return;
+
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = '← Предыдущая';
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => loadDocuments(currentPage - 1, document.getElementById('searchInput').value);
+            pagination.appendChild(prevBtn);
+
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, currentPage + 2);
+
+            if (startPage > 1) {
+                const firstBtn = document.createElement('button');
+                firstBtn.textContent = '1';
+                firstBtn.onclick = () => loadDocuments(1, document.getElementById('searchInput').value);
+                pagination.appendChild(firstBtn);
+                if (startPage > 2) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'pagination-info';
+                    pagination.appendChild(ellipsis);
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.textContent = i;
+                pageBtn.className = i === currentPage ? 'active' : '';
+                pageBtn.onclick = () => loadDocuments(i, document.getElementById('searchInput').value);
+                pagination.appendChild(pageBtn);
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'pagination-info';
+                    pagination.appendChild(ellipsis);
+                }
+                const lastBtn = document.createElement('button');
+                lastBtn.textContent = totalPages;
+                lastBtn.onclick = () => loadDocuments(totalPages, document.getElementById('searchInput').value);
+                pagination.appendChild(lastBtn);
+            }
+
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = 'Следующая →';
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.onclick = () => loadDocuments(currentPage + 1, document.getElementById('searchInput').value);
+            pagination.appendChild(nextBtn);
+
+            const info = document.createElement('span');
+            info.className = 'pagination-info';
+            info.textContent = `Страница ${currentPage} из ${totalPages}`;
+            pagination.appendChild(info);
+        }
+
+        // Поиск
+        function handleSearch() {
+            clearTimeout(searchTimeout);
+            const query = document.getElementById('searchInput').value;
+            searchTimeout = setTimeout(() => {
+                loadDocuments(1, query);
+            }, 500);
+        }
+
+        // Загрузка документа
+        async function handleUpload() {
+            if (selectedFiles.length === 0) {
+                showMessage('Выберите файлы для загрузки', 'error');
+                return;
+            }
+
+            const typeSelect = document.getElementById('typeSelect');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const originalButtonText = uploadBtn.textContent;
+            
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Загрузка...';
+
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const file of selectedFiles) {
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('type', typeSelect.value);
+
+                    const response = await fetch(API_BASE + '/', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        const errorMessage = await parseErrorResponse(response);
+                        throw new Error(errorMessage);
+                    }
+
+                    successCount++;
+                } catch (error) {
+                    errorCount++;
+                    console.error('Ошибка загрузки файла:', file.name, error);
+                }
+            }
+
+            if (successCount > 0) {
+                showMessage(`Успешно загружено: ${successCount}${errorCount > 0 ? `, ошибок: ${errorCount}` : ''}`, 'success');
+                selectedFiles = [];
+                renderFileList();
+                fileInput.value = '';
+                loadDocuments(currentPage, document.getElementById('searchInput').value);
+            } else {
+                showMessage(`Ошибка загрузки всех файлов: ${errorCount}`, 'error');
+            }
+
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = originalButtonText;
+        }
+
+        // Просмотр документа
+        async function viewDocument(id) {
+            const modal = document.getElementById('contentModal');
+            const modalBody = document.getElementById('modalBody');
+            const modalTitle = document.getElementById('modalTitle');
+            
+            modal.style.display = 'block';
+            modalBody.innerHTML = '<div class="loading">Загрузка...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/${id}`);
+                
+                if (!response.ok) {
+                    const errorMessage = await parseErrorResponse(response);
+                    throw new Error(errorMessage);
+                }
+
+                const doc = await response.json();
+                
+                // Формируем HTML для отображения
+                let contentHtml = `
+                    <div class="document-info">
+                        <div class="document-info-item"><strong>ID:</strong> ${doc.id}</div>
+                        <div class="document-info-item"><strong>Имя файла:</strong> ${doc.filename}</div>
+                        <div class="document-info-item"><strong>Тип:</strong> ${doc.type}</div>
+                        <div class="document-info-item"><strong>Статус:</strong> <span class="status-badge status-${doc.status.toLowerCase()}">${doc.status}</span></div>
+                        <div class="document-info-item"><strong>Создан:</strong> ${new Date(doc.created_at).toLocaleString('ru-RU')}</div>
+                    </div>
+                `;
+                
+                if (doc.content) {
+                    contentHtml += `
+                        <div style="margin-bottom: 12px;">
+                            <strong style="color: var(--accent);">Содержимое документа:</strong>
+                        </div>
+                        <div class="document-content markdown">${renderMarkdown(doc.content)}</div>
+                    `;
+                } else {
+                    contentHtml += `
+                        <div class="empty-state">
+                            Контент документа еще не обработан или недоступен
+                        </div>
+                    `;
+                }
+                
+                modalBody.innerHTML = contentHtml;
+                modalTitle.textContent = `Просмотр: ${doc.filename}`;
+            } catch (error) {
+                modalBody.innerHTML = `
+                    <div class="message error">
+                        Ошибка загрузки: ${escapeHtml(error.message)}
+                    </div>
+                `;
+            }
+        }
+
+        function closeContentModal() {
+            const modal = document.getElementById('contentModal');
+            modal.style.display = 'none';
+        }
+
+        // Закрытие модального окна при клике вне его
+        window.onclick = function(event) {
+            const modal = document.getElementById('contentModal');
+            if (event.target === modal) {
+                closeContentModal();
+            }
+        }
+
+        // Функция для экранирования HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Функция для рендеринга Markdown
+        function renderMarkdown(text) {
+            if (!text) return '';
+            // Простой markdown рендеринг
+            let html = escapeHtml(text);
+            
+            // Код блоки (до других замен)
+            html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+            
+            // Инлайн код
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+            
+            // Заголовки
+            html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+            html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+            html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+            
+            // Жирный текст (после кода, чтобы не конфликтовать)
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/__(.*?)__/g, '<strong>$1</strong>');
+            
+            // Курсив (после жирного, избегаем конфликтов)
+            html = html.replace(/\b\*([^*]+?)\*\b/g, '<em>$1</em>');
+            html = html.replace(/\b_([^_]+?)_\b/g, '<em>$1</em>');
+            
+            // Нумерованные списки
+            const lines = html.split('\n');
+            let inOrderedList = false;
+            let inUnorderedList = false;
+            let result = [];
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const orderedMatch = line.match(/^(\d+)\.\s+(.*)$/);
+                const unorderedMatch = line.match(/^[-*]\s+(.*)$/);
+                
+                if (orderedMatch) {
+                    if (!inOrderedList) {
+                        if (inUnorderedList) {
+                            result.push('</ul>');
+                            inUnorderedList = false;
+                        }
+                        result.push('<ol>');
+                        inOrderedList = true;
+                    }
+                    result.push(`<li>${orderedMatch[2]}</li>`);
+                } else if (unorderedMatch) {
+                    if (!inUnorderedList) {
+                        if (inOrderedList) {
+                            result.push('</ol>');
+                            inOrderedList = false;
+                        }
+                        result.push('<ul>');
+                        inUnorderedList = true;
+                    }
+                    result.push(`<li>${unorderedMatch[1]}</li>`);
+                } else {
+                    if (inOrderedList) {
+                        result.push('</ol>');
+                        inOrderedList = false;
+                    }
+                    if (inUnorderedList) {
+                        result.push('</ul>');
+                        inUnorderedList = false;
+                    }
+                    if (line.trim()) {
+                        result.push(line);
+                    }
+                }
+            }
+            
+            if (inOrderedList) result.push('</ol>');
+            if (inUnorderedList) result.push('</ul>');
+            
+            html = result.join('\n');
+            
+            // Параграфы (только для строк, которые не являются HTML тегами)
+            html = html.split('\n').map(line => {
+                line = line.trim();
+                if (!line || line.startsWith('<') || line.match(/^<\/[ou]l>$/)) return line;
+                return '<p>' + line + '</p>';
+            }).join('\n');
+            
+            return html;
+        }
+
+        // Удаление документа
+        async function deleteDocument(id) {
+            if (!confirm('Вы уверены, что хотите удалить этот документ?')) {
+                return;
+            }
+
+            const deleteButtons = document.querySelectorAll(`button[onclick="deleteDocument(${id})"]`);
+            deleteButtons.forEach(btn => {
+                btn.disabled = true;
+                btn.textContent = 'Удаление...';
+            });
+
+            try {
+                const response = await fetch(`${API_BASE}/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    const errorMessage = await parseErrorResponse(response);
+                    throw new Error(errorMessage);
+                }
+
+                showMessage('Документ успешно удален', 'success');
+                loadDocuments(currentPage, document.getElementById('searchInput').value);
+            } catch (error) {
+                showMessage('Ошибка удаления: ' + error.message, 'error');
+                deleteButtons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.textContent = 'Delete';
+                });
+            }
+        }
+
+        // Показ сообщений
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = message;
+            messageDiv.style.display = 'block';
+
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // Вспомогательная функция для парсинга ошибок API
+        async function parseErrorResponse(response) {
+            try {
+                const errorData = await response.json();
+                if (errorData.error) {
+                    return errorData.error;
+                } else if (errorData.detail) {
+                    if (Array.isArray(errorData.detail)) {
+                        return errorData.detail.map(d => {
+                            const loc = d.loc ? d.loc.join('.') : '';
+                            const msg = d.msg || '';
+                            return loc ? `${loc}: ${msg}` : (msg || JSON.stringify(d));
+                        }).join(', ');
+                    }
+                    return errorData.detail;
+                }
+                return `Ошибка ${response.status}: ${response.statusText}`;
+            } catch (e) {
+                return `Ошибка ${response.status}: ${response.statusText}`;
+            }
+        }
+
+        // Автообновление каждые 3 секунды
+        let autoRefreshInterval = null;
+        let isAutoRefreshEnabled = true;
+
+        function startAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            
+            if (isAutoRefreshEnabled) {
+                autoRefreshInterval = setInterval(() => {
+                    // Обновляем только если нет активной загрузки
+                    const loading = document.getElementById('loading');
+                    const isCurrentlyLoading = loading && loading.style.display !== 'none';
+                    
+                    if (!isCurrentlyLoading) {
+                        const searchValue = document.getElementById('searchInput').value;
+                        loadDocuments(currentPage, searchValue);
+                    }
+                }, 3000); // Каждые 3 секунды
+            }
+        }
+
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+        }
+
+        // Останавливаем автообновление при открытии модального окна
+        function openUploadModal() {
+            stopAutoRefresh();
+            // Модальное окно уже открывается через HTML
+        }
+
+        // Возобновляем автообновление при закрытии модального окна
+        function closeUploadModal() {
+            startAutoRefresh();
+            // Модальное окно уже закрывается через HTML
+        }
+
+        // Загрузка при старте
+        loadDocuments();
+        startAutoRefresh();
+
+        // Останавливаем автообновление при уходе со страницы
+        window.addEventListener('beforeunload', () => {
+            stopAutoRefresh();
+        });
+    </script>
+</body>
+</html>

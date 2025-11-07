@@ -1,0 +1,5 @@
+.venv
+storage/*
+!storage/.gitkeep
+app/migrations/versions/*
+.env

@@ -1,0 +1,2167 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Documents Chat</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #38bdf8;
+            --accent-muted: rgba(56, 189, 248, 0.15);
+            --text: #e2e8f0;
+            --subtle: #94a3b8;
+            --border: rgba(148, 163, 184, 0.2);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            letter-spacing: 0.03em;
+        }
+
+        .header-info {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .nav-button {
+            padding: 8px 16px;
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 8px;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-button:hover {
+            background: rgba(56, 189, 248, 0.25);
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            background: rgba(56, 189, 248, 0.12);
+            color: var(--accent);
+        }
+
+        .status-badge.active {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+        }
+
+        .status-badge.error {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(300px, 0.4fr);
+            gap: 24px;
+            padding: 24px;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .chat-panel {
+            display: flex;
+            flex-direction: column;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.35);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .message {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.85rem;
+            color: var(--subtle);
+        }
+
+        .message-role {
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .message-role.user {
+            color: var(--accent);
+        }
+
+        .message-role.assistant {
+            color: var(--success);
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+        }
+
+        .message-content {
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            line-height: 1.6;
+            word-wrap: break-word;
+        }
+
+        .message-content.assistant h1,
+        .message-content.assistant h2,
+        .message-content.assistant h3 {
+            margin: 16px 0 8px 0;
+            font-weight: 600;
+        }
+
+        .message-content.assistant h1 {
+            font-size: 1.5rem;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 8px;
+        }
+
+        .message-content.assistant h2 {
+            font-size: 1.3rem;
+        }
+
+        .message-content.assistant h3 {
+            font-size: 1.1rem;
+        }
+
+        .message-content.assistant p {
+            margin: 8px 0;
+        }
+
+        .message-content.assistant ul,
+        .message-content.assistant ol {
+            margin: 8px 0;
+            padding-left: 24px;
+        }
+
+        .message-content.assistant li {
+            margin: 4px 0;
+        }
+
+        .message-content.assistant code {
+            background: rgba(56, 189, 248, 0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .message-content.assistant pre {
+            background: rgba(15, 23, 42, 0.7);
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 8px 0;
+            border: 1px solid var(--border);
+        }
+
+        .message-content.assistant pre code {
+            background: transparent;
+            padding: 0;
+        }
+
+        .message-content.assistant strong {
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .message-content.assistant em {
+            font-style: italic;
+        }
+
+        .message-content.user {
+            background: rgba(56, 189, 248, 0.1);
+            border-color: rgba(56, 189, 248, 0.3);
+        }
+
+        .message-content.assistant {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .thinking-process {
+            margin-top: 12px;
+            border-top: 1px solid var(--border);
+            padding-top: 12px;
+        }
+
+        .thinking-process.collapsed {
+            display: none;
+        }
+
+        .thinking-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(15, 23, 42, 0.45);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: var(--subtle);
+            transition: all 0.2s ease;
+            margin-bottom: 8px;
+        }
+
+        .thinking-toggle:hover {
+            background: rgba(15, 23, 42, 0.65);
+            border-color: var(--accent-muted);
+            color: var(--accent);
+        }
+
+        .thinking-toggle-icon {
+            transition: transform 0.2s ease;
+        }
+
+        .thinking-toggle.expanded .thinking-toggle-icon {
+            transform: rotate(90deg);
+        }
+
+        .thinking-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .thinking-item {
+            background: rgba(15, 23, 42, 0.45);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.9rem;
+        }
+
+        .thinking-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--accent);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .thinking-item-type {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .thinking-item-type.tool-call {
+            color: var(--warning);
+        }
+
+        .thinking-item-type.tool-result {
+            color: var(--success);
+        }
+
+        .thinking-item-type.reasoning {
+            color: var(--accent);
+        }
+
+        .thinking-item-content {
+            color: var(--text);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 800px;
+            overflow-y: auto;
+        }
+
+        .thinking-item-content pre {
+            margin: 0;
+            padding: 8px;
+            background: rgba(15, 23, 42, 0.7);
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+        }
+
+        .chat-input-area {
+            border-top: 1px solid var(--border);
+            padding: 20px 24px;
+            background: rgba(15, 23, 42, 0.3);
+        }
+
+        .input-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--subtle);
+        }
+
+        .input-group input,
+        .input-group textarea,
+        .input-group select {
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: var(--text);
+            font-size: 0.96rem;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        .input-group select[multiple] {
+            padding: 8px;
+            overflow-y: auto;
+        }
+
+        .input-group select[multiple] option {
+            padding: 8px 12px;
+            margin: 2px 0;
+            border-radius: 6px;
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        .input-group select[multiple] option:checked {
+            background: rgba(56, 189, 248, 0.3);
+            color: var(--accent);
+        }
+
+        .input-group small {
+            display: block;
+        }
+
+        .input-group textarea {
+            min-height: 80px;
+        }
+
+        .input-group input:focus,
+        .input-group textarea:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+        }
+
+        .input-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        button {
+            border: none;
+            border-radius: 10px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        button.primary {
+            background: linear-gradient(135deg, var(--accent), #6366f1);
+            color: #0f172a;
+            box-shadow: 0 12px 20px rgba(56, 189, 248, 0.25);
+        }
+
+        button.primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 28px rgba(56, 189, 248, 0.35);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .sessions-panel {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.35);
+            display: flex;
+            flex-direction: column;
+            max-height: 100%;
+        }
+
+        .sessions-panel header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .new-chat-btn {
+            padding: 6px 12px;
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 6px;
+            color: var(--accent);
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .new-chat-btn:hover {
+            background: rgba(56, 189, 248, 0.25);
+            border-color: var(--accent);
+        }
+
+        .sessions-panel h2 {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .sessions-panel p {
+            margin: 6px 0 0;
+            color: var(--subtle);
+            font-size: 0.85rem;
+        }
+
+        .session-list {
+            padding: 16px;
+            overflow-y: auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .session-card {
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            padding: 14px 16px;
+            background: rgba(15, 23, 42, 0.45);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .session-card:hover {
+            border-color: var(--accent-muted);
+            background: rgba(15, 23, 42, 0.65);
+        }
+
+        .session-card.active {
+            border-color: var(--accent);
+            background: rgba(56, 189, 248, 0.1);
+        }
+
+        .session-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .session-card-id {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text);
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .session-card-id:hover {
+            color: var(--accent);
+        }
+
+        .session-card-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .session-delete-btn {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            opacity: 0.7;
+        }
+
+        .session-delete-btn:hover {
+            background: rgba(239, 68, 68, 0.25);
+            border-color: var(--error);
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .session-card-time {
+            font-size: 0.75rem;
+            color: var(--subtle);
+            margin-top: 8px;
+        }
+
+        .session-card-info {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .session-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(56, 189, 248, 0.12);
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            color: var(--accent);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--subtle);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .typing-indicator {
+            display: inline-flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+                opacity: 0.7;
+            }
+            30% {
+                transform: translateY(-10px);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <h1>Documents Chat</h1>
+            <a href="/" class="nav-button">📄 Документы</a>
+        </div>
+        <div class="header-info">
+            <div class="status-badge" id="status-badge">
+                <span class="status-dot"></span>
+                <span id="status-text">Готов</span>
+            </div>
+            <div class="status-badge" id="session-badge" style="display: none;">
+                <span id="session-text">Сессия: —</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="chat-panel">
+            <div class="chat-messages" id="chat-messages"></div>
+            <div class="chat-input-area">
+                <form class="input-form" id="chat-form">
+                    <div class="input-group">
+                        <label for="prompt">Ваш вопрос</label>
+                        <textarea id="prompt" name="prompt" placeholder="Задайте вопрос о ваших документах..." required></textarea>
+                    </div>
+                    <div class="input-options">
+                        <div class="input-group">
+                            <label for="document-ids">Документы</label>
+                            <select id="document-ids" multiple style="min-height: 120px;">
+                                <option value="" disabled>Загрузка документов...</option>
+                            </select>
+                            <small style="color: var(--subtle); font-size: 0.75rem; margin-top: 4px;">
+                                Выберите документы (Ctrl+Click для множественного выбора)
+                            </small>
+                        </div>
+                        <div class="input-group">
+                            <label for="model">Модель</label>
+                            <select id="model">
+                                <option value="gpt-4o" selected>gpt-4o</option>
+                                <option value="gpt-4o-mini">gpt-4o-mini</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div></div>
+                        <button id="submit" type="submit" class="primary">Отправить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="sessions-panel">
+                <header>
+                    <div>
+                        <h2>Сохранённые сессии</h2>
+                        <p>Все ваши диалоги сохранены локально</p>
+                    </div>
+                    <button class="new-chat-btn" id="new-chat-btn">+ Новый чат</button>
+                </header>
+                <div class="session-list" id="session-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'docs-chat-sessions.v2';
+        const CURRENT_SESSION_KEY = 'docs-chat-current-session';
+
+        const form = document.getElementById('chat-form');
+        const submitBtn = document.getElementById('submit');
+        const promptEl = document.getElementById('prompt');
+        const docIdsEl = document.getElementById('document-ids');
+        const modelEl = document.getElementById('model');
+        const newChatBtn = document.getElementById('new-chat-btn');
+        const statusBadge = document.getElementById('status-badge');
+        const statusText = document.getElementById('status-text');
+        const sessionBadge = document.getElementById('session-badge');
+        const sessionText = document.getElementById('session-text');
+        const chatMessages = document.getElementById('chat-messages');
+        const sessionList = document.getElementById('session-list');
+
+        let currentSessionId = null;
+        let currentMessageId = null;
+        let isStreaming = false;
+        let documentsCache = {}; // Кэш документов для отображения имен
+
+        // Загрузка сохранённых сессий
+        function loadSavedSessions() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                return raw ? JSON.parse(raw) : {};
+            } catch (error) {
+                console.error('Ошибка загрузки сессий', error);
+                return {};
+            }
+        }
+
+        function saveSessions(data) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        function getCurrentSession() {
+            try {
+                const raw = localStorage.getItem(CURRENT_SESSION_KEY);
+                return raw ? JSON.parse(raw) : null;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function setCurrentSession(sessionId) {
+            // НЕ сохраняем временные сессии как текущие
+            if (sessionId && !sessionId.startsWith('temp-')) {
+                localStorage.setItem(CURRENT_SESSION_KEY, JSON.stringify({ sessionId, timestamp: Date.now() }));
+            } else {
+                localStorage.removeItem(CURRENT_SESSION_KEY);
+            }
+        }
+
+        function parseDocumentIds() {
+            const selected = Array.from(docIdsEl.selectedOptions);
+            return selected.map(option => Number(option.value)).filter(id => Number.isInteger(id));
+        }
+
+        async function loadDocuments() {
+            try {
+                // Загружаем все документы с пагинацией
+                let allDocuments = [];
+                let page = 1;
+                let hasMore = true;
+
+                while (hasMore) {
+                    const response = await fetch(`/documents/?page=${page}&size=100`);
+                    if (!response.ok) {
+                        console.error('Ошибка загрузки документов:', response.status, response.statusText);
+                        const errorText = await response.text();
+                        console.error('Error details:', errorText);
+                        break;
+                    }
+                    const data = await response.json();
+                    
+                    if (data.items && data.items.length > 0) {
+                        allDocuments = [...allDocuments, ...data.items];
+                        hasMore = page < data.pages;
+                        page++;
+                    } else {
+                        hasMore = false;
+                    }
+                }
+                
+                // Сохраняем в кэш для использования при отображении чанков
+                documentsCache = {};
+                allDocuments.forEach(doc => {
+                    documentsCache[doc.id] = {
+                        id: doc.id,
+                        filename: doc.filename,
+                        type: doc.type,
+                        status: doc.status
+                    };
+                });
+                
+                // Очищаем текущие опции
+                docIdsEl.innerHTML = '';
+                
+                if (allDocuments.length > 0) {
+                    allDocuments.forEach(doc => {
+                        const option = document.createElement('option');
+                        option.value = doc.id;
+                        option.textContent = `${doc.filename} (ID: ${doc.id})`;
+                        docIdsEl.appendChild(option);
+                    });
+                    console.log(`Загружено ${allDocuments.length} документов`);
+                } else {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'Нет доступных документов';
+                    option.disabled = true;
+                    docIdsEl.appendChild(option);
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки документов', error);
+                docIdsEl.innerHTML = '<option value="" disabled>Ошибка загрузки документов</option>';
+            }
+        }
+
+        function createNewChat() {
+            // Очищаем чат
+            chatMessages.innerHTML = '';
+            currentSessionId = null;
+            currentMessageId = null;
+            updateSessionBadge(null);
+            setCurrentSession(null);
+            promptEl.value = '';
+            // Очищаем выбор документов
+            Array.from(docIdsEl.options).forEach(option => {
+                option.selected = false;
+            });
+            updateStatus('Готов', 'idle');
+        }
+
+        function updateStatus(status, type = 'idle') {
+            statusText.textContent = status;
+            statusBadge.className = 'status-badge';
+            if (type === 'active') {
+                statusBadge.classList.add('active');
+            } else if (type === 'error') {
+                statusBadge.classList.add('error');
+            }
+        }
+
+        function updateSessionBadge(sessionId) {
+            if (sessionId) {
+                sessionText.textContent = `Сессия: ${sessionId}`;
+                sessionBadge.style.display = 'flex';
+                currentSessionId = sessionId;
+            } else {
+                sessionBadge.style.display = 'none';
+                currentSessionId = null;
+            }
+        }
+
+        function formatTime(date) {
+            return new Date(date).toLocaleTimeString('ru-RU', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+        }
+
+        function formatDateTime(date) {
+            return new Date(date).toLocaleString('ru-RU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function createMessageElement(role, content, timestamp, messageId) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.dataset.messageId = messageId;
+
+            const header = document.createElement('div');
+            header.className = 'message-header';
+            header.innerHTML = `
+                <span class="message-role ${role}">${role === 'user' ? 'Вы' : 'Ассистент'}</span>
+                <span class="message-time">${formatTime(timestamp)}</span>
+            `;
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = `message-content ${role}`;
+            // Рендерим markdown для ответов ассистента
+            if (role === 'assistant') {
+                contentDiv.innerHTML = renderMarkdown(content);
+            } else {
+                contentDiv.textContent = content;
+            }
+
+            messageDiv.appendChild(header);
+            messageDiv.appendChild(contentDiv);
+
+            return messageDiv;
+        }
+
+        function createThinkingElement(events, messageId) {
+            const thinkingDiv = document.createElement('div');
+            thinkingDiv.className = 'thinking-process';
+            thinkingDiv.id = `thinking-${messageId}`;
+
+            const toggle = document.createElement('div');
+            toggle.className = 'thinking-toggle';
+            toggle.innerHTML = `
+                <span class="thinking-toggle-icon">▶</span>
+                <span>Процесс мышления (${events.length} событий)</span>
+            `;
+
+            const content = document.createElement('div');
+            content.className = 'thinking-content';
+
+            events.forEach((eventPayload, idx) => {
+                const item = createThinkingItem(eventPayload, idx + 1);
+                content.appendChild(item);
+            });
+
+            toggle.addEventListener('click', () => {
+                const isExpanded = toggle.classList.contains('expanded');
+                if (isExpanded) {
+                    toggle.classList.remove('expanded');
+                    content.style.display = 'none';
+                } else {
+                    toggle.classList.add('expanded');
+                    content.style.display = 'flex';
+                }
+            });
+
+            thinkingDiv.appendChild(toggle);
+            thinkingDiv.appendChild(content);
+            content.style.display = 'none'; // По умолчанию свёрнуто
+
+            return thinkingDiv;
+        }
+
+        function createThinkingItem(eventPayload, index) {
+            const item = document.createElement('div');
+            item.className = 'thinking-item';
+
+            const event = eventPayload.event || eventPayload;
+            const eventType = eventPayload.type || 'unknown';
+            const timestamp = event.timestamp || event.data?.timestamp || new Date().toISOString();
+
+            const header = document.createElement('div');
+            header.className = 'thinking-item-header';
+
+            const typeLabel = getEventTypeLabel(eventType, eventPayload);
+            const typeClass = getEventTypeClass(eventType, eventPayload);
+
+            header.innerHTML = `
+                <span class="thinking-item-type ${typeClass}">
+                    ${index}. ${typeLabel}
+                </span>
+                <span style="font-size: 0.75rem; color: var(--subtle);">
+                    ${formatTime(timestamp)}
+                </span>
+            `;
+
+            const content = document.createElement('div');
+            content.className = 'thinking-item-content';
+
+            const formattedData = formatEventData(eventPayload);
+            if (formattedData) {
+                content.innerHTML = formattedData;
+            } else {
+                content.textContent = JSON.stringify(eventPayload, null, 2);
+            }
+
+            item.appendChild(header);
+            item.appendChild(content);
+
+            return item;
+        }
+
+        function getEventTypeLabel(type, eventPayload) {
+            const eventData = eventPayload.event || eventPayload;
+            const data = eventData.data || eventData || {};
+            const item = eventData.item || data.item || {};
+            const rawItem = item.raw_item || {};
+            
+            // Проверяем run_item_stream_event с tool_called
+            if (eventData.name === 'tool_called' || item.type === 'tool_call_item') {
+                const toolName = rawItem.name || item.name || 'unknown';
+                return `🔧 Вызов инструмента: ${toolName}`;
+            }
+            
+            // Проверяем run_item_stream_event с tool_output
+            if (eventData.name === 'tool_output' || item.type === 'tool_call_output_item') {
+                return `✅ Результат инструмента`;
+            }
+            
+            // Проверяем нормализованный тип tool_call
+            if (type === 'tool_call') {
+                const itemData = data.item || item || {};
+                const rawItemData = itemData.raw_item || rawItem || {};
+                if (itemData.type === 'function_call' || rawItemData.type === 'function_call' || itemData.name) {
+                    return `🔧 Вызов инструмента: ${rawItemData.name || itemData.name || 'unknown'}`;
+                }
+            }
+            
+            // Проверяем нормализованный тип tool_result
+            if (type === 'tool_result') {
+                return `✅ Результат инструмента`;
+            }
+            
+            // Проверяем событие tool call через response.output_item.added
+            if (data.type === 'response.output_item.added') {
+                const itemData = data.item || {};
+                if (itemData.type === 'function_call') {
+                    return `🔧 Вызов инструмента: ${itemData.name || 'unknown'}`;
+                }
+                if (itemData.type === 'function_call_output' || itemData.type === 'tool_output' || itemData.type === 'tool_result') {
+                    return `✅ Результат инструмента`;
+                }
+            }
+            
+            // Проверяем прямые события tool calls
+            if (type.includes('tool') || type.includes('function')) {
+                if (type.includes('call') || type.includes('use')) {
+                    const toolName = data.name || data.tool_name || (data.item && data.item.name) || 'unknown';
+                    return `🔧 Вызов инструмента: ${toolName}`;
+                } else if (type.includes('result') || type.includes('output')) {
+                    return `✅ Результат инструмента`;
+                }
+            }
+            
+            if (type.includes('reasoning')) {
+                return `💭 Рассуждение`;
+            }
+            
+            if (type.includes('response') && !type.includes('raw')) {
+                return `💬 Ответ`;
+            }
+            
+            if (type.includes('message')) {
+                return `📨 Сообщение`;
+            }
+
+            return `📋 ${type}`;
+        }
+
+        function getEventTypeClass(type, eventPayload) {
+            const eventData = eventPayload.event || eventPayload;
+            const data = eventData.data || eventData || {};
+            const item = eventData.item || data.item || {};
+            
+            // Проверяем run_item_stream_event с tool_called
+            if (eventData.name === 'tool_called' || item.type === 'tool_call_item') {
+                return 'tool-call';
+            }
+            
+            // Проверяем run_item_stream_event с tool_output
+            if (eventData.name === 'tool_output' || item.type === 'tool_call_output_item') {
+                return 'tool-result';
+            }
+            
+            // Проверяем нормализованный тип tool_call
+            if (type === 'tool_call') {
+                return 'tool-call';
+            }
+            
+            // Проверяем нормализованный тип tool_result
+            if (type === 'tool_result') {
+                return 'tool-result';
+            }
+            
+            // Проверяем событие tool call через response.output_item.added
+            if (data.type === 'response.output_item.added') {
+                const itemData = data.item || {};
+                if (itemData.type === 'function_call') {
+                    return 'tool-call';
+                }
+                if (itemData.type === 'function_call_output' || itemData.type === 'tool_output' || itemData.type === 'tool_result') {
+                    return 'tool-result';
+                }
+            }
+            
+            if (type.includes('tool') || type.includes('function')) {
+                if (type.includes('call') || type.includes('use')) {
+                    return 'tool-call';
+                } else if (type.includes('result') || type.includes('output')) {
+                    return 'tool-result';
+                }
+            }
+            
+            if (type.includes('reasoning')) {
+                return 'reasoning';
+            }
+            
+            return '';
+        }
+
+        function formatEventData(eventPayload) {
+            const event = eventPayload.event || eventPayload;
+            const data = event.data || {};
+            const type = eventPayload.type || event.type || '';
+            const item = event.item || data.item || {};
+            const rawItem = item.raw_item || {};
+
+            let html = '';
+
+            // Tool call через run_item_stream_event с tool_called
+            if (event.name === 'tool_called' || item.type === 'tool_call_item') {
+                const toolName = rawItem.name || item.name || 'unknown';
+                let toolArgs = {};
+                
+                // Пробуем извлечь аргументы из разных мест
+                if (rawItem.arguments) {
+                    if (typeof rawItem.arguments === 'string') {
+                        try {
+                            toolArgs = JSON.parse(rawItem.arguments);
+                        } catch {
+                            toolArgs = rawItem.arguments;
+                        }
+                    } else {
+                        toolArgs = rawItem.arguments;
+                    }
+                } else if (data.item && data.item.arguments) {
+                    toolArgs = data.item.arguments;
+                }
+                
+                html += `<div style="margin-bottom: 8px;"><strong>Инструмент:</strong> <code style="background: rgba(56, 189, 248, 0.2); padding: 2px 6px; border-radius: 4px;">${escapeHtml(toolName)}</code></div>`;
+                
+                if (toolArgs && Object.keys(toolArgs).length > 0) {
+                    html += `<div style="margin-bottom: 8px;"><strong>Аргументы:</strong></div>`;
+                    const argsStr = typeof toolArgs === 'string' 
+                        ? toolArgs 
+                        : JSON.stringify(toolArgs, null, 2);
+                    html += `<pre style="max-height: 200px; overflow-y: auto;">${escapeHtml(argsStr)}</pre>`;
+                }
+                return html;
+            }
+
+            // Tool result через run_item_stream_event с tool_output
+            if (event.name === 'tool_output' || item.type === 'tool_call_output_item') {
+                let toolResult = null;
+                
+                // Пробуем извлечь результат из разных мест
+                if (item.output !== undefined) {
+                    toolResult = item.output;
+                } else if (rawItem.output !== undefined) {
+                    const outputStr = rawItem.output;
+                    if (typeof outputStr === 'string') {
+                        try {
+                            // Пробуем распарсить как JSON (может быть строка с одинарными кавычками)
+                            toolResult = JSON.parse(outputStr.replace(/'/g, '"'));
+                        } catch {
+                            toolResult = outputStr;
+                        }
+                    } else {
+                        toolResult = outputStr;
+                    }
+                } else if (data.result !== undefined) {
+                    toolResult = data.result;
+                }
+                
+                if (toolResult !== undefined && toolResult !== null) {
+                    html += formatToolResult(toolResult);
+                }
+                return html;
+            }
+
+            // Tool call через нормализованный тип tool_call
+            if (type === 'tool_call') {
+                const itemData = data.item || item || {};
+                const rawItemData = itemData.raw_item || rawItem || {};
+                
+                if (itemData.type === 'function_call' || rawItemData.type === 'function_call' || itemData.name) {
+                    const toolName = rawItemData.name || itemData.name || 'unknown';
+                    let toolArgs = {};
+                    
+                    // Пробуем извлечь аргументы
+                    if (rawItemData.arguments) {
+                        if (typeof rawItemData.arguments === 'string') {
+                            try {
+                                toolArgs = JSON.parse(rawItemData.arguments);
+                            } catch {
+                                toolArgs = rawItemData.arguments;
+                            }
+                        } else {
+                            toolArgs = rawItemData.arguments;
+                        }
+                    } else if (itemData.arguments) {
+                        toolArgs = itemData.arguments;
+                    } else if (data.item && data.item.arguments) {
+                        toolArgs = data.item.arguments;
+                    }
+                    
+                    html += `<div style="margin-bottom: 8px;"><strong>Инструмент:</strong> <code style="background: rgba(56, 189, 248, 0.2); padding: 2px 6px; border-radius: 4px;">${escapeHtml(toolName)}</code></div>`;
+                    
+                    if (toolArgs && Object.keys(toolArgs).length > 0) {
+                        html += `<div style="margin-bottom: 8px;"><strong>Аргументы:</strong></div>`;
+                        const argsStr = typeof toolArgs === 'string' 
+                            ? toolArgs 
+                            : JSON.stringify(toolArgs, null, 2);
+                        html += `<pre style="max-height: 200px; overflow-y: auto;">${escapeHtml(argsStr)}</pre>`;
+                    }
+                    return html;
+                }
+            }
+
+            // Tool call через response.output_item.added
+            if (data.type === 'response.output_item.added') {
+                const item = data.item || {};
+                if (item.type === 'function_call') {
+                    const toolName = item.name || 'unknown';
+                    const toolArgs = item.arguments || {};
+                    
+                    html += `<div style="margin-bottom: 8px;"><strong>Инструмент:</strong> <code style="background: rgba(56, 189, 248, 0.2); padding: 2px 6px; border-radius: 4px;">${escapeHtml(toolName)}</code></div>`;
+                    
+                    if (toolArgs && Object.keys(toolArgs).length > 0) {
+                        html += `<div style="margin-bottom: 8px;"><strong>Аргументы:</strong></div>`;
+                        const argsStr = typeof toolArgs === 'string' 
+                            ? toolArgs 
+                            : JSON.stringify(toolArgs, null, 2);
+                        html += `<pre style="max-height: 200px; overflow-y: auto;">${escapeHtml(argsStr)}</pre>`;
+                    }
+                    return html;
+                }
+            }
+
+            // Tool call - проверяем разные варианты структуры
+            if (type.includes('tool') && (type.includes('call') || type.includes('use'))) {
+                const toolName = data.name || data.tool_name || (data.item && data.item.name) || 'unknown';
+                const toolArgs = data.arguments || data.args || (data.item && data.item.arguments) || event.arguments || event.args;
+                
+                html += `<div style="margin-bottom: 8px;"><strong>Инструмент:</strong> <code style="background: rgba(56, 189, 248, 0.2); padding: 2px 6px; border-radius: 4px;">${escapeHtml(toolName)}</code></div>`;
+                
+                if (toolArgs && Object.keys(toolArgs).length > 0) {
+                    html += `<div style="margin-bottom: 8px;"><strong>Аргументы:</strong></div>`;
+                    const argsStr = typeof toolArgs === 'string' 
+                        ? toolArgs 
+                        : JSON.stringify(toolArgs, null, 2);
+                    html += `<pre style="max-height: 200px; overflow-y: auto;">${escapeHtml(argsStr)}</pre>`;
+                }
+            }
+
+            // Tool result через response.output_item.added
+            if (data.type === 'response.output_item.added') {
+                const itemData = data.item || {};
+                if (itemData.type === 'function_call_output' || itemData.type === 'tool_output' || itemData.type === 'tool_result') {
+                    const toolResult = itemData.output || itemData.result || itemData.content || {};
+                    html += formatToolResult(toolResult);
+                    return html;
+                }
+            }
+
+            // Tool result - проверяем разные варианты структуры
+            if (type === 'tool_result' || (type.includes('tool') && (type.includes('result') || type.includes('output')))) {
+                let toolResult = null;
+                
+                // Пробуем извлечь результат из разных мест
+                if (data.result !== undefined) {
+                    toolResult = data.result;
+                } else if (data.output !== undefined) {
+                    toolResult = data.output;
+                } else if (item.output !== undefined) {
+                    toolResult = item.output;
+                } else if (rawItem.output !== undefined) {
+                    const outputStr = rawItem.output;
+                    if (typeof outputStr === 'string') {
+                        try {
+                            toolResult = JSON.parse(outputStr.replace(/'/g, '"'));
+                        } catch {
+                            toolResult = outputStr;
+                        }
+                    } else {
+                        toolResult = outputStr;
+                    }
+                } else if (event.result !== undefined) {
+                    toolResult = event.result;
+                }
+                
+                if (toolResult !== undefined && toolResult !== null) {
+                    html += formatToolResult(toolResult);
+                }
+            }
+
+            // Reasoning
+            if (type.includes('reasoning')) {
+                if (data.content) {
+                    html += `<div style="white-space: pre-wrap;">${escapeHtml(data.content)}</div>`;
+                } else if (data.text) {
+                    html += `<div style="white-space: pre-wrap;">${escapeHtml(data.text)}</div>`;
+                } else if (data.reasoning) {
+                    html += `<div style="white-space: pre-wrap;">${escapeHtml(data.reasoning)}</div>`;
+                }
+            }
+
+            // Response delta
+            if (data.type === 'response.output_text.delta') {
+                if (data.delta) {
+                    const deltaStr = typeof data.delta === 'string' 
+                        ? data.delta 
+                        : (data.delta.text || JSON.stringify(data.delta));
+                    html += `<div><strong>Дельта текста:</strong> <code style="background: rgba(16, 185, 129, 0.2); padding: 2px 6px; border-radius: 4px;">${escapeHtml(deltaStr)}</code></div>`;
+                }
+            }
+
+            // Message content
+            if (type.includes('message')) {
+                if (data.content) {
+                    html += `<div style="white-space: pre-wrap;">${escapeHtml(data.content)}</div>`;
+                } else if (data.text) {
+                    html += `<div style="white-space: pre-wrap;">${escapeHtml(data.text)}</div>`;
+                }
+            }
+
+            // Если ничего не найдено, показываем полные данные
+            if (!html) {
+                // Пытаемся найти любые полезные данные
+                const allData = JSON.stringify(eventPayload, null, 2);
+                html = `<pre style="max-height: 400px; overflow-y: auto;">${escapeHtml(allData)}</pre>`;
+            }
+
+            return html;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatToolResult(result) {
+            let html = '';
+            
+            // Если это результат hybrid_search
+            if (result.chunks && Array.isArray(result.chunks)) {
+                html += `
+                    <div style="margin-bottom: 16px; padding: 12px; background: rgba(56, 189, 248, 0.1); border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.3);">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            <span style="font-size: 1.2rem;">📚</span>
+                            <strong style="color: var(--accent); font-size: 1rem;">Найдено чанков: ${result.chunks.length}</strong>
+                        </div>
+                    </div>
+                `;
+                
+                html += `<div style="display: grid; gap: 12px;">`;
+                
+                result.chunks.forEach((chunk, idx) => {
+                    const docInfo = documentsCache[chunk.document_id];
+                    const docName = docInfo ? docInfo.filename : `Документ #${chunk.document_id}`;
+                    const docType = docInfo ? docInfo.type : '';
+                    
+                    html += `
+                        <div style="border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 16px; background: linear-gradient(135deg, rgba(15, 23, 42, 0.6), rgba(30, 41, 59, 0.6)); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);">
+                            <!-- Заголовок чанка -->
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                                <div style="flex: 1;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                                        <span style="font-size: 1.1rem;">📄</span>
+                                        <span style="color: var(--accent); font-weight: 600; font-size: 0.95rem;">${escapeHtml(docName)}</span>
+                                        ${docType ? `<span style="color: var(--subtle); font-size: 0.75rem; background: rgba(148, 163, 184, 0.15); padding: 2px 8px; border-radius: 4px;">${docType}</span>` : ''}
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 12px; font-size: 0.8rem; color: var(--subtle);">
+                                        <span>📑 Чанк #${chunk.chunk_index !== undefined ? chunk.chunk_index : idx + 1}</span>
+                                        <span>🆔 ID: ${chunk.id}</span>
+                                        <span>📋 Документ ID: ${chunk.document_id}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Скоры -->
+                            <div style="display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+                                <div style="flex: 1; min-width: 100px; padding: 8px; background: rgba(16, 185, 129, 0.1); border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.2);">
+                                    <div style="font-size: 0.7rem; color: var(--subtle); margin-bottom: 4px;">FTS Score</div>
+                                    <div style="color: var(--success); font-weight: 600; font-size: 0.9rem;">${(chunk.text_rank || 0).toFixed(4)}</div>
+                                </div>
+                                <div style="flex: 1; min-width: 100px; padding: 8px; background: rgba(245, 158, 11, 0.1); border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.2);">
+                                    <div style="font-size: 0.7rem; color: var(--subtle); margin-bottom: 4px;">Vector Score</div>
+                                    <div style="color: var(--warning); font-weight: 600; font-size: 0.9rem;">${(chunk.vector_score || 0).toFixed(4)}</div>
+                                </div>
+                                <div style="flex: 1; min-width: 100px; padding: 8px; background: rgba(56, 189, 248, 0.15); border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.3);">
+                                    <div style="font-size: 0.7rem; color: var(--subtle); margin-bottom: 4px;">Hybrid Score</div>
+                                    <div style="color: var(--accent); font-weight: 700; font-size: 0.95rem;">${(chunk.hybrid_score || 0).toFixed(4)}</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Содержимое -->
+                            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
+                                <div style="font-size: 0.75rem; color: var(--subtle); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Содержимое:</div>
+                                <div style="font-size: 0.9rem; line-height: 1.6; color: var(--text); max-height: 600px; overflow-y: auto; padding: 12px; background: rgba(15, 23, 42, 0.4); border-radius: 8px; white-space: pre-wrap; word-wrap: break-word;">
+                                    ${escapeHtml(chunk.content || '')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `</div>`;
+            } else {
+                // Обычный результат
+                html += `<div style="margin-bottom: 8px;"><strong>Результат:</strong></div>`;
+                let resultStr;
+                if (typeof result === 'string') {
+                    resultStr = result;
+                } else if (typeof result === 'object') {
+                    resultStr = JSON.stringify(result, null, 2);
+                } else {
+                    resultStr = String(result);
+                }
+                html += `<pre style="max-height: 300px; overflow-y: auto; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 8px;">${escapeHtml(resultStr)}</pre>`;
+            }
+            
+            return html;
+        }
+
+        function addUserMessage(text) {
+            const messageId = `msg-${Date.now()}`;
+            const timestamp = new Date();
+            const messageEl = createMessageElement('user', text, timestamp, messageId);
+            chatMessages.appendChild(messageEl);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageId;
+        }
+
+        function addAssistantMessage(messageId, initialText = '') {
+            const timestamp = new Date();
+            const messageEl = createMessageElement('assistant', initialText, timestamp, messageId);
+            chatMessages.appendChild(messageEl);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageEl;
+        }
+
+        function updateAssistantMessage(messageEl, text) {
+            const contentEl = messageEl.querySelector('.message-content');
+            contentEl.innerHTML = renderMarkdown(text);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function renderMarkdown(text) {
+            if (!text) return '';
+            // Простой markdown рендеринг
+            let html = escapeHtml(text);
+            
+            // Код блоки (до других замен)
+            html = html.replace(/```([\s\S]*?)```/g, '<pre style="background: rgba(15, 23, 42, 0.7); padding: 12px; border-radius: 6px; overflow-x: auto; margin: 8px 0;"><code>$1</code></pre>');
+            
+            // Инлайн код
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+            
+            // Заголовки
+            html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+            html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+            html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+            
+            // Жирный текст (после кода, чтобы не конфликтовать)
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/__(.*?)__/g, '<strong>$1</strong>');
+            
+            // Курсив (после жирного, избегаем конфликтов)
+            // Используем более простой подход - заменяем только если не окружено звездочками
+            html = html.replace(/\b\*([^*]+?)\*\b/g, '<em>$1</em>');
+            html = html.replace(/\b_([^_]+?)_\b/g, '<em>$1</em>');
+            
+            // Нумерованные списки
+            const lines = html.split('\n');
+            let inOrderedList = false;
+            let inUnorderedList = false;
+            let result = [];
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const orderedMatch = line.match(/^(\d+)\.\s+(.*)$/);
+                const unorderedMatch = line.match(/^[-*]\s+(.*)$/);
+                
+                if (orderedMatch) {
+                    if (!inOrderedList) {
+                        if (inUnorderedList) {
+                            result.push('</ul>');
+                            inUnorderedList = false;
+                        }
+                        result.push('<ol>');
+                        inOrderedList = true;
+                    }
+                    result.push(`<li>${orderedMatch[2]}</li>`);
+                } else if (unorderedMatch) {
+                    if (!inUnorderedList) {
+                        if (inOrderedList) {
+                            result.push('</ol>');
+                            inOrderedList = false;
+                        }
+                        result.push('<ul>');
+                        inUnorderedList = true;
+                    }
+                    result.push(`<li>${unorderedMatch[1]}</li>`);
+                } else {
+                    if (inOrderedList) {
+                        result.push('</ol>');
+                        inOrderedList = false;
+                    }
+                    if (inUnorderedList) {
+                        result.push('</ul>');
+                        inUnorderedList = false;
+                    }
+                    if (line.trim()) {
+                        result.push(line);
+                    }
+                }
+            }
+            
+            if (inOrderedList) result.push('</ol>');
+            if (inUnorderedList) result.push('</ul>');
+            
+            html = result.join('\n');
+            
+            // Параграфы (только для строк, которые не являются HTML тегами)
+            html = html.split('\n').map(line => {
+                line = line.trim();
+                if (!line || line.startsWith('<') || line.match(/^<\/[ou]l>$/)) return line;
+                return '<p>' + line + '</p>';
+            }).join('\n');
+            
+            return html;
+        }
+
+        function addTypingIndicator(messageEl) {
+            const contentEl = messageEl.querySelector('.message-content');
+            const indicator = document.createElement('div');
+            indicator.className = 'typing-indicator';
+            indicator.innerHTML = `
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+            `;
+            contentEl.appendChild(indicator);
+        }
+
+        function removeTypingIndicator(messageEl) {
+            const indicator = messageEl.querySelector('.typing-indicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+
+        function saveMessageToSession(sessionId, role, content, timestamp, events = [], documentIds = null) {
+            const sessions = loadSavedSessions();
+            if (!sessions[sessionId]) {
+                sessions[sessionId] = {
+                    messages: [],
+                    created_at: timestamp,
+                    updated_at: timestamp,
+                    model: modelEl.value,
+                    document_ids: documentIds || parseDocumentIds()
+                };
+                console.log('Создана новая сессия:', sessionId);
+            }
+
+            // Обновляем document_ids если они переданы
+            if (documentIds !== null) {
+                sessions[sessionId].document_ids = documentIds;
+            }
+
+            // Проверяем, нет ли уже такого сообщения (избегаем дубликатов)
+            // Проверяем по содержимому и роли, чтобы не создавать дубликаты
+            const isDuplicate = sessions[sessionId].messages.some(msg => 
+                msg.role === role && 
+                msg.content === content &&
+                Math.abs(new Date(msg.timestamp) - new Date(timestamp)) < 5000 // В пределах 5 секунд
+            );
+
+            if (!isDuplicate) {
+                // Создаем стабильный messageId на основе timestamp и роли
+                const timestampMs = new Date(timestamp).getTime();
+                const messageId = `msg-${role}-${timestampMs}`;
+
+                sessions[sessionId].messages.push({
+                    role,
+                    content,
+                    timestamp,
+                    events,
+                    messageId: messageId
+                });
+
+                sessions[sessionId].updated_at = timestamp;
+                saveSessions(sessions);
+                console.log(`Сохранено сообщение в сессию ${sessionId}:`, role, content.substring(0, 50) + '...', `Всего сообщений: ${sessions[sessionId].messages.length}`);
+                renderSessions();
+            } else {
+                console.log('Пропущено дубликат сообщения в сессии:', sessionId, role);
+            }
+        }
+
+        async function loadSessionFromServer(sessionId) {
+            try {
+                const res = await fetch(`/chat/sessions/${encodeURIComponent(sessionId)}/log`);
+                if (!res.ok) return null;
+                const log = await res.json();
+                
+                // Конвертируем серверный лог в формат для отображения
+                const sessions = loadSavedSessions();
+                if (!sessions[sessionId]) {
+                    sessions[sessionId] = {
+                        messages: [],
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
+                        model: log.request?.model || 'gpt-4o',
+                        document_ids: log.request?.document_ids || []
+                    };
+                }
+
+                // Восстанавливаем сообщения из лога
+                if (log.request?.prompt) {
+                    const userMsg = {
+                        role: 'user',
+                        content: log.request.prompt,
+                        timestamp: new Date().toISOString(),
+                        messageId: `msg-user-${Date.now()}`
+                    };
+                    sessions[sessionId].messages.push(userMsg);
+                }
+
+                if (log.final_output) {
+                    // Конвертируем события из серверного формата в формат для отображения
+                    // События на сервере хранятся как event_dict (результат event.model_dump())
+                    // а в стриминге отправляются как {type, event}
+                    const formattedEvents = (log.events || []).map(event => {
+                        // Если событие уже в правильном формате (с type и event)
+                        if (event.type && event.event) {
+                            return event;
+                        }
+                        // Иначе конвертируем из формата сервера (event_dict)
+                        // event_dict уже содержит type внутри
+                        // Извлекаем text_delta если есть
+                        let textDelta = '';
+                        if (event.data) {
+                            const data = event.data;
+                            if (data.type === 'response.output_text.delta') {
+                                if (typeof data.delta === 'string') {
+                                    textDelta = data.delta;
+                                } else if (data.delta?.text) {
+                                    textDelta = data.delta.text;
+                                }
+                            }
+                        }
+                        
+                        return {
+                            type: event.type || 'unknown',
+                            event: event,
+                            text_delta: textDelta || undefined
+                        };
+                    });
+
+                    const assistantMsg = {
+                        role: 'assistant',
+                        content: log.final_output,
+                        timestamp: new Date().toISOString(),
+                        events: formattedEvents,
+                        messageId: `msg-assistant-${Date.now()}`
+                    };
+                    sessions[sessionId].messages.push(assistantMsg);
+                }
+
+                sessions[sessionId].updated_at = new Date().toISOString();
+                saveSessions(sessions);
+                return sessions[sessionId];
+            } catch (error) {
+                console.error('Ошибка загрузки сессии с сервера', error);
+                return null;
+            }
+        }
+
+        async function loadSession(sessionId) {
+            console.log('Загрузка сессии:', sessionId);
+            let sessions = loadSavedSessions();
+            let session = sessions[sessionId];
+            
+            // Если сессии нет локально, пытаемся загрузить с сервера
+            if (!session) {
+                console.log('Сессия не найдена локально, загружаем с сервера');
+                session = await loadSessionFromServer(sessionId);
+                if (!session) {
+                    console.warn('Сессия не найдена:', sessionId);
+                    return;
+                }
+            }
+
+            // Проверяем, что сессия имеет сообщения
+            if (!session.messages || session.messages.length === 0) {
+                console.warn('Сессия не содержит сообщений:', sessionId, session);
+                return;
+            }
+
+            console.log('Загружаем', session.messages.length, 'сообщений из сессии', sessionId);
+            chatMessages.innerHTML = '';
+            
+            // Сортируем сообщения по timestamp для правильного порядка
+            const sortedMessages = [...session.messages].sort((a, b) => {
+                return new Date(a.timestamp || 0) - new Date(b.timestamp || 0);
+            });
+            
+            sortedMessages.forEach((msg, idx) => {
+                if (!msg.content && msg.role === 'assistant') {
+                    console.warn('Пропущено сообщение без контента:', idx, msg);
+                    return;
+                }
+                
+                const messageEl = createMessageElement(msg.role, msg.content || '', msg.timestamp, msg.messageId || `msg-${Date.now()}`);
+                chatMessages.appendChild(messageEl);
+
+                if (msg.role === 'assistant' && msg.events && msg.events.length > 0) {
+                    const thinkingEl = createThinkingElement(msg.events, msg.messageId || `msg-${Date.now()}`);
+                    messageEl.appendChild(thinkingEl);
+                }
+            });
+
+            console.log('Сообщения загружены и отображены');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            updateSessionBadge(sessionId);
+            setCurrentSession(sessionId);
+            
+            // Восстанавливаем выбранные документы
+            if (session.document_ids && Array.isArray(session.document_ids)) {
+                Array.from(docIdsEl.options).forEach(option => {
+                    option.selected = session.document_ids.includes(Number(option.value));
+                });
+            } else {
+                docIdsEl.selectedIndex = -1;
+            }
+        }
+
+        async function deleteSession(sessionId) {
+            if (!confirm(`Вы уверены, что хотите удалить сессию "${sessionId}"?`)) {
+                return;
+            }
+
+            try {
+                // Удаляем на сервере
+                const response = await fetch(`/chat/sessions/${encodeURIComponent(sessionId)}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok && response.status !== 404) {
+                    const error = await response.json().catch(() => ({ detail: 'Ошибка удаления' }));
+                    throw new Error(error.detail || 'Ошибка удаления сессии');
+                }
+
+                // Удаляем локально
+                const sessions = loadSavedSessions();
+                if (sessions[sessionId]) {
+                    delete sessions[sessionId];
+                    saveSessions(sessions);
+                }
+
+                // Если удаляемая сессия была текущей, очищаем чат
+                if (sessionId === currentSessionId) {
+                    createNewChat();
+                }
+
+                renderSessions();
+                console.log('Сессия удалена:', sessionId);
+            } catch (error) {
+                console.error('Ошибка удаления сессии:', error);
+                alert('Ошибка удаления сессии: ' + error.message);
+            }
+        }
+
+        function renderSessions() {
+            const sessions = loadSavedSessions();
+            sessionList.innerHTML = '';
+
+            // Фильтруем временные сессии - они не должны показываться в списке
+            const permanentSessions = Object.keys(sessions).filter(id => !id.startsWith('temp-'));
+            const ids = permanentSessions.sort((a, b) => {
+                return new Date(sessions[b].updated_at).getTime() - new Date(sessions[a].updated_at).getTime();
+            });
+
+            if (!ids.length) {
+                const empty = document.createElement('div');
+                empty.className = 'empty-state';
+                empty.innerHTML = `
+                    <div class="empty-state-icon">💬</div>
+                    <div>Нет сохранённых сессий</div>
+                `;
+                sessionList.appendChild(empty);
+                return;
+            }
+
+            ids.forEach((sessionId) => {
+                const session = sessions[sessionId];
+                const card = document.createElement('div');
+                card.className = 'session-card';
+                if (sessionId === currentSessionId) {
+                    card.classList.add('active');
+                }
+
+                card.innerHTML = `
+                    <div class="session-card-header">
+                        <span class="session-card-id" onclick="loadSession('${sessionId}')">${sessionId}</span>
+                        <div class="session-card-actions">
+                            <button class="session-delete-btn" onclick="event.stopPropagation(); deleteSession('${sessionId}')" title="Удалить сессию">✕</button>
+                        </div>
+                    </div>
+                    <div class="session-card-info">
+                        <span class="session-badge">${session.messages.length} сообщений</span>
+                        <span class="session-badge">${session.model}</span>
+                    </div>
+                    <div class="session-card-time">${formatDateTime(session.updated_at)}</div>
+                `;
+
+                card.addEventListener('click', (e) => {
+                    // Не загружаем сессию если кликнули на кнопку удаления
+                    if (!e.target.closest('.session-delete-btn')) {
+                        loadSession(sessionId);
+                    }
+                });
+
+                sessionList.appendChild(card);
+            });
+        }
+
+        async function streamChat(payload) {
+            const response = await fetch('/chat/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok || !response.body) {
+                throw new Error('Ошибка запуска стриминга');
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let eventIndex = 0;
+            const events = [];
+            let sessionId = payload.session_id || null;
+            let finalOutput = '';
+            let messageEl = null;
+            const currentPayload = payload; // Сохраняем payload для использования в обработке
+            const initialTempSessionId = payload.session_id && payload.session_id.startsWith('temp-') ? payload.session_id : null; // Сохраняем начальный временный ID
+
+            updateStatus('Обработка...', 'active');
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+
+                let newlineIndex;
+                while ((newlineIndex = buffer.indexOf('\n')) >= 0) {
+                    const line = buffer.slice(0, newlineIndex).trim();
+                    buffer = buffer.slice(newlineIndex + 1);
+                    if (!line) continue;
+
+                    try {
+                        const eventPayload = JSON.parse(line);
+                        
+                        // Пропускаем технические события
+                        const eventType = eventPayload.type || '';
+                        const eventData = eventPayload.event || {};
+                        const data = eventData.data || {};
+                        const item = eventData.item || data.item || {};
+                        
+                        // Пропускаем только если это действительно техническое событие
+                        // НО не пропускаем если это tool call или tool result через run_item_stream_event
+                        const isToolCall = eventType === 'tool_call' ||
+                                          eventData.name === 'tool_called' ||
+                                          item.type === 'tool_call_item' ||
+                                          (data.type === 'response.output_item.added' && 
+                                           data.item && 
+                                           data.item.type === 'function_call');
+                        
+                        const isToolResult = eventType === 'tool_result' ||
+                                            eventData.name === 'tool_output' ||
+                                            item.type === 'tool_call_output_item' ||
+                                            (data.type === 'response.output_item.added' && 
+                                             data.item && 
+                                             (data.item.type === 'function_call_output' || 
+                                              data.item.type === 'tool_output' || 
+                                              data.item.type === 'tool_result'));
+                        
+                        if (!isToolCall && !isToolResult && (
+                            (eventType.includes('raw_response_event') && !isToolCall && !isToolResult) || 
+                            eventType.includes('agent_updated_stream_event') ||
+                            eventType === 'response.created' ||
+                            eventType === 'response.in_progress' ||
+                            data.type === 'response.created' ||
+                            data.type === 'response.in_progress'
+                        )) {
+                            // Не добавляем в секцию мышления, но сохраняем для истории
+                            continue;
+                        }
+                        
+                        // Обновляем текст ответа для text_delta событий
+                        // Проверяем как прямой text_delta, так и вложенный в event
+                        let deltaText = null;
+                        
+                        if (eventPayload.text_delta) {
+                            deltaText = eventPayload.text_delta;
+                        } else if (eventPayload.type === 'text_delta') {
+                            deltaText = eventPayload.text_delta;
+                        } else {
+                            // Также проверяем text_delta в event.event.data
+                            const eventData = eventPayload.event?.data || {};
+                            if (eventData.type === 'response.output_text.delta' && eventData.delta) {
+                                deltaText = typeof eventData.delta === 'string' ? eventData.delta : (eventData.delta.text || '');
+                            }
+                        }
+                        
+                        if (deltaText) {
+                            if (!messageEl) {
+                                messageEl = addAssistantMessage(currentMessageId);
+                                addTypingIndicator(messageEl);
+                            }
+                            removeTypingIndicator(messageEl);
+                            finalOutput += deltaText;
+                            updateAssistantMessage(messageEl, finalOutput);
+                            // Прокручиваем вниз при каждом обновлении
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                            // НЕ добавляем text_delta события в секцию мышления
+                            // Они используются только для обновления финального текста
+                            continue;
+                        }
+
+                        // Добавляем событие в секцию мышления только если это НЕ text_delta
+                        eventIndex += 1;
+                        events.push(eventPayload);
+
+                        // Финальное событие
+                        if (eventPayload.type === 'final') {
+                            sessionId = eventPayload.session_id || sessionId;
+                            if (eventPayload.final_output) {
+                                finalOutput = eventPayload.final_output;
+                                if (messageEl) {
+                                    updateAssistantMessage(messageEl, finalOutput);
+                                } else {
+                                    messageEl = addAssistantMessage(currentMessageId, finalOutput);
+                                }
+                            }
+
+                            // Добавляем процесс мышления
+                            if (messageEl && events.length > 0) {
+                                const thinkingEl = createThinkingElement(events, currentMessageId);
+                                messageEl.appendChild(thinkingEl);
+                            }
+
+                            // Сохраняем сообщение и обновляем сессию если нужно
+                            if (sessionId) {
+                                const timestamp = new Date().toISOString();
+                                const sessions = loadSavedSessions();
+                                
+                                // ВАЖНО: Обновляем currentSessionId ПЕРЕД сохранением сообщения
+                                // Это гарантирует, что все последующие операции используют правильный ID
+                                if (sessionId !== currentSessionId) {
+                                    console.log('Обновляем currentSessionId с', currentSessionId, 'на', sessionId);
+                                    currentSessionId = sessionId;
+                                    updateSessionBadge(sessionId);
+                                    setCurrentSession(sessionId);
+                                }
+                                
+                                // Сохраняем ответ ассистента ПЕРЕД переносом временной сессии
+                                // Это гарантирует, что сообщение будет в правильной сессии
+                                saveMessageToSession(sessionId, 'assistant', finalOutput, timestamp, events, currentPayload.document_ids);
+                                
+                                // Если была временная сессия, переносим сообщения в реальную
+                                // Используем сохранённый начальный временный ID или ищем в сессиях
+                                let tempSessionId = null;
+                                
+                                // Сначала проверяем сохранённый начальный временный ID
+                                if (initialTempSessionId && initialTempSessionId !== sessionId) {
+                                    tempSessionId = initialTempSessionId;
+                                    console.log('Используем начальный временный ID:', tempSessionId);
+                                } else {
+                                    // Ищем временную сессию в сохранённых сессиях
+                                    const sessionsBeforeSave = loadSavedSessions();
+                                    tempSessionId = Object.keys(sessionsBeforeSave).find(id => id.startsWith('temp-') && id !== sessionId);
+                                }
+                                
+                                if (tempSessionId && tempSessionId !== sessionId) {
+                                    console.log('Найдена временная сессия для переноса:', tempSessionId);
+                                    const sessionsBeforeSave = loadSavedSessions();
+                                    const tempSession = sessionsBeforeSave[tempSessionId];
+                                    if (tempSession && tempSession.messages) {
+                                        // Перезагружаем сессии после сохранения
+                                        const updatedSessions = loadSavedSessions();
+                                        
+                                        // Создаём новую сессию с сообщениями из временной
+                                        if (!updatedSessions[sessionId]) {
+                                            updatedSessions[sessionId] = {
+                                                messages: [...tempSession.messages],
+                                                created_at: tempSession.created_at || timestamp,
+                                                updated_at: timestamp,
+                                                model: tempSession.model || currentPayload.model,
+                                                document_ids: tempSession.document_ids || currentPayload.document_ids || []
+                                            };
+                                        } else {
+                                            // Добавляем сообщения из временной сессии (если их еще нет)
+                                            const existingMessageIds = new Set(updatedSessions[sessionId].messages.map(m => m.messageId));
+                                            const newMessages = tempSession.messages.filter(m => !existingMessageIds.has(m.messageId));
+                                            updatedSessions[sessionId].messages.push(...newMessages);
+                                            // Обновляем document_ids если они есть в временной сессии
+                                            if (tempSession.document_ids) {
+                                                updatedSessions[sessionId].document_ids = tempSession.document_ids;
+                                            }
+                                        }
+                                        delete updatedSessions[tempSessionId];
+                                        saveSessions(updatedSessions);
+                                        renderSessions();
+                                        console.log('Временная сессия перенесена в', sessionId);
+                                    }
+                                }
+                            }
+
+                            updateStatus('Завершено', 'idle');
+                            return;
+                        }
+                    } catch (error) {
+                        console.error('Ошибка парсинга события', error, line);
+                    }
+                }
+            }
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const prompt = promptEl.value.trim();
+            if (!prompt) return;
+
+            const payload = {
+                prompt: prompt,
+                document_ids: parseDocumentIds(),
+                session_id: currentSessionId || undefined,
+                model: modelEl.value,
+            };
+
+            submitBtn.disabled = true;
+            isStreaming = true;
+            updateStatus('Отправка...', 'active');
+
+            // Добавляем сообщение пользователя
+            const userMessageId = addUserMessage(prompt);
+            currentMessageId = `msg-${Date.now()}`;
+
+            // Сохраняем сообщение пользователя (создаём сессию если нужно)
+            const timestamp = new Date().toISOString();
+            let sessionIdToUse = payload.session_id;
+            if (!sessionIdToUse) {
+                // Создаём временный ID, который будет заменён на реальный после получения ответа
+                sessionIdToUse = `temp-${Date.now()}`;
+                currentSessionId = sessionIdToUse;
+                updateSessionBadge(sessionIdToUse);
+            }
+            saveMessageToSession(sessionIdToUse, 'user', prompt, timestamp, [], parseDocumentIds());
+
+            try {
+                await streamChat(payload);
+            } catch (error) {
+                console.error(error);
+                updateStatus('Ошибка', 'error');
+                if (messageEl) {
+                    const contentEl = messageEl.querySelector('.message-content');
+                    contentEl.textContent = 'Ошибка при обработке запроса. Попробуйте ещё раз.';
+                }
+            } finally {
+                submitBtn.disabled = false;
+                isStreaming = false;
+                promptEl.value = '';
+            }
+        });
+
+        // Обработчик кнопки "Новый чат"
+        newChatBtn.addEventListener('click', () => {
+            createNewChat();
+        });
+
+        // Восстановление текущей сессии при загрузке
+        window.addEventListener('load', async () => {
+            await loadDocuments();
+            
+            // Удаляем все временные сессии при загрузке страницы
+            const sessions = loadSavedSessions();
+            const tempSessionIds = Object.keys(sessions).filter(id => id.startsWith('temp-'));
+            if (tempSessionIds.length > 0) {
+                console.log('Удаляем временные сессии при загрузке:', tempSessionIds);
+                tempSessionIds.forEach(tempId => {
+                    delete sessions[tempId];
+                });
+                saveSessions(sessions);
+            }
+            
+            renderSessions();
+            const current = getCurrentSession();
+            if (current && current.sessionId && !current.sessionId.startsWith('temp-')) {
+                console.log('Восстанавливаем текущую сессию при загрузке:', current.sessionId);
+                // Проверяем, что сессия существует перед загрузкой
+                const updatedSessions = loadSavedSessions();
+                if (updatedSessions[current.sessionId]) {
+                    await loadSession(current.sessionId);
+                } else {
+                    console.log('Сессия не найдена в localStorage, пытаемся загрузить с сервера');
+                    const session = await loadSessionFromServer(current.sessionId);
+                    if (session) {
+                        await loadSession(current.sessionId);
+                    } else {
+                        console.log('Сессия не найдена ни локально, ни на сервере, очищаем текущую сессию');
+                        setCurrentSession(null);
+                        currentSessionId = null;
+                    }
+                }
+            } else {
+                console.log('Текущая сессия не найдена или является временной при загрузке');
+                // Очищаем текущую сессию если она временная
+                if (current && current.sessionId && current.sessionId.startsWith('temp-')) {
+                    setCurrentSession(null);
+                    currentSessionId = null;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
