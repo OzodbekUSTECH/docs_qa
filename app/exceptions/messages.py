@@ -5,3 +5,8 @@ class ErrorMessages:
     DOCUMENT_EMPTY = "Document is empty"
     DOCUMENT_ALREADY_EXISTS = "Document already exists"
     DOCUMENT_CONVERSION_FAILED = "Document conversion failed"
+    
+    
+    EXTRACTION_FIELD_NOT_FOUND = "Extraction field not found"
+    EXTRACTION_FIELDS_NOT_FOUND = "Extraction fields not found"
+    

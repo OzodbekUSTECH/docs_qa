@@ -28,8 +28,8 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from docling.document_converter import DocumentConverter
-    await app.state.dishka_container.get(DocumentConverter)
+    # from docling.document_converter import DocumentConverter
+    # await app.state.dishka_container.get(DocumentConverter)
     
     # Инициализация при запуске
     # await warmup_dependencies(app.state.dishka_container)

@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Extraction Fields</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #38bdf8;
+            --accent-muted: rgba(56, 189, 248, 0.15);
+            --purple: #a855f7;
+            --purple-muted: rgba(168, 85, 247, 0.15);
+            --text: #e2e8f0;
+            --subtle: #94a3b8;
+            --border: rgba(148, 163, 184, 0.2);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            letter-spacing: 0.03em;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .nav-button {
+            padding: 8px 16px;
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 8px;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-button:hover {
+            background: rgba(56, 189, 248, 0.25);
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        .container {
+            padding: 24px;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .main-panel {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.35);
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-header h2 {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .btn-add {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, var(--purple), #6366f1);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-add:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 20px rgba(168, 85, 247, 0.35);
+        }
+
+        .filters-bar {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-group label {
+            font-size: 0.85rem;
+            color: var(--subtle);
+            white-space: nowrap;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text);
+            font-size: 0.9rem;
+            font-family: inherit;
+            min-width: 150px;
+        }
+
+        .filter-group input:focus,
+        .filter-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+        }
+
+        .table-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--subtle);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            position: sticky;
+            top: 0;
+            background: var(--card);
+            z-index: 10;
+        }
+
+        tr:hover {
+            background: rgba(15, 23, 42, 0.3);
+        }
+
+        .field-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent);
+            margin-right: 4px;
+        }
+
+        .field-badge.type {
+            background: rgba(168, 85, 247, 0.15);
+            color: var(--purple);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        button {
+            border: none;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        button.btn-info {
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        button.btn-info:hover:not(:disabled) {
+            background: rgba(56, 189, 248, 0.25);
+            border-color: var(--accent);
+        }
+
+        button.btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        button.btn-danger:hover:not(:disabled) {
+            background: rgba(239, 68, 68, 0.25);
+            border-color: var(--error);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--subtle);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--subtle);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(4px);
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background: var(--card);
+            margin: 2% auto;
+            padding: 0;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 90%;
+            max-width: 800px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: var(--text);
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--subtle);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            color: var(--subtle);
+            font-weight: 500;
+        }
+
+        .form-group label .required {
+            color: var(--error);
+        }
+
+        .form-group input[type="text"],
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: var(--text);
+            font-size: 0.96rem;
+            font-family: inherit;
+        }
+
+        .form-group input[type="text"]:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+        }
+
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-group-description {
+            font-size: 0.8rem;
+            color: var(--subtle);
+            margin-top: 4px;
+        }
+
+        .identifier-display {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--subtle);
+            font-family: 'Courier New', monospace;
+        }
+
+        .document-types-multiselect {
+            position: relative;
+        }
+
+        .document-types-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 4px;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+        }
+
+        .document-types-dropdown.active {
+            display: block;
+        }
+
+        .document-type-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .document-type-option:hover {
+            background: rgba(56, 189, 248, 0.15);
+        }
+
+        .document-type-option input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .document-types-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+            min-height: 40px;
+            padding: 8px;
+            background: rgba(15, 23, 42, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .document-type-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 999px;
+            font-size: 0.85rem;
+            color: var(--accent);
+        }
+
+        .document-type-pill .remove {
+            cursor: pointer;
+            padding: 2px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .document-type-pill .remove:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--error);
+        }
+
+        .document-types-trigger {
+            width: 100%;
+            padding: 12px 14px;
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 0.96rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .document-types-trigger:hover {
+            border-color: var(--accent);
+        }
+
+        .char-counter {
+            font-size: 0.75rem;
+            color: var(--subtle);
+            text-align: right;
+            margin-top: 4px;
+        }
+
+        .examples-container {
+            margin-top: 8px;
+        }
+
+        .example-input-wrapper {
+            position: relative;
+        }
+
+        .example-input-wrapper input {
+            padding-right: 40px;
+        }
+
+        .example-input-hint {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--subtle);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            pointer-events: none;
+        }
+
+        .example-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .example-item-text {
+            flex: 1;
+            font-size: 0.85rem;
+            color: var(--text);
+        }
+
+        .example-item-remove {
+            background: transparent;
+            border: none;
+            color: var(--error);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .example-item-remove:hover {
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        .modal-footer {
+            padding: 20px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .btn-secondary {
+            padding: 10px 20px;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .btn-primary {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, var(--purple), #6366f1);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 20px rgba(168, 85, 247, 0.35);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .message {
+            padding: 12px 24px;
+            margin: 0 24px 12px 24px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .message.error {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .message.success {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .pagination {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .pagination button {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            background: rgba(15, 23, 42, 0.65);
+            color: var(--text);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: rgba(15, 23, 42, 0.85);
+            border-color: var(--accent);
+        }
+
+        .pagination button.active {
+            background: var(--accent);
+            color: var(--bg);
+            border-color: var(--accent);
+        }
+
+        .pagination-info {
+            margin: 0 12px;
+            color: var(--subtle);
+            font-size: 0.85rem;
+        }
+
+        .description-cell {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <h1>Extraction Fields</h1>
+            <a href="/" class="nav-button">📄 Documents</a>
+            <a href="/chat" class="nav-button">💬 Chat</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="main-panel">
+            <div class="panel-header">
+                <h2>Fields</h2>
+                <button class="btn-add" onclick="openCreateModal()">+ Add field</button>
+            </div>
+            <div id="message"></div>
+            <div class="filters-bar">
+                <div class="filter-group">
+                    <label>Search:</label>
+                    <input type="text" id="searchInput" placeholder="Search by name..." onkeyup="handleSearch()">
+                </div>
+                <div class="filter-group">
+                    <label>Type:</label>
+                    <select id="typeFilter" onchange="handleFilterChange()">
+                        <option value="">All types</option>
+                        <option value="CLAUSE">Clause</option>
+                        <option value="TEXT">Text</option>
+                        <option value="NUMBER">Number</option>
+                        <option value="DATE">Date</option>
+                        <option value="BOOL">Bool</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Document Type:</label>
+                    <select id="documentTypeFilter" onchange="handleFilterChange()">
+                        <option value="">All document types</option>
+                        <option value="FINANCIAL">FINANCIAL</option>
+                        <option value="INVOICE">INVOICE</option>
+                        <option value="CONTRACT">CONTRACT</option>
+                        <option value="COO">COO</option>
+                        <option value="COA">COA</option>
+                        <option value="COW">COW</option>
+                        <option value="COQ">COQ</option>
+                        <option value="BL">BL</option>
+                        <option value="LC">LC</option>
+                        <option value="OTHER">OTHER</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-container">
+                <div id="loading" class="loading">Loading...</div>
+                <table id="fieldsTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>Type</th>
+                            <th>Document Types</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fieldsTableBody">
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination" id="pagination"></div>
+        </div>
+    </div>
+
+    <!-- Modal for Create/Edit Field -->
+    <div id="fieldModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">New field</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="fieldForm">
+                    <div class="form-group">
+                        <label>
+                            Field Name <span class="required">*</span>
+                        </label>
+                        <input type="text" id="fieldName" required placeholder="Enter field name...">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            Description
+                        </label>
+                        <textarea id="fieldDescription" placeholder="Enter description..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <span>📄</span> Type <span class="required">*</span>
+                        </label>
+                        <select id="fieldType" required>
+                            <option value="">Select type...</option>
+                            <option value="CLAUSE">Clause</option>
+                            <option value="TEXT">Text</option>
+                            <option value="NUMBER">Number</option>
+                            <option value="DATE">Date</option>
+                            <option value="BOOL">Bool</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <span>#</span> Identifier
+                        </label>
+                        <div class="identifier-display" id="identifierDisplay">-</div>
+                        <div class="form-group-description">Automatically generated from field name</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <span>📄</span> Document Types <span class="required">*</span>
+                        </label>
+                        <div class="document-types-multiselect">
+                            <div class="document-types-trigger" onclick="toggleDocumentTypesDropdown()">
+                                <span id="documentTypesTriggerText">Select document types...</span>
+                                <span>▼</span>
+                            </div>
+                            <div class="document-types-dropdown" id="documentTypesDropdown">
+                                <div class="document-type-option">
+                                    <input type="checkbox" id="doc-financial" value="FINANCIAL" onchange="updateDocumentTypes()">
+                                    <label for="doc-financial" style="margin: 0; cursor: pointer;">FINANCIAL</label>
+                                </div>
+                                <div class="document-type-option">
+                                    <input type="checkbox" id="doc-invoice" value="INVOICE" onchange="updateDocumentTypes()">
+                                    <label for="doc-invoice" style="margin: 0; cursor: pointer;">INVOICE</label>
+                                </div>
+                                <div class="document-type-option">
+                                    <input type="checkbox" id="doc-contract" value="CONTRACT" onchange="updateDocumentTypes()">
+                                    <label for="doc-contract" style="margin: 0; cursor: pointer;">CONTRACT</label>
+                                </div>
+                                <div class="document-type-option">
+                                    <input type="checkbox" id="doc-coo" value="COO" onchange="updateDocumentTypes()">
+                                    <label for="doc-coo" style="margin: 0; cursor: pointer;">COO</label>
+                                </div>
+                                <div class="document-type-option">
+                                    <input type="checkbox" id="doc-coa" value="COA" onchange="updateDocumentTypes()">
+                                    <label for="doc-coa" style="margin: 0; cursor: pointer;">COA</label>
+                                </div>
+                                <div class="document-type-option">
+                                    <input type="checkbox" id="doc-cow" value="COW" onchange="updateDocumentTypes()">
+                                    <label for="doc-cow" style="margin: 0; cursor: pointer;">COW</label>
+                                </div>
+                                <div class="document-type-option">
+                                    <input type="checkbox" id="doc-coq" value="COQ" onchange="updateDocumentTypes()">
+                                    <label for="doc-coq" style="margin: 0; cursor: pointer;">COQ</label>
+                                </div>
+                                <div class="document-type-option">
+                                    <input type="checkbox" id="doc-bl" value="BL" onchange="updateDocumentTypes()">
+                                    <label for="doc-bl" style="margin: 0; cursor: pointer;">BL</label>
+                                </div>
+                                <div class="document-type-option">
+                                    <input type="checkbox" id="doc-lc" value="LC" onchange="updateDocumentTypes()">
+                                    <label for="doc-lc" style="margin: 0; cursor: pointer;">LC</label>
+                                </div>
+                                <div class="document-type-option">
+                                    <input type="checkbox" id="doc-other" value="OTHER" onchange="updateDocumentTypes()">
+                                    <label for="doc-other" style="margin: 0; cursor: pointer;">OTHER</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="document-types-container" id="documentTypesContainer"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            Prompt <span class="required">*</span>
+                        </label>
+                        <textarea id="fieldPrompt" required placeholder="Enter prompt to extract field value..." maxlength="2000"></textarea>
+                        <div class="char-counter">
+                            <span id="charCount">0</span>/2000 characters
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Examples</label>
+                        <div class="example-input-wrapper">
+                            <input type="text" id="exampleInput" placeholder="Start typing and press Enter to add an example..." onkeypress="handleExampleKeyPress(event)">
+                            <div class="example-input-hint">
+                                <span>Enter</span>
+                                <span>↵</span>
+                            </div>
+                        </div>
+                        <div class="examples-container" id="examplesContainer"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal()">Discard</button>
+                <button type="button" class="btn-primary" id="createBtn" onclick="handleCreate()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/extraction-fields';
+        let currentPage = 1;
+        let pageSize = 10;
+        let totalPages = 1;
+        let searchTimeout;
+        let editingFieldId = null;
+        let selectedDocumentTypes = [];
+        let examples = [];
+        const allDocumentTypes = ['FINANCIAL', 'INVOICE', 'CONTRACT', 'COO', 'COA', 'COW', 'COQ', 'BL', 'LC', 'OTHER'];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFields();
+            setupFormListeners();
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                const dropdown = document.getElementById('documentTypesDropdown');
+                const trigger = document.querySelector('.document-types-trigger');
+                if (dropdown && !dropdown.contains(e.target) && !trigger.contains(e.target)) {
+                    dropdown.classList.remove('active');
+                }
+            });
+        });
+
+        function setupFormListeners() {
+            const fieldName = document.getElementById('fieldName');
+            const fieldPrompt = document.getElementById('fieldPrompt');
+            
+            fieldName.addEventListener('input', updateIdentifier);
+            fieldPrompt.addEventListener('input', updateCharCount);
+        }
+
+        function updateIdentifier() {
+            const name = document.getElementById('fieldName').value;
+            const identifier = name.toLowerCase()
+                .replace(/[^a-z0-9\s]/g, '')
+                .replace(/\s+/g, '_')
+                .replace(/^_+|_+$/g, '');
+            document.getElementById('identifierDisplay').textContent = identifier || '-';
+        }
+
+        function updateCharCount() {
+            const prompt = document.getElementById('fieldPrompt').value;
+            document.getElementById('charCount').textContent = prompt.length;
+        }
+
+        function toggleDocumentTypesDropdown() {
+            const dropdown = document.getElementById('documentTypesDropdown');
+            dropdown.classList.toggle('active');
+        }
+
+        function updateDocumentTypes() {
+            selectedDocumentTypes = [];
+            allDocumentTypes.forEach(type => {
+                const checkbox = document.getElementById(`doc-${type.toLowerCase()}`);
+                if (checkbox && checkbox.checked) {
+                    selectedDocumentTypes.push(type);
+                }
+            });
+            renderDocumentTypes();
+            updateDocumentTypesTrigger();
+        }
+
+        function updateDocumentTypesTrigger() {
+            const trigger = document.getElementById('documentTypesTriggerText');
+            if (selectedDocumentTypes.length === 0) {
+                trigger.textContent = 'Select document types...';
+            } else if (selectedDocumentTypes.length === 1) {
+                trigger.textContent = selectedDocumentTypes[0];
+            } else {
+                trigger.textContent = `Selected: ${selectedDocumentTypes.length}`;
+            }
+        }
+
+        function renderDocumentTypes() {
+            const container = document.getElementById('documentTypesContainer');
+            container.innerHTML = selectedDocumentTypes.map(type => `
+                <div class="document-type-pill">
+                    <span>${type}</span>
+                    <span class="remove" onclick="removeDocumentType('${type}')">✕</span>
+                </div>
+            `).join('');
+        }
+
+        function removeDocumentType(type) {
+            selectedDocumentTypes = selectedDocumentTypes.filter(t => t !== type);
+            const checkbox = document.getElementById(`doc-${type.toLowerCase()}`);
+            if (checkbox) {
+                checkbox.checked = false;
+            }
+            renderDocumentTypes();
+            updateDocumentTypesTrigger();
+        }
+
+        function handleExampleKeyPress(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const input = document.getElementById('exampleInput');
+                const value = input.value.trim();
+                if (value && !examples.includes(value)) {
+                    examples.push(value);
+                    renderExamples();
+                    input.value = '';
+                }
+            }
+        }
+
+        function removeExample(index) {
+            examples.splice(index, 1);
+            renderExamples();
+        }
+
+        function renderExamples() {
+            const container = document.getElementById('examplesContainer');
+            container.innerHTML = examples.map((example, index) => `
+                <div class="example-item">
+                    <span class="example-item-text">${escapeHtml(example)}</span>
+                    <button type="button" class="example-item-remove" onclick="removeExample(${index})">✕</button>
+                </div>
+            `).join('');
+        }
+
+        async function loadFields(page = 1, name = '', type = '', documentType = '') {
+            try {
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('fieldsTable').style.display = 'none';
+
+                const params = new URLSearchParams({
+                    page: page.toString(),
+                    size: pageSize.toString()
+                });
+
+                if (name) {
+                    params.append('name', name);
+                }
+                if (type) {
+                    params.append('type', type);
+                }
+                if (documentType) {
+                    params.append('document_types', documentType);
+                }
+
+                const response = await fetch(`${API_BASE}/?${params}`);
+                
+                if (!response.ok) {
+                    const errorMessage = await parseErrorResponse(response);
+                    throw new Error(errorMessage);
+                }
+
+                const data = await response.json();
+                
+                currentPage = data.page;
+                totalPages = data.pages;
+                
+                renderFields(data.items);
+                renderPagination();
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('fieldsTable').style.display = 'table';
+            } catch (error) {
+                showMessage('Error loading fields: ' + error.message, 'error');
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('fieldsTable').style.display = 'table';
+                document.getElementById('fieldsTableBody').innerHTML = 
+                    '<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--subtle);">Failed to load fields</td></tr>';
+            }
+        }
+
+        function renderFields(fields) {
+            const tbody = document.getElementById('fieldsTableBody');
+            tbody.innerHTML = '';
+
+            if (fields.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--subtle);">No fields found</td></tr>';
+                return;
+            }
+
+            fields.forEach(field => {
+                const row = document.createElement('tr');
+                const createdAt = new Date(field.created_at).toLocaleString('en-US');
+                const documentTypes = field.document_types.map(dt => 
+                    `<span class="field-badge">${dt}</span>`
+                ).join('');
+
+                row.innerHTML = `
+                    <td>${field.id}</td>
+                    <td><strong>${escapeHtml(field.name)}</strong></td>
+                    <td class="description-cell" title="${escapeHtml(field.short_description || '')}">${escapeHtml(field.short_description || '-')}</td>
+                    <td><span class="field-badge type">${field.type}</span></td>
+                    <td>${documentTypes || '-'}</td>
+                    <td>${createdAt}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-info" onclick="viewField(${field.id})">View</button>
+                            <button class="btn-info" onclick="editField(${field.id})">Edit</button>
+                            <button class="btn-danger" onclick="deleteField(${field.id})">Delete</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function renderPagination() {
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+
+            if (totalPages <= 1) return;
+
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = '← Предыдущая';
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => loadFieldsWithFilters(currentPage - 1);
+            pagination.appendChild(prevBtn);
+
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, currentPage + 2);
+
+            if (startPage > 1) {
+                const firstBtn = document.createElement('button');
+                firstBtn.textContent = '1';
+                firstBtn.onclick = () => loadFieldsWithFilters(1);
+                pagination.appendChild(firstBtn);
+                if (startPage > 2) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'pagination-info';
+                    pagination.appendChild(ellipsis);
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.textContent = i;
+                pageBtn.className = i === currentPage ? 'active' : '';
+                pageBtn.onclick = () => loadFieldsWithFilters(i);
+                pagination.appendChild(pageBtn);
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'pagination-info';
+                    pagination.appendChild(ellipsis);
+                }
+                const lastBtn = document.createElement('button');
+                lastBtn.textContent = totalPages;
+                lastBtn.onclick = () => loadFieldsWithFilters(totalPages);
+                pagination.appendChild(lastBtn);
+            }
+
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = 'Следующая →';
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.onclick = () => loadFieldsWithFilters(currentPage + 1);
+            pagination.appendChild(nextBtn);
+
+            const info = document.createElement('span');
+            info.className = 'pagination-info';
+            info.textContent = `Страница ${currentPage} из ${totalPages}`;
+            pagination.appendChild(info);
+        }
+
+        function loadFieldsWithFilters(page = 1) {
+            const name = document.getElementById('searchInput').value;
+            const type = document.getElementById('typeFilter').value;
+            const documentType = document.getElementById('documentTypeFilter').value;
+            loadFields(page, name, type, documentType);
+        }
+
+        function handleSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                loadFieldsWithFilters(1);
+            }, 500);
+        }
+
+        function handleFilterChange() {
+            loadFieldsWithFilters(1);
+        }
+
+        function openCreateModal() {
+            editingFieldId = null;
+            document.getElementById('modalTitle').textContent = 'New field';
+            document.getElementById('fieldForm').reset();
+            document.getElementById('identifierDisplay').textContent = '-';
+            document.getElementById('charCount').textContent = '0';
+            selectedDocumentTypes = [];
+            examples = [];
+            allDocumentTypes.forEach(type => {
+                const checkbox = document.getElementById(`doc-${type.toLowerCase()}`);
+                if (checkbox) checkbox.checked = false;
+            });
+            renderDocumentTypes();
+            renderExamples();
+            updateDocumentTypesTrigger();
+            document.getElementById('documentTypesDropdown').classList.remove('active');
+            const submitBtn = document.getElementById('createBtn');
+            submitBtn.textContent = 'Create';
+            submitBtn.disabled = false;
+            document.getElementById('fieldModal').style.display = 'block';
+        }
+
+        async function editField(id) {
+            try {
+                const response = await fetch(`${API_BASE}/${id}`);
+                
+                if (!response.ok) {
+                    const errorMessage = await parseErrorResponse(response);
+                    throw new Error(errorMessage);
+                }
+
+                const field = await response.json();
+                
+                editingFieldId = id;
+                document.getElementById('modalTitle').textContent = 'Edit field';
+                document.getElementById('fieldName').value = field.name;
+                document.getElementById('fieldDescription').value = field.short_description || '';
+                document.getElementById('fieldType').value = field.type;
+                document.getElementById('fieldPrompt').value = field.prompt || '';
+                updateIdentifier();
+                updateCharCount();
+                
+                selectedDocumentTypes = field.document_types || [];
+                examples = field.examples || [];
+                
+                allDocumentTypes.forEach(type => {
+                    const checkbox = document.getElementById(`doc-${type.toLowerCase()}`);
+                    if (checkbox) {
+                        checkbox.checked = selectedDocumentTypes.includes(type);
+                    }
+                });
+                
+                renderDocumentTypes();
+                renderExamples();
+                updateDocumentTypesTrigger();
+                const submitBtn = document.getElementById('createBtn');
+                submitBtn.textContent = 'Save changes';
+                submitBtn.disabled = false;
+                document.getElementById('fieldModal').style.display = 'block';
+            } catch (error) {
+                showMessage('Error loading field: ' + error.message, 'error');
+            }
+        }
+
+        async function viewField(id) {
+            await editField(id);
+        }
+
+        async function handleCreate() {
+            const form = document.getElementById('fieldForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const name = document.getElementById('fieldName').value.trim();
+            const identifier = document.getElementById('identifierDisplay').textContent;
+            
+            if (!identifier || identifier === '-') {
+                showMessage('Field name cannot be empty', 'error');
+                return;
+            }
+
+            if (selectedDocumentTypes.length === 0) {
+                showMessage('Select at least one document type', 'error');
+                return;
+            }
+
+            const prompt = document.getElementById('fieldPrompt').value.trim();
+            if (!prompt) {
+                showMessage('Prompt is required', 'error');
+                return;
+            }
+
+            const data = {
+                name: name,
+                identifier: identifier,
+                short_description: document.getElementById('fieldDescription').value.trim() || null,
+                type: document.getElementById('fieldType').value,
+                document_types: selectedDocumentTypes,
+                prompt: prompt,
+                examples: examples
+            };
+
+            const btn = document.getElementById('createBtn');
+            const isUpdate = Boolean(editingFieldId);
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = isUpdate ? 'Saving...' : 'Creating...';
+
+            try {
+                const response = await fetch(isUpdate ? `${API_BASE}/${editingFieldId}` : API_BASE + '/', {
+                    method: isUpdate ? 'PATCH' : 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const errorMessage = await parseErrorResponse(response);
+                    throw new Error(errorMessage);
+                }
+
+                showMessage(isUpdate ? 'Field successfully updated' : 'Field successfully created', 'success');
+                closeModal();
+                loadFieldsWithFilters(currentPage);
+            } catch (error) {
+                showMessage(isUpdate ? 'Error updating field: ' + error.message : 'Error creating field: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = isUpdate ? 'Save changes' : 'Create';
+            }
+        }
+
+        async function deleteField(id) {
+            if (!confirm('Are you sure you want to delete this field?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    const errorMessage = await parseErrorResponse(response);
+                    throw new Error(errorMessage);
+                }
+
+                showMessage('Field successfully deleted', 'success');
+                loadFieldsWithFilters(currentPage);
+            } catch (error) {
+                showMessage('Error deleting: ' + error.message, 'error');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('fieldModal').style.display = 'none';
+            document.getElementById('documentTypesDropdown').classList.remove('active');
+            editingFieldId = null;
+            const submitBtn = document.getElementById('createBtn');
+            if (submitBtn) {
+                submitBtn.textContent = 'Create';
+                submitBtn.disabled = false;
+            }
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('fieldModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = message;
+            messageDiv.style.display = 'block';
+
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function parseErrorResponse(response) {
+            try {
+                const errorData = await response.json();
+                if (errorData.error) {
+                    return errorData.error;
+                } else if (errorData.detail) {
+                    if (Array.isArray(errorData.detail)) {
+                        return errorData.detail.map(d => {
+                            const loc = d.loc ? d.loc.join('.') : '';
+                            const msg = d.msg || '';
+                            return loc ? `${loc}: ${msg}` : (msg || JSON.stringify(d));
+                        }).join(', ');
+                    }
+                    return errorData.detail;
+                }
+                return `Error ${response.status}: ${response.statusText}`;
+            } catch (e) {
+                return `Error ${response.status}: ${response.statusText}`;
+            }
+        }
+    </script>
+</body>
+</html>

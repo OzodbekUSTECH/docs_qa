@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Управление документами</title>
+    <title>Document Management</title>
     <style>
         :root {
             color-scheme: light dark;
@@ -11,6 +11,7 @@
             --card: #1e293b;
             --accent: #38bdf8;
             --accent-muted: rgba(56, 189, 248, 0.15);
+            --purple: #a855f7;
             --text: #e2e8f0;
             --subtle: #94a3b8;
             --border: rgba(148, 163, 184, 0.2);
@@ -359,6 +360,67 @@
             box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
         }
 
+        .extraction-fields-container {
+            margin-top: 16px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            background: rgba(15, 23, 42, 0.3);
+        }
+
+        .extraction-fields-container.empty {
+            display: none;
+        }
+
+        .extraction-field-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 8px;
+            margin-bottom: 8px;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .extraction-field-item:hover {
+            background: rgba(15, 23, 42, 0.7);
+        }
+
+        .extraction-field-item input[type="checkbox"] {
+            margin-top: 4px;
+            cursor: pointer;
+        }
+
+        .extraction-field-item label {
+            flex: 1;
+            cursor: pointer;
+            margin: 0;
+            text-transform: none;
+            letter-spacing: 0;
+            font-size: 0.9rem;
+        }
+
+        .extraction-field-name {
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .extraction-field-description {
+            font-size: 0.8rem;
+            color: var(--subtle);
+        }
+
+        .extraction-fields-loading {
+            text-align: center;
+            padding: 20px;
+            color: var(--subtle);
+            font-size: 0.85rem;
+        }
+
         button.btn-primary {
             width: 100%;
             padding: 12px 24px;
@@ -454,13 +516,13 @@
 
         .modal-content {
             background: var(--card);
-            margin: 2% auto;
+            margin: 0.5% auto;
             padding: 0;
             border: 1px solid var(--border);
             border-radius: 16px;
-            width: 90%;
-            max-width: 1200px;
-            max-height: 90vh;
+            width: 98%;
+            max-width: 1800px;
+            max-height: 98vh;
             display: flex;
             flex-direction: column;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
@@ -499,10 +561,271 @@
         }
 
         .modal-body {
-            padding: 24px;
-            overflow-y: auto;
+            padding: 0;
+            overflow: hidden;
             flex: 1;
             color: var(--text);
+            display: flex;
+            flex-direction: row;
+            min-height: 0;
+        }
+
+        .modal-left-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+            overflow: hidden;
+            padding: 24px;
+            background: rgba(15, 23, 42, 0.35);
+        }
+
+        .modal-right-panel {
+            width: 420px;
+            min-width: 360px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            background: rgba(15, 23, 42, 0.2);
+        }
+
+        .document-viewer {
+            flex: 1;
+            position: relative;
+            overflow: auto;
+            background: rgba(15, 23, 42, 0.55);
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 24px;
+            border-radius: 16px;
+            border: 1px solid rgba(56, 189, 248, 0.1);
+        }
+
+        .document-viewer.single-image {
+            align-items: center;
+        }
+
+        .document-pages {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+            padding-right: 12px;
+        }
+
+        .pdf-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .pdf-page-label {
+            font-size: 0.85rem;
+            color: var(--subtle);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .document-viewer-content {
+            position: relative;
+            max-width: 100%;
+            max-height: 100%;
+            display: inline-block;
+        }
+
+        .document-viewer-content.pdf-viewer {
+            width: 100%;
+        }
+
+        .document-viewer-content canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.45);
+            background: #0f172a;
+        }
+
+        .document-viewer img,
+        .document-viewer iframe {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 12px;
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.45);
+        }
+
+        .document-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .document-viewer-content img {
+            position: relative;
+            z-index: 1;
+        }
+
+        .bbox-highlight {
+            position: absolute;
+            border: 2px solid var(--accent);
+            background: rgba(56, 189, 248, 0.2);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            pointer-events: auto;
+            box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.3), 0 6px 18px rgba(14, 165, 233, 0.25);
+        }
+
+        .bbox-highlight:hover {
+            background: rgba(56, 189, 248, 0.35);
+            border-color: #0ea5e9;
+            z-index: 10;
+        }
+
+        .bbox-highlight.active {
+            background: rgba(168, 85, 247, 0.3);
+            border-color: var(--purple);
+            z-index: 20;
+            box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.35), 0 10px 24px rgba(168, 85, 247, 0.25);
+        }
+
+        .document-info-panel {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .document-info-panel h4 {
+            margin: 0 0 16px 0;
+            font-size: 1rem;
+            color: var(--accent);
+        }
+
+        .extracted-fields-panel {
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .extracted-fields-panel h4 {
+            margin: 0 0 16px 0;
+            font-size: 1rem;
+            color: var(--accent);
+        }
+
+        .field-value-item {
+            background: rgba(15, 23, 42, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .field-value-item:hover {
+            border-color: var(--accent);
+            background: rgba(15, 23, 42, 0.5);
+        }
+
+        .field-value-item.active {
+            border-color: var(--purple);
+            background: rgba(168, 85, 247, 0.15);
+        }
+
+        .field-value-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .field-value-toggle {
+            font-size: 0.7rem;
+            color: var(--subtle);
+            transition: transform 0.2s ease;
+            margin-right: 8px;
+        }
+
+        .field-value-item.expanded .field-value-toggle {
+            transform: rotate(90deg);
+        }
+
+        .field-value-content {
+            display: none;
+            margin-top: 8px;
+        }
+
+        .field-value-item.expanded .field-value-content {
+            display: block;
+        }
+
+        .field-value-name {
+            font-weight: 600;
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+
+        .field-value-confidence {
+            font-size: 0.75rem;
+            color: var(--subtle);
+            padding: 2px 8px;
+            background: rgba(56, 189, 248, 0.15);
+            border-radius: 999px;
+        }
+
+        .field-value-text {
+            color: var(--text);
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            word-wrap: break-word;
+        }
+
+        .field-value-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 0.75rem;
+            color: var(--subtle);
+        }
+
+        .field-value-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .page-selector {
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(15, 23, 42, 0.3);
+        }
+
+        .page-selector label {
+            font-size: 0.85rem;
+            color: var(--subtle);
+        }
+
+        .page-selector select {
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 12px;
+            color: var(--text);
+            font-size: 0.85rem;
+            font-family: inherit;
+        }
+
+        .page-selector select:focus {
+            outline: none;
+            border-color: var(--accent);
         }
 
         .document-info {
@@ -654,31 +977,32 @@
 <body>
     <div class="header">
         <div class="header-left">
-            <h1>Управление документами</h1>
-            <a href="/chat" class="nav-button">💬 Чат</a>
+            <h1>Document Management</h1>
+            <a href="/extraction-fields" class="nav-button">🔍 Extraction Fields</a>
+            <a href="/chat" class="nav-button">💬 Chat</a>
         </div>
     </div>
 
     <div class="container">
         <div class="main-panel">
             <div class="panel-header">
-                <h2>Список документов</h2>
+                <h2>Documents List</h2>
             </div>
             <div id="message"></div>
             <div class="search-bar">
-                <input type="text" id="searchInput" placeholder="Поиск по имени файла..." onkeyup="handleSearch()">
+                <input type="text" id="searchInput" placeholder="Search by filename..." onkeyup="handleSearch()">
             </div>
             <div class="table-container">
-                <div id="loading" class="loading">Загрузка...</div>
+                <div id="loading" class="loading">Loading...</div>
                 <table id="documentsTable" style="display: none;">
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Имя файла</th>
-                            <th>Тип</th>
-                            <th>Статус</th>
-                            <th>Дата создания</th>
-                            <th>Действия</th>
+                            <th>Filename</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="documentsTableBody">
@@ -690,19 +1014,20 @@
 
         <div class="upload-panel">
             <div class="panel-header">
-                <h2>Загрузка документов</h2>
+                <h2>Upload Documents</h2>
             </div>
             <div class="upload-area" id="uploadArea">
                 <div class="upload-icon">📄</div>
-                <div class="upload-text">Перетащите файлы сюда</div>
-                <div class="upload-hint">или нажмите для выбора</div>
+                <div class="upload-text">Drag files here</div>
+                <div class="upload-hint">or click to select</div>
                 <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx" style="display: none;">
             </div>
             <div class="file-list" id="fileList" style="display: none;"></div>
             <div class="upload-form">
                 <div class="form-group">
-                    <label for="typeSelect">Тип документа</label>
-                    <select id="typeSelect">
+                    <label for="typeSelect">Document Type</label>
+                    <select id="typeSelect" onchange="handleDocumentTypeChange()">
+                        <option value="">-- Select type --</option>
                         <option value="FINANCIAL">FINANCIAL</option>
                         <option value="INVOICE">INVOICE</option>
                         <option value="CONTRACT">CONTRACT</option>
@@ -712,10 +1037,16 @@
                         <option value="COQ">COQ</option>
                         <option value="BL">BL</option>
                         <option value="LC">LC</option>
-                        <option value="OTHER" selected>OTHER</option>
+                        <option value="OTHER">OTHER</option>
                     </select>
                 </div>
-                <button class="btn-primary" id="uploadBtn" onclick="handleUpload()">Загрузить</button>
+                <div class="form-group">
+                    <label>Extraction Fields</label>
+                    <div id="extractionFieldsContainer" class="extraction-fields-container empty">
+                        <div class="extraction-fields-loading">Select document type</div>
+                    </div>
+                </div>
+                <button class="btn-primary" id="uploadBtn" onclick="handleUpload()">Upload</button>
             </div>
         </div>
     </div>
@@ -724,22 +1055,369 @@
     <div id="contentModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="modalTitle">Просмотр документа</h3>
-                <button class="modal-close" onclick="closeContentModal()">✕ Закрыть</button>
+                <h3 id="modalTitle">View Document</h3>
+                <button class="modal-close" onclick="closeContentModal()">✕ Close</button>
             </div>
             <div class="modal-body" id="modalBody">
-                <div class="loading">Загрузка...</div>
+                <div class="loading">Loading...</div>
             </div>
         </div>
     </div>
 
     <script>
         const API_BASE = '/documents';
+        const EXTRACTION_FIELDS_API = '/extraction-fields';
         let currentPage = 1;
         let pageSize = 10;
         let totalPages = 1;
         let searchTimeout;
         let selectedFiles = [];
+        let availableExtractionFields = [];
+        let selectedExtractionFieldIds = [];
+
+        // Переменные для просмотра документа
+        let currentDocument = null;
+        let isPdfDocument = false;
+        let currentDocumentUrl = null;
+        let pdfDocumentInstance = null;
+        let pdfJsLoadingPromise = null;
+        const pdfPageMetrics = new Map();
+
+        function loadPdfJs() {
+            if (window.pdfjsLib) {
+                return Promise.resolve(window.pdfjsLib);
+            }
+            if (pdfJsLoadingPromise) {
+                return pdfJsLoadingPromise;
+            }
+
+            pdfJsLoadingPromise = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+                script.crossOrigin = 'anonymous';
+                script.referrerPolicy = 'no-referrer';
+                script.onload = () => {
+                    if (window.pdfjsLib) {
+                        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                        resolve(window.pdfjsLib);
+                    } else {
+                        reject(new Error('pdfjsLib unavailable after loading script'));
+                    }
+                };
+                script.onerror = () => {
+                    pdfJsLoadingPromise = null;
+                    reject(new Error('Failed to load pdf.js library'));
+                };
+                document.head.appendChild(script);
+            });
+
+            return pdfJsLoadingPromise;
+        }
+
+        function normalizeFileUrl(filePath) {
+            if (!filePath) {
+                return '';
+            }
+            let url = filePath.replace(/\\/g, '/');
+            if (url.startsWith('storage/')) {
+                url = url.substring(8);
+            }
+            if (!url.startsWith('/') && !url.startsWith('http')) {
+                url = `/storage/${url}`;
+            } else if (url.startsWith('/storage/')) {
+                // already ok
+            } else if (!url.startsWith('http')) {
+                url = `/storage${url}`;
+            }
+            return url;
+        }
+
+        function isPdfFile(filename) {
+            if (!filename) return false;
+            return filename.toLowerCase().endsWith('.pdf');
+        }
+
+        async function ensurePdfDocument(fileUrl) {
+            await loadPdfJs(); // Ensure pdf.js is loaded
+            if (!pdfDocumentInstance || currentDocumentUrl !== fileUrl) {
+                try {
+                    pdfDocumentInstance = await window.pdfjsLib.getDocument(fileUrl).promise;
+                    currentDocumentUrl = fileUrl;
+                } catch (error) {
+                    console.error('Failed to load PDF document:', error);
+                    pdfDocumentInstance = null;
+                    return null;
+                }
+            }
+            return pdfDocumentInstance;
+        }
+
+        async function renderPdfDocument(documentData) {
+            const pagesContainer = document.getElementById('documentPages');
+            if (!pagesContainer) return;
+
+            const fileUrl = normalizeFileUrl(documentData.file_path);
+            if (!fileUrl) {
+                console.error('Failed to determine file path for PDF viewing.');
+                return;
+            }
+
+            const pdfDoc = await ensurePdfDocument(fileUrl);
+            if (!pdfDoc) {
+                return;
+            }
+
+            pdfPageMetrics.clear();
+            pagesContainer.innerHTML = '';
+
+            const availableWidth = pagesContainer.clientWidth || pagesContainer.offsetWidth || 900;
+
+            for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+                const page = await pdfDoc.getPage(pageNum);
+                const baseViewport = page.getViewport({ scale: 1 });
+                const scale = Math.min(2.5, Math.max(0.6, availableWidth / baseViewport.width));
+                const viewport = page.getViewport({ scale });
+
+                const pageContainer = document.createElement('div');
+                pageContainer.className = 'pdf-page';
+                pageContainer.setAttribute('data-page', pageNum);
+
+                const pageLabel = document.createElement('div');
+                pageLabel.className = 'pdf-page-label';
+                pageLabel.textContent = `Page ${pageNum}`;
+
+                const content = document.createElement('div');
+                content.className = 'document-viewer-content pdf-viewer';
+
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                const overlay = document.createElement('div');
+                overlay.className = 'document-overlay';
+                overlay.setAttribute('data-page', pageNum);
+                overlay.style.width = `${viewport.width}px`;
+                overlay.style.height = `${viewport.height}px`;
+
+                content.appendChild(canvas);
+                content.appendChild(overlay);
+                pageContainer.appendChild(pageLabel);
+                pageContainer.appendChild(content);
+                pagesContainer.appendChild(pageContainer);
+
+                const context = canvas.getContext('2d');
+                await page.render({ canvasContext: context, viewport }).promise;
+
+                pdfPageMetrics.set(pageNum, {
+                    originalWidth: baseViewport.width,
+                    originalHeight: baseViewport.height,
+                    canvasWidth: viewport.width,
+                    canvasHeight: viewport.height,
+                    overlay,
+                });
+            }
+
+            renderPdfHighlights(documentData);
+        }
+
+        function computeBoundingRect(bbox, metrics) {
+            if (!bbox || bbox.length < 4 || !metrics) return null;
+            const values = bbox.map(Number);
+            if (values.some(v => !Number.isFinite(v))) return null;
+
+            const [a, b, c, d] = values;
+            const { originalWidth, originalHeight, canvasWidth, canvasHeight } = metrics;
+            const candidates = [];
+            const margin = 4;
+
+            const normalized = values.every(v => Math.abs(v) <= 1.5 && Math.abs(v) >= 0);
+
+            function addCandidate(left, top, width, height) {
+                if (!Number.isFinite(left) || !Number.isFinite(top) || !Number.isFinite(width) || !Number.isFinite(height)) {
+                    return;
+                }
+                const rect = {
+                    left,
+                    top,
+                    width,
+                    height,
+                };
+                const fitsHorizontally = left >= -margin && left + width <= canvasWidth + margin;
+                const fitsVertically = top >= -margin && top + height <= canvasHeight + margin;
+                if (width >= 2 && height >= 2 && fitsHorizontally && fitsVertically) {
+                    candidates.push(rect);
+                }
+            }
+
+            function clampRect(rect) {
+                if (!rect) return null;
+                let { left, top, width, height } = rect;
+                left = Math.max(0, Math.min(left, canvasWidth - 2));
+                top = Math.max(0, Math.min(top, canvasHeight - 2));
+                width = Math.min(width, canvasWidth - left);
+                height = Math.min(height, canvasHeight - top);
+                if (width < 2 || height < 2) return null;
+                return { left, top, width, height };
+            }
+
+            function addNormalizedX1Y1X2Y2() {
+                const widthNorm = c - a;
+                const heightNorm = d - b;
+                if (widthNorm > 0 && heightNorm > 0) {
+                    addCandidate(a * canvasWidth, b * canvasHeight, widthNorm * canvasWidth, heightNorm * canvasHeight);
+                    const topNorm = 1 - d;
+                    addCandidate(a * canvasWidth, topNorm * canvasHeight, widthNorm * canvasWidth, heightNorm * canvasHeight);
+                }
+            }
+
+            function addNormalizedXYWH() {
+                if (c > 0 && d > 0) {
+                    addCandidate(a * canvasWidth, b * canvasHeight, c * canvasWidth, d * canvasHeight);
+                    const topNorm = 1 - (b + d);
+                    addCandidate(a * canvasWidth, topNorm * canvasHeight, c * canvasWidth, d * canvasHeight);
+                }
+            }
+
+            function addAbsoluteX1Y1X2Y2() {
+                const widthAbs = c - a;
+                const heightAbs = d - b;
+                if (widthAbs > 0 && heightAbs > 0) {
+                    addCandidate((a / originalWidth) * canvasWidth, (b / originalHeight) * canvasHeight, (widthAbs / originalWidth) * canvasWidth, (heightAbs / originalHeight) * canvasHeight);
+                    const topPx = originalHeight - d;
+                    addCandidate((a / originalWidth) * canvasWidth, (topPx / originalHeight) * canvasHeight, (widthAbs / originalWidth) * canvasWidth, (heightAbs / originalHeight) * canvasHeight);
+                }
+            }
+
+            function addAbsoluteXYWH() {
+                if (c > 0 && d > 0) {
+                    addCandidate((a / originalWidth) * canvasWidth, (b / originalHeight) * canvasHeight, (c / originalWidth) * canvasWidth, (d / originalHeight) * canvasHeight);
+                    const topPx = originalHeight - (b + d);
+                    addCandidate((a / originalWidth) * canvasWidth, (topPx / originalHeight) * canvasHeight, (c / originalWidth) * canvasWidth, (d / originalHeight) * canvasHeight);
+                }
+            }
+
+            if (normalized) {
+                addNormalizedX1Y1X2Y2();
+                addNormalizedXYWH();
+            } else {
+                addAbsoluteX1Y1X2Y2();
+                addAbsoluteXYWH();
+            }
+
+            if (candidates.length === 0) {
+                const fallback = normalized
+                    ? {
+                        left: Math.max(0, Math.min(a * canvasWidth, canvasWidth - 10)),
+                        top: Math.max(0, Math.min((1 - (b + (d > 1 ? 0 : d))) * canvasHeight, canvasHeight - 10)),
+                        width: Math.max(6, Math.min((c > 1 ? c : 0.1) * canvasWidth, canvasWidth)),
+                        height: Math.max(6, Math.min((d > 1 ? d : 0.1) * canvasHeight, canvasHeight)),
+                    }
+                    : {
+                        left: Math.max(0, Math.min((a / originalWidth) * canvasWidth, canvasWidth - 10)),
+                        top: Math.max(0, Math.min(((originalHeight - (b + d)) / originalHeight) * canvasHeight, canvasHeight - 10)),
+                        width: Math.max(6, Math.min(((c > originalWidth ? c : c + 10) / originalWidth) * canvasWidth, canvasWidth)),
+                        height: Math.max(6, Math.min(((d > originalHeight ? d : d + 10) / originalHeight) * canvasHeight, canvasHeight)),
+                    };
+                return clampRect(fallback);
+            }
+
+            return clampRect(candidates[0]);
+        }
+
+        function renderPdfHighlights(documentData) {
+            pdfPageMetrics.forEach(({ overlay }) => {
+                overlay.innerHTML = '';
+            });
+
+            if (!documentData.field_values) return;
+
+            documentData.field_values.forEach((fv, index) => {
+                const pageNum = fv.page_num || 1;
+                const metrics = pdfPageMetrics.get(pageNum);
+                if (!metrics) return;
+
+                const rect = computeBoundingRect(fv.bbox, metrics);
+                if (!rect) return;
+
+                const highlight = document.createElement('div');
+                highlight.className = 'bbox-highlight';
+                highlight.style.left = `${rect.left}px`;
+                highlight.style.top = `${rect.top}px`;
+                highlight.style.width = `${rect.width}px`;
+                highlight.style.height = `${rect.height}px`;
+                highlight.setAttribute('data-field-index', index);
+                highlight.onclick = (e) => {
+                    e.stopPropagation();
+                    highlightField(index);
+                };
+
+                metrics.overlay.appendChild(highlight);
+            });
+
+            applyActiveHighlightState();
+        }
+
+        function renderImageHighlights(documentData) {
+            const overlay = document.getElementById('documentOverlay');
+            const image = document.getElementById('documentImage');
+            if (!overlay || !image || !documentData.field_values) return;
+
+            const imgRect = image.getBoundingClientRect();
+            const metrics = {
+                originalWidth: image.naturalWidth,
+                originalHeight: image.naturalHeight,
+                canvasWidth: imgRect.width,
+                canvasHeight: imgRect.height,
+                overlay,
+            };
+
+            overlay.style.width = `${metrics.canvasWidth}px`;
+            overlay.style.height = `${metrics.canvasHeight}px`;
+            overlay.innerHTML = '';
+
+            documentData.field_values.forEach((fv, index) => {
+                const rect = computeBoundingRect(fv.bbox, metrics);
+                if (!rect) return;
+
+                const highlight = document.createElement('div');
+                highlight.className = 'bbox-highlight';
+                highlight.style.left = `${rect.left}px`;
+                highlight.style.top = `${rect.top}px`;
+                highlight.style.width = `${rect.width}px`;
+                highlight.style.height = `${rect.height}px`;
+                highlight.setAttribute('data-field-index', index);
+                highlight.onclick = (e) => {
+                    e.stopPropagation();
+                    highlightField(index);
+                };
+
+                overlay.appendChild(highlight);
+            });
+
+            applyActiveHighlightState();
+        }
+
+        function applyActiveHighlightState() {
+            const activeItem = document.querySelector('.field-value-item.active');
+            if (!activeItem) return;
+            const activeIndex = parseInt(activeItem.getAttribute('data-field-index'), 10);
+            if (Number.isNaN(activeIndex)) return;
+
+            const activeHighlight = document.querySelector(`.bbox-highlight[data-field-index="${activeIndex}"]`);
+            if (activeHighlight) {
+                activeHighlight.classList.add('active');
+            }
+        }
+
+        function attachViewerResizeHandler(handler) {
+            if (window.documentViewerResizeHandler) {
+                window.removeEventListener('resize', window.documentViewerResizeHandler);
+            }
+            window.documentViewerResizeHandler = handler;
+            if (handler) {
+                window.addEventListener('resize', handler);
+            }
+        }
 
         // Инициализация drag & drop
         const uploadArea = document.getElementById('uploadArea');
@@ -772,7 +1450,7 @@
             });
 
             if (validFiles.length === 0) {
-                showMessage('Поддерживаются только файлы PDF, DOC, DOCX', 'error');
+                showMessage('Only PDF, DOC, DOCX files are supported', 'error');
                 return;
             }
 
@@ -803,6 +1481,9 @@
         // Загрузка документов
         async function loadDocuments(page = 1, filename = '') {
             try {
+                console.log('loadDocuments called with page=', page, 'filename=', filename);
+                console.log('API_BASE=', API_BASE);
+                
                 document.getElementById('loading').style.display = 'block';
                 document.getElementById('documentsTable').style.display = 'none';
 
@@ -815,7 +1496,10 @@
                     params.append('filename', filename);
                 }
 
-                const response = await fetch(`${API_BASE}/?${params}`);
+                const url = `${API_BASE}/?${params}`;
+                console.log('Fetching URL:', url);
+                
+                const response = await fetch(url);
                 
                 if (!response.ok) {
                     const errorMessage = await parseErrorResponse(response);
@@ -824,8 +1508,14 @@
 
                 const data = await response.json();
                 
+                console.log('Documents loaded:', data);
+                
                 currentPage = data.page;
                 totalPages = data.pages;
+                
+                if (!data.items || data.items.length === 0) {
+                    console.log('No documents found');
+                }
                 
                 renderTable(data.items);
                 renderPagination();
@@ -833,11 +1523,13 @@
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('documentsTable').style.display = 'table';
             } catch (error) {
-                showMessage('Ошибка загрузки документов: ' + error.message, 'error');
+                console.error('Error in loadDocuments:', error);
+                console.error('Error stack:', error.stack);
+                showMessage('Error loading documents: ' + error.message, 'error');
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('documentsTable').style.display = 'table';
                 document.getElementById('documentsTableBody').innerHTML = 
-                    '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--subtle);">Не удалось загрузить документы</td></tr>';
+                    '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--subtle);">Failed to load documents</td></tr>';
             }
         }
 
@@ -847,14 +1539,14 @@
             tbody.innerHTML = '';
 
             if (documents.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--subtle);">Документы не найдены</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--subtle);">No documents found</td></tr>';
                 return;
             }
 
             documents.forEach(doc => {
                 const row = document.createElement('tr');
                 const statusClass = `status-${doc.status.toLowerCase()}`;
-                const createdAt = new Date(doc.created_at).toLocaleString('ru-RU');
+                const createdAt = new Date(doc.created_at).toLocaleString('en-US');
 
                 row.innerHTML = `
                     <td>${doc.id}</td>
@@ -881,7 +1573,7 @@
             if (totalPages <= 1) return;
 
             const prevBtn = document.createElement('button');
-            prevBtn.textContent = '← Предыдущая';
+            prevBtn.textContent = '← Previous';
             prevBtn.disabled = currentPage === 1;
             prevBtn.onclick = () => loadDocuments(currentPage - 1, document.getElementById('searchInput').value);
             pagination.appendChild(prevBtn);
@@ -924,14 +1616,14 @@
             }
 
             const nextBtn = document.createElement('button');
-            nextBtn.textContent = 'Следующая →';
+            nextBtn.textContent = 'Next →';
             nextBtn.disabled = currentPage === totalPages;
             nextBtn.onclick = () => loadDocuments(currentPage + 1, document.getElementById('searchInput').value);
             pagination.appendChild(nextBtn);
 
             const info = document.createElement('span');
             info.className = 'pagination-info';
-            info.textContent = `Страница ${currentPage} из ${totalPages}`;
+            info.textContent = `Page ${currentPage} of ${totalPages}`;
             pagination.appendChild(info);
         }
 
@@ -944,19 +1636,114 @@
             }, 500);
         }
 
+        // Загрузка extraction fields по document type
+        async function loadExtractionFields(documentType) {
+            const container = document.getElementById('extractionFieldsContainer');
+            
+            if (!documentType) {
+                container.classList.add('empty');
+                container.innerHTML = '<div class="extraction-fields-loading">Select document type</div>';
+                availableExtractionFields = [];
+                selectedExtractionFieldIds = [];
+                return;
+            }
+
+            container.classList.remove('empty');
+            container.innerHTML = '<div class="extraction-fields-loading">Loading fields...</div>';
+
+            try {
+                const params = new URLSearchParams({
+                    page: '1',
+                    size: '100'
+                });
+                params.append('document_types', documentType);
+
+                const response = await fetch(`${EXTRACTION_FIELDS_API}/?${params}`);
+                
+                if (!response.ok) {
+                    const errorMessage = await parseErrorResponse(response);
+                    throw new Error(errorMessage);
+                }
+
+                const data = await response.json();
+                availableExtractionFields = data.items || [];
+                renderExtractionFields(availableExtractionFields);
+            } catch (error) {
+                console.error('Error loading extraction fields:', error);
+                container.innerHTML = `<div class="extraction-fields-loading" style="color: var(--error);">Loading error: ${escapeHtml(error.message)}</div>`;
+                availableExtractionFields = [];
+            }
+        }
+
+        // Рендеринг списка extraction fields
+        function renderExtractionFields(fields) {
+            const container = document.getElementById('extractionFieldsContainer');
+            
+            if (fields.length === 0) {
+                container.innerHTML = '<div class="extraction-fields-loading">No available fields for this document type</div>';
+                return;
+            }
+
+            container.innerHTML = fields.map(field => `
+                <div class="extraction-field-item">
+                    <input 
+                        type="checkbox" 
+                        id="field_${field.id}" 
+                        value="${field.id}"
+                        onchange="handleExtractionFieldToggle(${field.id})"
+                        ${selectedExtractionFieldIds.includes(field.id) ? 'checked' : ''}
+                    >
+                    <label for="field_${field.id}">
+                        <div class="extraction-field-name">${escapeHtml(field.name)}</div>
+                        ${field.short_description ? `<div class="extraction-field-description">${escapeHtml(field.short_description)}</div>` : ''}
+                    </label>
+                </div>
+            `).join('');
+        }
+
+        // Обработчик изменения document type
+        function handleDocumentTypeChange() {
+            const typeSelect = document.getElementById('typeSelect');
+            const selectedType = typeSelect.value;
+            selectedExtractionFieldIds = [];
+            loadExtractionFields(selectedType);
+        }
+
+        // Обработчик переключения extraction field
+        function handleExtractionFieldToggle(fieldId) {
+            const checkbox = document.getElementById(`field_${fieldId}`);
+            if (checkbox.checked) {
+                if (!selectedExtractionFieldIds.includes(fieldId)) {
+                    selectedExtractionFieldIds.push(fieldId);
+                }
+            } else {
+                selectedExtractionFieldIds = selectedExtractionFieldIds.filter(id => id !== fieldId);
+            }
+        }
+
         // Загрузка документа
         async function handleUpload() {
             if (selectedFiles.length === 0) {
-                showMessage('Выберите файлы для загрузки', 'error');
+                showMessage('Select files to upload', 'error');
                 return;
             }
 
             const typeSelect = document.getElementById('typeSelect');
+            if (!typeSelect.value) {
+                showMessage('Select document type', 'error');
+                return;
+            }
+
+            if (selectedExtractionFieldIds.length === 0) {
+                showMessage('Select at least one extraction field', 'error');
+                return;
+            }
+
             const uploadBtn = document.getElementById('uploadBtn');
             const originalButtonText = uploadBtn.textContent;
             
             uploadBtn.disabled = true;
-            uploadBtn.textContent = 'Загрузка...';
+            uploadBtn.textContent = 'Uploading...';
 
             let successCount = 0;
             let errorCount = 0;
@@ -966,6 +1753,11 @@
                     const formData = new FormData();
                     formData.append('file', file);
                     formData.append('type', typeSelect.value);
+                    
+                    // Добавляем каждый extraction_field_id отдельно
+                    selectedExtractionFieldIds.forEach(id => {
+                        formData.append('extraction_field_ids', id.toString());
+                    });
 
                     const response = await fetch(API_BASE + '/', {
                         method: 'POST',
@@ -980,18 +1772,18 @@
                     successCount++;
                 } catch (error) {
                     errorCount++;
-                    console.error('Ошибка загрузки файла:', file.name, error);
+                    console.error('Error uploading file:', file.name, error);
                 }
             }
 
             if (successCount > 0) {
-                showMessage(`Успешно загружено: ${successCount}${errorCount > 0 ? `, ошибок: ${errorCount}` : ''}`, 'success');
+                showMessage(`Successfully uploaded: ${successCount}${errorCount > 0 ? `, errors: ${errorCount}` : ''}`, 'success');
                 selectedFiles = [];
                 renderFileList();
                 fileInput.value = '';
                 loadDocuments(currentPage, document.getElementById('searchInput').value);
             } else {
-                showMessage(`Ошибка загрузки всех файлов: ${errorCount}`, 'error');
+                showMessage(`Error uploading all files: ${errorCount}`, 'error');
             }
 
             uploadBtn.disabled = false;
@@ -1005,7 +1797,7 @@
             const modalTitle = document.getElementById('modalTitle');
             
             modal.style.display = 'block';
-            modalBody.innerHTML = '<div class="loading">Загрузка...</div>';
+            modalBody.innerHTML = '<div class="loading">Loading...</div>';
             
             try {
                 const response = await fetch(`${API_BASE}/${id}`);
@@ -1016,47 +1808,213 @@
                 }
 
                 const doc = await response.json();
+                currentDocument = doc;
+                isPdfDocument = isPdfFile(doc.filename);
+                currentDocumentUrl = normalizeFileUrl(doc.file_path);
+                pdfDocumentInstance = null;
                 
-                // Формируем HTML для отображения
-                let contentHtml = `
-                    <div class="document-info">
-                        <div class="document-info-item"><strong>ID:</strong> ${doc.id}</div>
-                        <div class="document-info-item"><strong>Имя файла:</strong> ${doc.filename}</div>
-                        <div class="document-info-item"><strong>Тип:</strong> ${doc.type}</div>
-                        <div class="document-info-item"><strong>Статус:</strong> <span class="status-badge status-${doc.status.toLowerCase()}">${doc.status}</span></div>
-                        <div class="document-info-item"><strong>Создан:</strong> ${new Date(doc.created_at).toLocaleString('ru-RU')}</div>
+                // Формируем HTML для двухколоночного layout
+                const leftPanel = createDocumentViewer(doc);
+                const rightPanel = createDocumentInfoPanel(doc);
+                
+                modalBody.innerHTML = `
+                    <div class="modal-left-panel">
+                        ${leftPanel}
+                    </div>
+                    <div class="modal-right-panel">
+                        ${rightPanel}
                     </div>
                 `;
                 
-                if (doc.content) {
-                    contentHtml += `
-                        <div style="margin-bottom: 12px;">
-                            <strong style="color: var(--accent);">Содержимое документа:</strong>
-                        </div>
-                        <div class="document-content markdown">${renderMarkdown(doc.content)}</div>
-                    `;
-                } else {
-                    contentHtml += `
-                        <div class="empty-state">
-                            Контент документа еще не обработан или недоступен
-                        </div>
-                    `;
-                }
+                modalTitle.textContent = `View: ${doc.filename}`;
                 
-                modalBody.innerHTML = contentHtml;
-                modalTitle.textContent = `Просмотр: ${doc.filename}`;
+                // Инициализируем визуализацию после загрузки изображения
+                setTimeout(async () => {
+                    await initializeDocumentViewer(doc);
+                }, 100);
             } catch (error) {
                 modalBody.innerHTML = `
-                    <div class="message error">
-                        Ошибка загрузки: ${escapeHtml(error.message)}
+                    <div class="message error" style="margin: 20px;">
+                        Loading error: ${escapeHtml(error.message)}
                     </div>
                 `;
             }
         }
 
+        function createDocumentViewer(doc) {
+            const fileUrl = normalizeFileUrl(doc.file_path);
+            const isPdf = isPdfFile(doc.filename);
+            
+            if (isPdf) {
+                return `
+                    <div class="document-viewer">
+                        <div class="document-pages" id="documentPages"></div>
+                    </div>
+                `;
+            }
+            
+            return `
+                <div class="document-viewer single-image">
+                    <div class="document-viewer-content" id="documentViewerContent">
+                        <img src="${fileUrl}" id="documentImage" alt="Document" style="display: block; max-width: 100%; height: auto;">
+                        <div class="document-overlay" id="documentOverlay"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createDocumentInfoPanel(doc) {
+            const infoHtml = `
+                <div class="document-info-panel">
+                    <h4>Document Information</h4>
+                    <div class="document-info">
+                        <div class="document-info-item"><strong>ID:</strong> ${doc.id}</div>
+                        <div class="document-info-item"><strong>Filename:</strong> ${escapeHtml(doc.filename)}</div>
+                        <div class="document-info-item"><strong>Type:</strong> ${doc.type}</div>
+                        <div class="document-info-item"><strong>Status:</strong> <span class="status-badge status-${doc.status.toLowerCase()}">${doc.status}</span></div>
+                        <div class="document-info-item"><strong>Created:</strong> ${new Date(doc.created_at).toLocaleString('en-US')}</div>
+                    </div>
+                </div>
+            `;
+
+            const fieldsCount = doc.field_values?.length || 0;
+            const fieldsHtml = `
+                <div class="extracted-fields-panel">
+                    <h4>Extracted Fields (${fieldsCount})</h4>
+                    ${doc.field_values && doc.field_values.length > 0 ? 
+                        doc.field_values.map((fv, index) => `
+                            <div class="field-value-item" data-field-index="${index}" data-page="${fv.page_num || ''}" onclick="toggleFieldValue(${index}, event)">
+                                <div class="field-value-header">
+                                    <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                        <span class="field-value-toggle">▶</span>
+                                        <div class="field-value-name">${escapeHtml(fv.field.name)}</div>
+                                    </div>
+                                    ${fv.confidence !== null ? `<div class="field-value-confidence">${Math.round(fv.confidence * 100)}%</div>` : ''}
+                                </div>
+                                <div class="field-value-content">
+                                    <div class="field-value-text">${escapeHtml(fv.value_text || 'Not found')}</div>
+                                    <div class="field-value-meta">
+                                        ${fv.page_num ? `<div class="field-value-meta-item">📄 Page ${fv.page_num}</div>` : ''}
+                                        ${fv.bbox ? `<div class="field-value-meta-item">📍 Coordinates</div>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('') :
+                        '<div class="empty-state">No fields extracted</div>'
+                    }
+                </div>
+            `;
+
+            return infoHtml + fieldsHtml;
+        }
+
+        function toggleFieldValue(index, event) {
+            event.stopPropagation();
+            const fieldItem = document.querySelector(`.field-value-item[data-field-index="${index}"]`);
+            if (fieldItem) {
+                const wasExpanded = fieldItem.classList.contains('expanded');
+                fieldItem.classList.toggle('expanded');
+                
+                // If expanding, also highlight the field on the document
+                if (!wasExpanded) {
+                    highlightField(index);
+                }
+            }
+        }
+
+        function onDocumentImageLoad() {
+            if (currentDocument) {
+                initializeDocumentViewer(currentDocument);
+            }
+        }
+
+        async function initializeDocumentViewer(doc) {
+            if (!doc) return;
+
+            const image = document.getElementById('documentImage');
+            isPdfDocument = isPdfFile(doc.filename);
+
+            if (isPdfDocument) {
+                await renderPdfDocument(doc);
+                attachViewerResizeHandler(() => {
+                    if (currentDocument) {
+                        renderPdfDocument(currentDocument);
+                    }
+                });
+            } else if (image) {
+                const renderImage = () => renderImageHighlights(doc);
+
+                if (image.complete && image.naturalWidth > 0) {
+                    renderImage();
+                } else {
+                    image.onload = renderImage;
+                }
+
+                attachViewerResizeHandler(() => {
+                    if (currentDocument) {
+                        renderImageHighlights(currentDocument);
+                    }
+                });
+            }
+
+            applyActiveHighlightState();
+        }
+
+        async function highlightField(index) {
+            if (!currentDocument || !currentDocument.field_values) return;
+
+            const fieldItemData = currentDocument.field_values[index];
+            const pageNum = fieldItemData && fieldItemData.page_num ? fieldItemData.page_num : 1;
+
+            if (isPdfDocument) {
+                const pageContainer = document.querySelector(`.pdf-page[data-page="${pageNum}"]`);
+                if (pageContainer) {
+                    pageContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+
+            document.querySelectorAll('.field-value-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelectorAll('.bbox-highlight').forEach(highlight => {
+                highlight.classList.remove('active');
+            });
+
+            const fieldItem = document.querySelector(`.field-value-item[data-field-index="${index}"]`);
+            if (fieldItem) {
+                fieldItem.classList.add('active');
+                fieldItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            const highlight = document.querySelector(`.bbox-highlight[data-field-index="${index}"]`);
+            if (highlight) {
+                highlight.classList.add('active');
+            }
+
+            applyActiveHighlightState();
+        }
+
         function closeContentModal() {
             const modal = document.getElementById('contentModal');
             modal.style.display = 'none';
+            // Удаляем обработчик resize при закрытии модального окна
+            if (window.documentViewerResizeHandler) {
+                window.removeEventListener('resize', window.documentViewerResizeHandler);
+                window.documentViewerResizeHandler = null;
+            }
+            currentDocument = null;
+            isPdfDocument = false;
+            currentDocumentUrl = null;
+            pdfDocumentInstance = null;
+            pdfPageMetrics.clear();
+            const pagesContainer = document.getElementById('documentPages');
+            if (pagesContainer) {
+                pagesContainer.innerHTML = '';
+            }
+            const overlay = document.getElementById('documentOverlay');
+            if (overlay) {
+                overlay.innerHTML = '';
+            }
         }
 
         // Закрытие модального окна при клике вне его
@@ -1162,14 +2120,14 @@
 
         // Удаление документа
         async function deleteDocument(id) {
-            if (!confirm('Вы уверены, что хотите удалить этот документ?')) {
+            if (!confirm('Are you sure you want to delete this document?')) {
                 return;
             }
 
             const deleteButtons = document.querySelectorAll(`button[onclick="deleteDocument(${id})"]`);
             deleteButtons.forEach(btn => {
                 btn.disabled = true;
-                btn.textContent = 'Удаление...';
+                btn.textContent = 'Deleting...';
             });
 
             try {
@@ -1182,10 +2140,10 @@
                     throw new Error(errorMessage);
                 }
 
-                showMessage('Документ успешно удален', 'success');
+                showMessage('Document successfully deleted', 'success');
                 loadDocuments(currentPage, document.getElementById('searchInput').value);
             } catch (error) {
-                showMessage('Ошибка удаления: ' + error.message, 'error');
+                showMessage('Error deleting: ' + error.message, 'error');
                 deleteButtons.forEach(btn => {
                     btn.disabled = false;
                     btn.textContent = 'Delete';
@@ -1221,9 +2179,9 @@
                     }
                     return errorData.detail;
                 }
-                return `Ошибка ${response.status}: ${response.statusText}`;
+                return `Error ${response.status}: ${response.statusText}`;
             } catch (e) {
-                return `Ошибка ${response.status}: ${response.statusText}`;
+                return `Error ${response.status}: ${response.statusText}`;
             }
         }
 
@@ -1270,8 +2228,13 @@
         }
 
         // Загрузка при старте
-        loadDocuments();
-        startAutoRefresh();
+        console.log('Initializing page, calling loadDocuments...');
+        try {
+            loadDocuments();
+            startAutoRefresh();
+        } catch (error) {
+            console.error('Error during initialization:', error);
+        }
 
         // Останавливаем автообновление при уходе со страницы
         window.addEventListener('beforeunload', () => {

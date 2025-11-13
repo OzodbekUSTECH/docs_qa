@@ -1,7 +1,6 @@
 from dishka import Provider, Scope, provide, provide_all
+from app.services.extract_field_values import ExtractDocumentFieldValuesService
 from app.services.file_service import FileService
-from app.services.document_chunk_service import DocumentChunkService
-from app.repositories.documents import DocumentChunksRepository
 
 
 class ServicesProvider(Provider):
@@ -12,5 +11,5 @@ class ServicesProvider(Provider):
         FileService,
     )
     
-    document_chunk_service = provide(DocumentChunkService, scope=Scope.REQUEST)
+    extract_docs_fields = provide(ExtractDocumentFieldValuesService, scope=Scope.REQUEST)
 

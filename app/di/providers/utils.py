@@ -20,8 +20,7 @@ class UtilsProvider(Provider):
     
     @provide
     def provide_openai_client(self) -> AsyncOpenAI:
-        return AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-    
+        return AsyncOpenAI(api_key=settings.OPENAI_API_KEY)    
    
     @provide
     def provide_document_converter(self) -> DocumentConverter:

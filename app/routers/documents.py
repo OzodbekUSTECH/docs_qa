@@ -25,10 +25,11 @@ async def create_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     type: DocumentType = Form(...),
+    extraction_field_ids: list[int] = Form(...),
 ):
-    request = CreateDocumentRequest(file=file, type=type)
+    request = CreateDocumentRequest(file=file, type=type, extraction_field_ids=extraction_field_ids)
     document = await create_document_interactor.execute(request)
-    background_tasks.add_task(process_document, document.id)
+    background_tasks.add_task(process_document, document.id, extraction_field_ids)
     return document
 
 

@@ -19,3 +19,12 @@ class DocumentType(str, Enum):
     BL = "BL" # bill of lading
     LC = "LC" # letter of credit
     OTHER = "OTHER"
+    
+    
+class ExtractionFieldType(str, Enum):
+    CLAUSE = "CLAUSE"      # clause-like text
+    TEXT = "TEXT"          # generic text field
+    NUMBER = "NUMBER"
+    DATE = "DATE"
+    BOOL = "BOOL"
+    # extend later without versioning
