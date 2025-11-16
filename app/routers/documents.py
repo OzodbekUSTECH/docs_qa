@@ -6,8 +6,9 @@ from dishka.integrations.fastapi import FromDishka
 from app.interactors.documents.create import CreateDocumentInteractor
 from app.interactors.documents.get import GetAllDocumentsInteractor, GetDocumentByIdInteractor
 from app.interactors.documents.delete import DeleteDocumentInteractor
+from app.interactors.documents.update import UpdateDocumentPartiallyInteractor
 from app.utils.enums import DocumentType
-from app.dto.documents import CreateDocumentRequest, GetDocumentsParams
+from app.dto.documents import CreateDocumentRequest, GetDocumentsParams, RerunExtractionRequest, UpdateDocumentPartiallyRequest
 from app.utils.bg_tasks import process_document
 
 
@@ -42,12 +43,34 @@ async def get_documents(
     return await get_documents_interactor.execute(request)
 
 
+
+
 @router.get('/{id}')
 async def get_document_by_id(
     id: int,
     get_document_by_id_interactor: FromDishka[GetDocumentByIdInteractor],
 ):
     return await get_document_by_id_interactor.execute(id)
+
+@router.post('/{id}/rerun-extraction')
+async def rerun_extraction(
+    id: int,
+    request: RerunExtractionRequest,
+    get_document_by_id_interactor: FromDishka[GetDocumentByIdInteractor],
+    background_tasks: BackgroundTasks,
+):
+    document = await get_document_by_id_interactor.execute(id)
+    background_tasks.add_task(process_document, document.id, request.extraction_field_ids)
+    return document
+
+
+@router.patch('/{id}')
+async def update_document_partially(
+    id: int,
+    request: UpdateDocumentPartiallyRequest,
+    update_document_partially_interactor: FromDishka[UpdateDocumentPartiallyInteractor],
+):
+    return await update_document_partially_interactor.execute(id, request)
 
 
 @router.delete('/{id}')

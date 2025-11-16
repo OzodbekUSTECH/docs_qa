@@ -22,6 +22,7 @@ class Document(Base,IdMixin, TimestampMixin):
     file_hash: Mapped[str] = mapped_column(index=True, unique=True)
     status: Mapped[DocumentStatus] = mapped_column(default=DocumentStatus.PENDING)
     type: Mapped[DocumentType] = mapped_column(default=DocumentType.OTHER)
+    content: Mapped[Optional[str]] = mapped_column(Text)
     
     summary: Mapped[Optional[str]] = mapped_column(Text)
     

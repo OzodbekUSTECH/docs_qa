@@ -1,4 +1,4 @@
-from sqlalchemy import Text, Enum as SAEnum
+from sqlalchemy import Text, Enum as SAEnum, text
 from sqlalchemy.dialects.postgresql import ARRAY, TSVECTOR
 from app.entities.base import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -12,14 +12,18 @@ class ExtractionField(Base,IdMixin, TimestampMixin):
     __tablename__ = "extraction_fields"
 
     name: Mapped[str]
-    identifier: Mapped[str] = mapped_column(index=True, unique=True)
     
     short_description: Mapped[Optional[str]]
     type: Mapped[ExtractionFieldType]
     document_types: Mapped[list[DocumentType]] = mapped_column(ARRAY(SAEnum(DocumentType)))
     
-    prompt: Mapped[str]
+    # for code base extraction
+    keywords: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list, server_default=text("'{}'::text[]"))
     
-    examples: Mapped[list[str]] = mapped_column(ARRAY(Text))
+    # for ai
+    use_ai: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    prompt: Mapped[Optional[str]]
+    
+    examples: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list, server_default=text("'{}'::text[]"))
     
     

@@ -7,10 +7,18 @@ from app.utils.enums import DocumentStatus, DocumentType, ExtractionFieldType
 from app.dto.pagination import PaginationRequest
 
 
+
+class RerunExtractionRequest(BaseModel):
+    extraction_field_ids: list[int]
+
 class CreateDocumentRequest(BaseModel):
     file: UploadFile
     type: DocumentType
     extraction_field_ids: list[int]
+    
+    
+class UpdateDocumentPartiallyRequest(BaseModel):
+    type: Optional[DocumentType] = None
     
     
     
@@ -38,7 +46,6 @@ class DocumentListResponse(BaseDocumentResponse):
 
 class ExtractionFieldResponse(BaseModelResponse):
     name: str
-    identifier: str
     short_description: Optional[str] = None
 
 class DocumentFieldValueResponse(BaseModelResponse):

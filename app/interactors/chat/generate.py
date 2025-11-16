@@ -41,7 +41,14 @@ class GenerateChatResponseInteractor:
                     "Call the tool multiple times with different queries until you find the answer or exhaust all possibilities. "
                     "Increase the limit parameter (up to 20) if needed to see more results. "
                     "Base answers only on verified context from the search results. "
-                    "If information is truly missing after multiple searches, clearly state that."
+                    "If information is truly missing after multiple searches, clearly state that.\n\n"
+                    "CRITICAL: Always format your responses in Markdown. Use proper Markdown syntax for:\n"
+                    "- Tables: Use pipe-separated format with header row and separator row (| Header | Header |)\n"
+                    "- Headers: Use #, ##, ### for different levels\n"
+                    "- Lists: Use - or * for unordered, numbers for ordered\n"
+                    "- Code: Use ``` for blocks, ` for inline\n"
+                    "- Bold/Italic: Use **bold** and *italic*\n"
+                    "Ensure all tables are properly formatted with complete header rows and separator rows."
                 ),
                 tools=[hybrid_search],
             )

@@ -732,6 +732,7 @@
                             <th>Name</th>
                             <th>Description</th>
                             <th>Type</th>
+                            <th>Extraction</th>
                             <th>Document Types</th>
                             <th>Created At</th>
                             <th>Actions</th>
@@ -847,24 +848,62 @@
 
                     <div class="form-group">
                         <label>
-                            Prompt <span class="required">*</span>
+                            <span>🤖</span> Use AI Extraction
                         </label>
-                        <textarea id="fieldPrompt" required placeholder="Enter prompt to extract field value..." maxlength="2000"></textarea>
-                        <div class="char-counter">
-                            <span id="charCount">0</span>/2000 characters
+                        <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                                <input type="checkbox" id="useAiToggle" onchange="toggleUseAi()" style="width: auto; margin: 0; cursor: pointer;">
+                                <span>Enable AI-powered extraction</span>
+                            </label>
+                        </div>
+                        <div class="form-group-description">
+                            If enabled, AI will extract field values using prompt and examples. If disabled, manual extraction using keywords will be used.
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>Examples</label>
-                        <div class="example-input-wrapper">
-                            <input type="text" id="exampleInput" placeholder="Start typing and press Enter to add an example..." onkeypress="handleExampleKeyPress(event)">
-                            <div class="example-input-hint">
-                                <span>Enter</span>
-                                <span>↵</span>
+                    <!-- AI Fields (shown when use_ai = true) -->
+                    <div id="aiFieldsSection" style="display: none;">
+                        <div class="form-group">
+                            <label>
+                                Prompt <span class="required">*</span>
+                            </label>
+                            <textarea id="fieldPrompt" placeholder="Enter prompt to extract field value..." maxlength="2000"></textarea>
+                            <div class="char-counter">
+                                <span id="charCount">0</span>/2000 characters
                             </div>
                         </div>
-                        <div class="examples-container" id="examplesContainer"></div>
+
+                        <div class="form-group">
+                            <label>Examples</label>
+                            <div class="example-input-wrapper">
+                                <input type="text" id="exampleInput" placeholder="Start typing and press Enter to add an example..." onkeypress="handleExampleKeyPress(event)">
+                                <div class="example-input-hint">
+                                    <span>Enter</span>
+                                    <span>↵</span>
+                                </div>
+                            </div>
+                            <div class="examples-container" id="examplesContainer"></div>
+                        </div>
+                    </div>
+
+                    <!-- Manual Fields (shown when use_ai = false) -->
+                    <div id="manualFieldsSection" style="display: block;">
+                        <div class="form-group">
+                            <label>
+                                Keywords <span class="required">*</span>
+                            </label>
+                            <div class="example-input-wrapper">
+                                <input type="text" id="keywordInput" placeholder="Start typing and press Enter to add a keyword..." onkeypress="handleKeywordKeyPress(event)">
+                                <div class="example-input-hint">
+                                    <span>Enter</span>
+                                    <span>↵</span>
+                                </div>
+                            </div>
+                            <div class="form-group-description">
+                                Keywords used for manual extraction (e.g., "PRICE", "PAYMENT"). Press Enter to add each keyword.
+                            </div>
+                            <div class="examples-container" id="keywordsContainer"></div>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -884,6 +923,10 @@
         let editingFieldId = null;
         let selectedDocumentTypes = [];
         let examples = [];
+        let keywords = [];
+        let useAi = false;
+        // Store original field values for comparison during update
+        let originalField = null;
         const allDocumentTypes = ['FINANCIAL', 'INVOICE', 'CONTRACT', 'COO', 'COA', 'COW', 'COQ', 'BL', 'LC', 'OTHER'];
 
         // Initialize
@@ -998,6 +1041,52 @@
             `).join('');
         }
 
+        function toggleUseAi() {
+            useAi = document.getElementById('useAiToggle').checked;
+            const aiSection = document.getElementById('aiFieldsSection');
+            const manualSection = document.getElementById('manualFieldsSection');
+            
+            if (useAi) {
+                aiSection.style.display = 'block';
+                manualSection.style.display = 'none';
+                // Make prompt required when AI is enabled
+                document.getElementById('fieldPrompt').required = true;
+            } else {
+                aiSection.style.display = 'none';
+                manualSection.style.display = 'block';
+                // Make prompt not required when AI is disabled
+                document.getElementById('fieldPrompt').required = false;
+            }
+        }
+
+        function handleKeywordKeyPress(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const input = document.getElementById('keywordInput');
+                const value = input.value.trim();
+                if (value && !keywords.includes(value)) {
+                    keywords.push(value);
+                    renderKeywords();
+                    input.value = '';
+                }
+            }
+        }
+
+        function removeKeyword(index) {
+            keywords.splice(index, 1);
+            renderKeywords();
+        }
+
+        function renderKeywords() {
+            const container = document.getElementById('keywordsContainer');
+            container.innerHTML = keywords.map((keyword, index) => `
+                <div class="example-item">
+                    <span class="example-item-text">${escapeHtml(keyword)}</span>
+                    <button type="button" class="example-item-remove" onclick="removeKeyword(${index})">✕</button>
+                </div>
+            `).join('');
+        }
+
         async function loadFields(page = 1, name = '', type = '', documentType = '') {
             try {
                 document.getElementById('loading').style.display = 'block';
@@ -1049,7 +1138,7 @@
             tbody.innerHTML = '';
 
             if (fields.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--subtle);">No fields found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--subtle);">No fields found</td></tr>';
                 return;
             }
 
@@ -1059,12 +1148,19 @@
                 const documentTypes = field.document_types.map(dt => 
                     `<span class="field-badge">${dt}</span>`
                 ).join('');
+                
+                // Extraction type indicator
+                const extractionType = field.use_ai ? 'AI' : 'Manual';
+                const extractionBadge = field.use_ai
+                    ? '<span class="field-badge" style="background: rgba(168, 85, 247, 0.15); color: var(--purple);">AI</span>'
+                    : '<span class="field-badge" style="background: rgba(56, 189, 248, 0.15); color: var(--accent);">Manual</span>';
 
                 row.innerHTML = `
                     <td>${field.id}</td>
                     <td><strong>${escapeHtml(field.name)}</strong></td>
                     <td class="description-cell" title="${escapeHtml(field.short_description || '')}">${escapeHtml(field.short_description || '-')}</td>
                     <td><span class="field-badge type">${field.type}</span></td>
+                    <td>${extractionBadge}</td>
                     <td>${documentTypes || '-'}</td>
                     <td>${createdAt}</td>
                     <td>
@@ -1160,18 +1256,24 @@
 
         function openCreateModal() {
             editingFieldId = null;
+            originalField = null; // Clear original field
             document.getElementById('modalTitle').textContent = 'New field';
             document.getElementById('fieldForm').reset();
             document.getElementById('identifierDisplay').textContent = '-';
             document.getElementById('charCount').textContent = '0';
             selectedDocumentTypes = [];
             examples = [];
+            keywords = [];
+            useAi = false;
+            document.getElementById('useAiToggle').checked = false;
+            toggleUseAi();
             allDocumentTypes.forEach(type => {
                 const checkbox = document.getElementById(`doc-${type.toLowerCase()}`);
                 if (checkbox) checkbox.checked = false;
             });
             renderDocumentTypes();
             renderExamples();
+            renderKeywords();
             updateDocumentTypesTrigger();
             document.getElementById('documentTypesDropdown').classList.remove('active');
             const submitBtn = document.getElementById('createBtn');
@@ -1191,17 +1293,31 @@
 
                 const field = await response.json();
                 
+                // Store original field for comparison
+                originalField = JSON.parse(JSON.stringify(field));
+                
                 editingFieldId = id;
                 document.getElementById('modalTitle').textContent = 'Edit field';
                 document.getElementById('fieldName').value = field.name;
                 document.getElementById('fieldDescription').value = field.short_description || '';
                 document.getElementById('fieldType').value = field.type;
+                
+                // Set use_ai and toggle sections
+                useAi = field.use_ai || false;
+                document.getElementById('useAiToggle').checked = useAi;
+                toggleUseAi();
+                
+                // Set AI fields (preserve even if use_ai is false)
                 document.getElementById('fieldPrompt').value = field.prompt || '';
+                examples = field.examples || [];
+                
+                // Set manual fields (preserve even if use_ai is true)
+                keywords = field.keywords || [];
+                
                 updateIdentifier();
                 updateCharCount();
                 
                 selectedDocumentTypes = field.document_types || [];
-                examples = field.examples || [];
                 
                 allDocumentTypes.forEach(type => {
                     const checkbox = document.getElementById(`doc-${type.toLowerCase()}`);
@@ -1212,6 +1328,7 @@
                 
                 renderDocumentTypes();
                 renderExamples();
+                renderKeywords();
                 updateDocumentTypesTrigger();
                 const submitBtn = document.getElementById('createBtn');
                 submitBtn.textContent = 'Save changes';
@@ -1246,24 +1363,92 @@
                 return;
             }
 
-            const prompt = document.getElementById('fieldPrompt').value.trim();
-            if (!prompt) {
-                showMessage('Prompt is required', 'error');
-                return;
+            useAi = document.getElementById('useAiToggle').checked;
+            
+            // Validate based on use_ai
+            if (useAi) {
+                const prompt = document.getElementById('fieldPrompt').value.trim();
+                if (!prompt) {
+                    showMessage('Prompt is required when AI extraction is enabled', 'error');
+                    return;
+                }
+            } else {
+                if (keywords.length === 0) {
+                    showMessage('At least one keyword is required when manual extraction is used', 'error');
+                    return;
+                }
             }
-
-            const data = {
-                name: name,
-                identifier: identifier,
-                short_description: document.getElementById('fieldDescription').value.trim() || null,
-                type: document.getElementById('fieldType').value,
-                document_types: selectedDocumentTypes,
-                prompt: prompt,
-                examples: examples
-            };
 
             const btn = document.getElementById('createBtn');
             const isUpdate = Boolean(editingFieldId);
+            
+            let data;
+            
+            if (isUpdate) {
+                // Partial update - only send changed fields
+                data = {};
+                
+                const currentUseAi = document.getElementById('useAiToggle').checked;
+                const currentName = name;
+                const currentDescription = document.getElementById('fieldDescription').value.trim() || null;
+                const currentType = document.getElementById('fieldType').value;
+                const currentPrompt = document.getElementById('fieldPrompt').value.trim();
+                
+                // Compare and send only changed fields
+                if (currentName !== originalField.name) {
+                    data.name = currentName;
+                }
+                if (currentDescription !== (originalField.short_description || null)) {
+                    data.short_description = currentDescription;
+                }
+                if (currentType !== originalField.type) {
+                    data.type = currentType;
+                }
+                if (JSON.stringify(selectedDocumentTypes.sort()) !== JSON.stringify((originalField.document_types || []).sort())) {
+                    data.document_types = selectedDocumentTypes;
+                }
+                if (currentUseAi !== originalField.use_ai) {
+                    data.use_ai = currentUseAi;
+                }
+                
+                // Handle prompt/examples/keywords based on current mode
+                // Always preserve existing values, only update if changed
+                if (currentUseAi) {
+                    // AI mode - update prompt and examples if changed
+                    if (currentPrompt !== (originalField.prompt || '')) {
+                        data.prompt = currentPrompt;
+                    }
+                    if (JSON.stringify(examples.sort()) !== JSON.stringify((originalField.examples || []).sort())) {
+                        data.examples = examples;
+                    }
+                    // Don't send keywords - they will be preserved on backend
+                } else {
+                    // Manual mode - update keywords if changed
+                    if (JSON.stringify(keywords.sort()) !== JSON.stringify((originalField.keywords || []).sort())) {
+                        data.keywords = keywords;
+                    }
+                    // Don't send prompt/examples - they will be preserved on backend
+                }
+            } else {
+                // Create - send all required fields
+                data = {
+                    name: name,
+                    short_description: document.getElementById('fieldDescription').value.trim() || null,
+                    type: document.getElementById('fieldType').value,
+                    document_types: selectedDocumentTypes,
+                    use_ai: useAi,
+                };
+
+                if (useAi) {
+                    data.prompt = document.getElementById('fieldPrompt').value.trim();
+                    if (examples.length > 0) {
+                        data.examples = examples;
+                    }
+                } else {
+                    data.keywords = keywords;
+                }
+            }
+
             const originalText = btn.textContent;
             btn.disabled = true;
             btn.textContent = isUpdate ? 'Saving...' : 'Creating...';

@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Documents Chat</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
     <style>
         :root {
             color-scheme: light dark;
@@ -255,6 +256,49 @@
 
         .message-content.assistant em {
             font-style: italic;
+        }
+
+        /* Table styles for marked.js output */
+        .message-content.assistant .table-wrapper {
+            overflow-x: auto;
+            margin: 16px 0;
+            border-radius: 8px;
+        }
+
+        .message-content.assistant table {
+            width: 100%;
+            min-width: 500px;
+            border-collapse: collapse;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .message-content.assistant table thead {
+            background: rgba(56, 189, 248, 0.15);
+        }
+
+        .message-content.assistant table th {
+            font-weight: 600;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            text-align: left;
+            color: var(--text);
+        }
+
+        .message-content.assistant table td {
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .message-content.assistant table tr:hover {
+            background: rgba(56, 189, 248, 0.05);
+        }
+
+        .message-content.assistant table tr:last-child td {
+            border-bottom: none;
         }
 
         .message-content.user {
@@ -1798,122 +1842,129 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
+        // Initialize marked.js for Markdown parsing
+        function initializeMarkdown() {
+            if (typeof marked === 'undefined') {
+                console.warn('marked.js is not loaded, falling back to simple formatting');
+                return false;
+            }
+            
+            // Configure marked options
+            marked.setOptions({
+                breaks: true,          // Convert line breaks to <br>
+                gfm: true,              // GitHub Flavored Markdown
+                tables: true,           // Enable table support
+                sanitize: false,        // We'll sanitize manually if needed
+                smartLists: true,       // Better list handling
+                smartypants: false,     // Don't convert quotes
+                headerIds: false,       // Don't add IDs to headers
+                mangle: false           // Don't mangle email addresses
+            });
+            
+            // Custom renderer for better table styling
+            const renderer = new marked.Renderer();
+            
+            // Custom table renderer with wrapper for scrolling
+            renderer.table = function(header, body) {
+                return `<div class="table-wrapper" style="overflow-x: auto; margin: 16px 0;">
+                    <table style="width: 100%; min-width: 500px; border-collapse: collapse; background: rgba(15, 23, 42, 0.5); border-radius: 8px; overflow: hidden; border: 1px solid var(--border);">
+                        <thead>${header}</thead>
+                        <tbody>${body}</tbody>
+                    </table>
+                </div>`;
+            };
+            
+            // Custom table header cell renderer
+            renderer.tablecell = function(content, flags) {
+                const tag = flags.header ? 'th' : 'td';
+                const style = flags.header 
+                    ? 'font-weight: 600; background: rgba(56, 189, 248, 0.15); padding: 10px 12px; border: 1px solid var(--border); text-align: left;'
+                    : 'padding: 10px 12px; border: 1px solid var(--border);';
+                return `<${tag} style="${style}">${content}</${tag}>`;
+            };
+            
+            // Custom code block renderer
+            renderer.code = function(code, language) {
+                const lang = language || 'text';
+                const escaped = escapeHtml(code);
+                return `<pre style="background: rgba(15, 23, 42, 0.7); padding: 12px; border-radius: 6px; overflow-x: auto; margin: 8px 0; border: 1px solid var(--border);"><code style="font-family: 'Courier New', monospace; font-size: 0.9em;">${escaped}</code></pre>`;
+            };
+            
+            // Custom inline code renderer
+            renderer.codespan = function(code) {
+                return `<code style="background: rgba(56, 189, 248, 0.2); padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 0.9em;">${escapeHtml(code)}</code>`;
+            };
+            
+            // Custom heading renderers
+            renderer.heading = function(text, level) {
+                const styles = {
+                    1: 'margin: 16px 0 8px 0; font-weight: 600; font-size: 1.5rem; border-bottom: 2px solid var(--border); padding-bottom: 8px;',
+                    2: 'margin: 16px 0 8px 0; font-weight: 600; font-size: 1.3rem; border-bottom: 2px solid var(--border); padding-bottom: 8px;',
+                    3: 'margin: 16px 0 8px 0; font-weight: 600; font-size: 1.1rem;'
+                };
+                const style = styles[level] || 'margin: 16px 0 8px 0; font-weight: 600;';
+                return `<h${level} style="${style}">${text}</h${level}>`;
+            };
+            
+            // Custom paragraph renderer
+            renderer.paragraph = function(text) {
+                return `<p style="margin: 8px 0; line-height: 1.6;">${text}</p>`;
+            };
+            
+            // Custom list renderers
+            renderer.list = function(body, ordered) {
+                const tag = ordered ? 'ol' : 'ul';
+                const style = 'margin: 8px 0; padding-left: 24px;';
+                return `<${tag} style="${style}">${body}</${tag}>`;
+            };
+            
+            renderer.listitem = function(text) {
+                return `<li style="margin: 4px 0;">${text}</li>`;
+            };
+            
+            // Custom blockquote renderer
+            renderer.blockquote = function(quote) {
+                return `<blockquote style="margin: 16px 0; padding: 12px 20px; background: rgba(15, 23, 42, 0.3); border-left: 3px solid var(--accent); border-radius: 4px;">${quote}</blockquote>`;
+            };
+            
+            // Custom strong and em renderers
+            renderer.strong = function(text) {
+                return `<strong style="font-weight: 600; color: var(--accent);">${text}</strong>`;
+            };
+            
+            renderer.em = function(text) {
+                return `<em style="font-style: italic;">${text}</em>`;
+            };
+            
+            marked.setOptions({ renderer });
+            
+            return true;
+        }
+        
+        // Initialize marked on page load
+        let markdownInitialized = false;
+        
         function renderMarkdown(text) {
             if (!text) return '';
-            let html = text;
             
-            // Code blocks (before other replacements)
-            html = html.replace(/```(\w+)?\n?([\s\S]*?)```/g, (match, lang, code) => {
-                const escaped = escapeHtml(code.trim());
-                return `<pre style="background: rgba(15, 23, 42, 0.7); padding: 12px; border-radius: 6px; overflow-x: auto; margin: 8px 0; border: 1px solid var(--border);"><code>${escaped}</code></pre>`;
-            });
+            // Initialize marked.js if not already done
+            if (!markdownInitialized) {
+                markdownInitialized = initializeMarkdown();
+            }
             
-            // Inline code (after code blocks)
-            html = html.replace(/`([^`]+)`/g, '<code style="background: rgba(56, 189, 248, 0.2); padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>');
-            
-            // Tables
-            html = html.replace(/\|(.+)\|/g, (match, row) => {
-                const cells = row.split('|').map(cell => cell.trim()).filter(cell => cell);
-                if (cells.length === 0) return match;
-                
-                // Check if this is a header separator row
-                if (cells.every(cell => /^:?-+:?$/.test(cell))) {
-                    return ''; // Skip separator rows
-                }
-                
-                const cellHtml = cells.map(cell => {
-                    const escaped = escapeHtml(cell);
-                    return `<td style="padding: 8px 12px; border: 1px solid var(--border);">${escaped}</td>`;
-                }).join('');
-                
-                return `<tr>${cellHtml}</tr>`;
-            });
-            
-            // Wrap table rows in table element
-            html = html.replace(/(<tr>.*<\/tr>)/gs, (match) => {
-                if (match.includes('<tr>')) {
-                    return `<table style="width: 100%; border-collapse: collapse; margin: 12px 0; background: rgba(15, 23, 42, 0.5); border-radius: 8px; overflow: hidden;">${match}</table>`;
-                }
-                return match;
-            });
-            
-            // Make first row of table a header
-            html = html.replace(/<table[^>]*>(<tr>.*?<\/tr>)/, (match, firstRow) => {
-                return match.replace(firstRow, firstRow.replace(/<td/g, '<th style="font-weight: 600; background: rgba(56, 189, 248, 0.15); padding: 8px 12px; border: 1px solid var(--border);"').replace(/<\/td>/g, '</th>'));
-            });
-            
-            // Headers
-            html = html.replace(/^### (.*$)/gim, '<h3 style="margin: 16px 0 8px 0; font-weight: 600; font-size: 1.1rem;">$1</h3>');
-            html = html.replace(/^## (.*$)/gim, '<h2 style="margin: 16px 0 8px 0; font-weight: 600; font-size: 1.3rem; border-bottom: 2px solid var(--border); padding-bottom: 8px;">$1</h2>');
-            html = html.replace(/^# (.*$)/gim, '<h1 style="margin: 16px 0 8px 0; font-weight: 600; font-size: 1.5rem; border-bottom: 2px solid var(--border); padding-bottom: 8px;">$1</h1>');
-            
-            // Bold text (after code, to avoid conflicts)
-            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            html = html.replace(/__(.*?)__/g, '<strong>$1</strong>');
-            
-            // Italic (after bold, avoid conflicts)
-            html = html.replace(/\b\*([^*]+?)\*\b/g, '<em>$1</em>');
-            html = html.replace(/\b_([^_]+?)_\b/g, '<em>$1</em>');
-            
-            // Lists
-            const lines = html.split('\n');
-            let inOrderedList = false;
-            let inUnorderedList = false;
-            let result = [];
-            
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i];
-                const orderedMatch = line.match(/^(\d+)\.\s+(.*)$/);
-                const unorderedMatch = line.match(/^[-*]\s+(.*)$/);
-                
-                if (orderedMatch) {
-                    if (!inOrderedList) {
-                        if (inUnorderedList) {
-                            result.push('</ul>');
-                            inUnorderedList = false;
-                        }
-                        result.push('<ol style="margin: 8px 0; padding-left: 24px;">');
-                        inOrderedList = true;
-                    }
-                    result.push(`<li style="margin: 4px 0;">${orderedMatch[2]}</li>`);
-                } else if (unorderedMatch) {
-                    if (!inUnorderedList) {
-                        if (inOrderedList) {
-                            result.push('</ol>');
-                            inOrderedList = false;
-                        }
-                        result.push('<ul style="margin: 8px 0; padding-left: 24px;">');
-                        inUnorderedList = true;
-                    }
-                    result.push(`<li style="margin: 4px 0;">${unorderedMatch[1]}</li>`);
-                } else {
-                    if (inOrderedList) {
-                        result.push('</ol>');
-                        inOrderedList = false;
-                    }
-                    if (inUnorderedList) {
-                        result.push('</ul>');
-                        inUnorderedList = false;
-                    }
-                    if (line.trim() && !line.startsWith('<table') && !line.startsWith('</table>') && !line.startsWith('<tr>') && !line.startsWith('</tr>')) {
-                        result.push(line);
-                    }
+            // Use marked.js if available
+            if (typeof marked !== 'undefined' && markdownInitialized) {
+                try {
+                    return marked.parse(text);
+                } catch (error) {
+                    console.error('Error parsing markdown:', error);
+                    // Fallback to simple formatting
+                    return escapeHtml(text).replace(/\n/g, '<br>');
                 }
             }
             
-            if (inOrderedList) result.push('</ol>');
-            if (inUnorderedList) result.push('</ul>');
-            
-            html = result.join('\n');
-            
-            // Paragraphs (only for lines that are not HTML tags)
-            html = html.split('\n').map(line => {
-                line = line.trim();
-                if (!line || line.startsWith('<') || line.match(/^<\/[ou]l>$/)) return line;
-                return '<p style="margin: 8px 0;">' + line + '</p>';
-            }).join('\n');
-            
-            return html;
+            // Fallback: simple formatting
+            return escapeHtml(text).replace(/\n/g, '<br>');
         }
 
         function addTypingIndicator(messageEl) {
@@ -2526,6 +2577,12 @@
 
         // Восстановление текущей сессии при загрузке
         window.addEventListener('load', async () => {
+            // Initialize marked.js immediately
+            if (typeof marked !== 'undefined') {
+                initializeMarkdown();
+                markdownInitialized = true;
+            }
+            
             await loadDocuments();
             
             // Удаляем все временные сессии при загрузке страницы

@@ -25,3 +25,11 @@ class FieldExtractionOutput(BaseModel):
         description="Список извлеченных значений полей"
     )
 
+
+class DocumentMarkdownOutput(BaseModel):
+    """Структурированный вывод markdown текста документа"""
+    markdown_text: str = Field(
+        ...,
+        description="Полный markdown текст документа с сохранением структуры, заголовков и форматирования. Включает все текстовое содержимое, включая заголовки клауз типа '7. PRICE', '9. PAYMENT' и т.п."
+    )
+

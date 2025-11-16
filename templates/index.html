@@ -228,6 +228,17 @@
             border-color: var(--error);
         }
 
+        button.btn-secondary {
+            background: rgba(148, 163, 184, 0.15);
+            color: var(--subtle);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+        }
+
+        button.btn-secondary:hover:not(:disabled) {
+            background: rgba(148, 163, 184, 0.25);
+            border-color: var(--subtle);
+        }
+
         button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
@@ -1064,6 +1075,62 @@
         </div>
     </div>
 
+    <!-- Модальное окно для Rerun Extraction -->
+    <div id="rerunExtractionModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>Rerun Extraction</h3>
+                <button class="modal-close" onclick="closeRerunExtractionModal()">✕</button>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <div id="rerunExtractionMessage"></div>
+                <div class="form-group">
+                    <label>Select Extraction Fields</label>
+                    <div id="rerunExtractionFieldsContainer" class="extraction-fields-container">
+                        <div class="extraction-fields-loading">Loading fields...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 20px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 12px;">
+                <button class="btn-secondary" onclick="closeRerunExtractionModal()">Cancel</button>
+                <button class="btn-primary" id="rerunExtractionBtn" onclick="handleRerunExtraction()">Rerun Extraction</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для Update Document -->
+    <div id="updateDocumentModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>Update Document</h3>
+                <button class="modal-close" onclick="closeUpdateDocumentModal()">✕</button>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <div id="updateDocumentMessage"></div>
+                <div class="form-group">
+                    <label for="updateTypeSelect">Document Type</label>
+                    <select id="updateTypeSelect">
+                        <option value="">-- Select type --</option>
+                        <option value="FINANCIAL">FINANCIAL</option>
+                        <option value="INVOICE">INVOICE</option>
+                        <option value="CONTRACT">CONTRACT</option>
+                        <option value="COO">COO</option>
+                        <option value="COA">COA</option>
+                        <option value="COW">COW</option>
+                        <option value="COQ">COQ</option>
+                        <option value="BL">BL</option>
+                        <option value="LC">LC</option>
+                        <option value="OTHER">OTHER</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 20px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 12px;">
+                <button class="btn-secondary" onclick="closeUpdateDocumentModal()">Cancel</button>
+                <button class="btn-primary" id="updateDocumentBtn" onclick="handleUpdateDocument()">Update</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = '/documents';
         const EXTRACTION_FIELDS_API = '/extraction-fields';
@@ -1074,6 +1141,12 @@
         let selectedFiles = [];
         let availableExtractionFields = [];
         let selectedExtractionFieldIds = [];
+        
+        // Variables for rerun extraction and update modals
+        let currentRerunDocumentId = null;
+        let currentRerunDocumentType = null;
+        let rerunSelectedFieldIds = [];
+        let currentUpdateDocumentId = null;
 
         // Переменные для просмотра документа
         let currentDocument = null;
@@ -1564,6 +1637,8 @@
                     <td>
                         <div class="action-buttons">
                             <button class="btn-info" onclick="viewDocument(${doc.id})">View</button>
+                            <button class="btn-info" onclick="openRerunExtractionModal(${doc.id})">Rerun Extraction</button>
+                            <button class="btn-info" onclick="openUpdateDocumentModal(${doc.id})">Update</button>
                             <button class="btn-danger" onclick="deleteDocument(${doc.id})">Delete</button>
                         </div>
                     </td>
@@ -2024,11 +2099,20 @@
             }
         }
 
-        // Закрытие модального окна при клике вне его
+        // Закрытие модальных окон при клике вне их
         window.onclick = function(event) {
-            const modal = document.getElementById('contentModal');
-            if (event.target === modal) {
+            const contentModal = document.getElementById('contentModal');
+            const rerunModal = document.getElementById('rerunExtractionModal');
+            const updateModal = document.getElementById('updateDocumentModal');
+            
+            if (event.target === contentModal) {
                 closeContentModal();
+            }
+            if (event.target === rerunModal) {
+                closeRerunExtractionModal();
+            }
+            if (event.target === updateModal) {
+                closeUpdateDocumentModal();
             }
         }
 
@@ -2278,6 +2362,244 @@
         window.addEventListener('beforeunload', () => {
             stopAutoRefresh();
         });
+
+        // Rerun Extraction Modal Functions
+        async function openRerunExtractionModal(documentId) {
+            currentRerunDocumentId = documentId;
+            rerunSelectedFieldIds = [];
+            const modal = document.getElementById('rerunExtractionModal');
+            const container = document.getElementById('rerunExtractionFieldsContainer');
+            const messageDiv = document.getElementById('rerunExtractionMessage');
+            
+            messageDiv.style.display = 'none';
+            modal.style.display = 'block';
+            container.innerHTML = '<div class="extraction-fields-loading">Loading document and fields...</div>';
+            
+            try {
+                // Load document to get type and existing field values
+                const docResponse = await fetch(`${API_BASE}/${documentId}`);
+                if (!docResponse.ok) {
+                    throw new Error('Failed to load document');
+                }
+                const document = await docResponse.json();
+                currentRerunDocumentType = document.type;
+                
+                // Get existing field IDs from document
+                const existingFieldIds = document.field_values 
+                    ? document.field_values.map(fv => fv.field.id)
+                    : [];
+                
+                // Load available extraction fields for this document type
+                const params = new URLSearchParams({
+                    page: '1',
+                    size: '100'
+                });
+                params.append('document_types', document.type);
+                
+                const fieldsResponse = await fetch(`${EXTRACTION_FIELDS_API}/?${params}`);
+                if (!fieldsResponse.ok) {
+                    throw new Error('Failed to load extraction fields');
+                }
+                
+                const fieldsData = await fieldsResponse.json();
+                const availableFields = fieldsData.items || [];
+                
+                // Pre-select fields that already exist in the document
+                rerunSelectedFieldIds = [...existingFieldIds];
+                
+                // Render fields with pre-selected checkboxes
+                renderRerunExtractionFields(availableFields, existingFieldIds);
+            } catch (error) {
+                container.innerHTML = `<div class="extraction-fields-loading" style="color: var(--error);">Error: ${escapeHtml(error.message)}</div>`;
+            }
+        }
+
+        function renderRerunExtractionFields(fields, existingFieldIds) {
+            const container = document.getElementById('rerunExtractionFieldsContainer');
+            
+            if (fields.length === 0) {
+                container.innerHTML = '<div class="extraction-fields-loading">No available fields for this document type</div>';
+                return;
+            }
+            
+            container.innerHTML = fields.map(field => {
+                const isChecked = existingFieldIds.includes(field.id);
+                return `
+                    <div class="extraction-field-item">
+                        <input 
+                            type="checkbox" 
+                            id="rerun_field_${field.id}" 
+                            value="${field.id}"
+                            onchange="handleRerunFieldToggle(${field.id})"
+                            ${isChecked ? 'checked' : ''}
+                        >
+                        <label for="rerun_field_${field.id}">
+                            <div class="extraction-field-name">${escapeHtml(field.name)}</div>
+                            ${field.short_description ? `<div class="extraction-field-description">${escapeHtml(field.short_description)}</div>` : ''}
+                        </label>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function handleRerunFieldToggle(fieldId) {
+            const checkbox = document.getElementById(`rerun_field_${fieldId}`);
+            if (checkbox.checked) {
+                if (!rerunSelectedFieldIds.includes(fieldId)) {
+                    rerunSelectedFieldIds.push(fieldId);
+                }
+            } else {
+                rerunSelectedFieldIds = rerunSelectedFieldIds.filter(id => id !== fieldId);
+            }
+        }
+
+        async function handleRerunExtraction() {
+            if (!currentRerunDocumentId) {
+                showRerunMessage('Document ID is missing', 'error');
+                return;
+            }
+            
+            if (rerunSelectedFieldIds.length === 0) {
+                showRerunMessage('Select at least one extraction field', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('rerunExtractionBtn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Rerunning...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/${currentRerunDocumentId}/rerun-extraction`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        extraction_field_ids: rerunSelectedFieldIds
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorMessage = await parseErrorResponse(response);
+                    throw new Error(errorMessage);
+                }
+                
+                showRerunMessage('Extraction rerun started successfully', 'success');
+                closeRerunExtractionModal();
+                loadDocuments(currentPage, document.getElementById('searchInput').value);
+            } catch (error) {
+                showRerunMessage('Error: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        function showRerunMessage(message, type) {
+            const messageDiv = document.getElementById('rerunExtractionMessage');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = message;
+            messageDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function closeRerunExtractionModal() {
+            document.getElementById('rerunExtractionModal').style.display = 'none';
+            currentRerunDocumentId = null;
+            currentRerunDocumentType = null;
+            rerunSelectedFieldIds = [];
+        }
+
+        // Update Document Modal Functions
+        async function openUpdateDocumentModal(documentId) {
+            currentUpdateDocumentId = documentId;
+            const modal = document.getElementById('updateDocumentModal');
+            const messageDiv = document.getElementById('updateDocumentMessage');
+            const typeSelect = document.getElementById('updateTypeSelect');
+            
+            messageDiv.style.display = 'none';
+            modal.style.display = 'block';
+            
+            try {
+                // Load document to get current type
+                const response = await fetch(`${API_BASE}/${documentId}`);
+                if (!response.ok) {
+                    throw new Error('Failed to load document');
+                }
+                const document = await response.json();
+                
+                // Set current type in select
+                typeSelect.value = document.type || '';
+            } catch (error) {
+                showUpdateMessage('Error loading document: ' + error.message, 'error');
+            }
+        }
+
+        async function handleUpdateDocument() {
+            if (!currentUpdateDocumentId) {
+                showUpdateMessage('Document ID is missing', 'error');
+                return;
+            }
+            
+            const typeSelect = document.getElementById('updateTypeSelect');
+            const newType = typeSelect.value;
+            
+            if (!newType) {
+                showUpdateMessage('Select document type', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('updateDocumentBtn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Updating...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/${currentUpdateDocumentId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: newType
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorMessage = await parseErrorResponse(response);
+                    throw new Error(errorMessage);
+                }
+                
+                showUpdateMessage('Document updated successfully', 'success');
+                closeUpdateDocumentModal();
+                loadDocuments(currentPage, document.getElementById('searchInput').value);
+            } catch (error) {
+                showUpdateMessage('Error: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        function showUpdateMessage(message, type) {
+            const messageDiv = document.getElementById('updateDocumentMessage');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = message;
+            messageDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function closeUpdateDocumentModal() {
+            document.getElementById('updateDocumentModal').style.display = 'none';
+            currentUpdateDocumentId = null;
+        }
     </script>
 </body>
 </html>
