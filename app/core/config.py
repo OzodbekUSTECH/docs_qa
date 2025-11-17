@@ -20,7 +20,8 @@ class Settings(BaseSettings):
     DOCS_PASSWORD: str = "admin"
     
     OPENAI_API_KEY: str
-
+    GOOGLE_API_KEY: str
+    
     @property
     def database_url(self):
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"

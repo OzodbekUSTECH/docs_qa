@@ -11,6 +11,9 @@ from docling.pipeline.threaded_standard_pdf_pipeline import ThreadedStandardPdfP
 from openai import AsyncOpenAI
 from app.core.config import settings
 
+from google.genai import Client
+from google.genai.client import AsyncClient
+ 
 class UtilsProvider(Provider):
    
     scope = Scope.APP
@@ -18,9 +21,14 @@ class UtilsProvider(Provider):
     utils = provide_all(
     )
     
+    
+    @provide
+    def provide_google_genai_client(self) -> AsyncClient:
+        return Client(api_key=settings.GOOGLE_API_KEY).aio
+    
     @provide
     def provide_openai_client(self) -> AsyncOpenAI:
-        return AsyncOpenAI(api_key=settings.OPENAI_API_KEY)    
+        return AsyncOpenAI(api_key=settings.OPENAI_API_KEY)  
    
     @provide
     def provide_document_converter(self) -> DocumentConverter:
