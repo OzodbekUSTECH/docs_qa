@@ -21,7 +21,7 @@ logger = logging.getLogger("app.services.extract_field_values")
 class ExtractDocumentFieldValuesService:
     """Сервис для извлечения значений полей из документов через OpenAI Vision API и ручную экстракцию"""
     
-    VISION_MODEL = "gpt-4o-2024-08-06"  # Более быстрая модель с structured outputs
+    VISION_MODEL = "gpt-4.1"  # Более быстрая модель с structured outputs
     EMBEDDING_MODEL = "text-embedding-3-small"
     EMBEDDING_DIMENSIONS = 1024
     

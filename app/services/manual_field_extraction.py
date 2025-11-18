@@ -223,12 +223,36 @@ def extract_text_field(
         if not any(kw in upper_line for kw in kw_upper):
             continue
 
+        # 1) label: value / label - value
         m = re.search(r"[:\-]\s*(.+)$", line_stripped)
         if m:
             value = m.group(1).strip()
             if value:
                 return value
 
+        # 2) markdown tables
+        if "|" in line_stripped:
+            raw_cells = line_stripped.strip("|").split("|")
+            cells = [c.strip() for c in raw_cells]
+
+            header_idx = None
+            for idx, cell in enumerate(cells):
+                cell_upper = cell.upper().replace("**", "")
+                if any(kw in cell_upper for kw in kw_upper):
+                    header_idx = idx
+                    break
+
+            if header_idx is not None:
+                # simple heuristic: last non-empty cell that is not keyword
+                for candidate in reversed(cells):
+                    cleaned = candidate.replace("**", "").strip()
+                    if not cleaned:
+                        continue
+                    if any(kw in cleaned.upper() for kw in kw_upper):
+                        continue
+                    return cleaned or None
+
+        # 3) fallback: next non-empty line
         j = i + 1
         while j < len(lines):
             next_line = lines[j].strip()
