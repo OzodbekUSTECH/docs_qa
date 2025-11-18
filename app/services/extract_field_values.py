@@ -437,23 +437,21 @@ class ExtractDocumentFieldValuesService:
             await self.uow.commit()
             return
         
-        # Удаляем старые значения полей для указанных extraction_field_ids перед rerun extraction
-        # Это необходимо, так как есть уникальный индекс на (document_id, field_id)
+        # Удаляем ВСЕ старые значения полей перед повторной экстракцией
+        # Это необходимо, чтобы итоговый набор значений соответствовал выбранным полям
         from sqlalchemy import delete as sql_delete
         from app.entities.documents import DocumentFieldValue
         
         logger.info(
-            "ExtractDocumentFieldValuesService: deleting old field values for document_id=%d, field_ids=%s",
-            document_id,
-            extraction_field_ids
+            "ExtractDocumentFieldValuesService: deleting ALL existing field values for document_id=%d",
+            document_id
         )
         delete_stmt = sql_delete(DocumentFieldValue).where(
-            DocumentFieldValue.document_id == document_id,
-            DocumentFieldValue.field_id.in_(extraction_field_ids)
+            DocumentFieldValue.document_id == document_id
         )
         await self.document_field_values_repository.session.execute(delete_stmt)
         await self.uow.commit()
-        logger.info("ExtractDocumentFieldValuesService: deleted old field values")
+        logger.info("ExtractDocumentFieldValuesService: deleted all existing field values for document_id=%d", document_id)
         
         # Создаем словарь для быстрого поиска полей по ID
         fields_by_id = {field.id: field for field in extraction_fields}
