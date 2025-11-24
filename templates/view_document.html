@@ -263,6 +263,95 @@
       display: none;
     }
 
+    /* Confirmation buttons for selection editing */
+    .selection-confirm-buttons {
+      position: absolute;
+      top: -22px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 4px;
+      z-index: 100;
+      background: var(--card);
+      padding: 3px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      pointer-events: auto;
+    }
+
+    .selection-confirm-buttons button {
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      font-size: 12px;
+      border-radius: 3px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      pointer-events: auto;
+      position: relative;
+      z-index: 101;
+    }
+
+    .selection-confirm-buttons .btn-confirm {
+      background: var(--success);
+      color: white;
+    }
+
+    .selection-confirm-buttons .btn-confirm:hover {
+      background: #059669;
+      transform: scale(1.1);
+    }
+
+    .selection-confirm-buttons .btn-cancel {
+      background: var(--error);
+      color: white;
+    }
+
+    .selection-confirm-buttons .btn-cancel:hover {
+      background: #dc2626;
+      transform: scale(1.1);
+    }
+
+    .selection-confirm-buttons button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Processing overlay */
+    .selection-processing {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(15, 23, 42, 0.95);
+      color: var(--text);
+      padding: 12px 20px;
+      border-radius: 8px;
+      border: 2px solid var(--accent);
+      z-index: 11;
+      font-size: 13px;
+      white-space: nowrap;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
+
+    .selection-processing::after {
+      content: '...';
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+
+    @keyframes dots {
+      0%, 20% { content: '.'; }
+      40% { content: '..'; }
+      60%, 100% { content: '...'; }
+    }
+
     /* ПРАВАЯ ЧАСТЬ — поля */
     #fieldsPanel {
       flex: 1;
@@ -578,6 +667,9 @@
     let totalPages = 0;
     let scale = 1.3;
     let documentData = null;
+    let originalRegion = null; // Store original region coordinates for cancel
+    let confirmButtonsContainer = null; // Container for confirm/cancel buttons
+    let isProcessing = false; // Track if OCR is in progress
 
     // Normalize file URL (same as in index.html)
     function normalizeFileUrl(filePath) {
@@ -1513,6 +1605,17 @@
         box.classList.add("active", "editing");
         box.classList.remove("handles-hidden", "hidden");
         currentSelectionBox = box;
+        
+        // Store original region for cancel AFTER box is created and positioned
+        originalRegion = {
+          page: r.page,
+          x1: r.x1,
+          y1: r.y1,
+          x2: r.x2,
+          y2: r.y2
+        };
+        console.log("startSelectionForField: stored originalRegion", originalRegion);
+        
         updateOverlays(pageDiv, box);
       } else {
         createMode = true;
@@ -1530,7 +1633,7 @@
 
     function setupPageSelection(pageDiv) {
       pageDiv.addEventListener("mousedown", (e) => {
-        if (!selectionMode || !createMode) return;
+        if (!selectionMode || !createMode || isProcessing) return;
         if (activeFieldIndex === null) return;
         e.preventDefault();
         isDragging = true;
@@ -1592,7 +1695,7 @@
 
     // Drag/resize handlers
     window.addEventListener("mousemove", (e) => {
-      if (!isDragging || !selectionMode || !currentPageDiv || !currentSelectionBox) return;
+      if (!isDragging || !selectionMode || !currentPageDiv || !currentSelectionBox || isProcessing) return;
       const rect = currentPageDiv.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
@@ -1663,7 +1766,14 @@
       if (e.target.tagName === 'TEXTAREA' || e.target.closest('textarea')) {
         return;
       }
-      if (!isDragging || !selectionMode || !currentPageDiv || !currentSelectionBox) return;
+      // Don't process if clicking on confirm buttons or their children
+      if (e.target.closest('.selection-confirm-buttons') || 
+          e.target.classList.contains('btn-confirm') || 
+          e.target.classList.contains('btn-cancel') ||
+          e.target.tagName === 'BUTTON' && e.target.closest('.selection-confirm-buttons')) {
+        return;
+      }
+      if (!isDragging || !selectionMode || !currentPageDiv || !currentSelectionBox || isProcessing) return;
       isDragging = false;
       const rect = currentPageDiv.getBoundingClientRect();
       const boxRect = currentSelectionBox.getBoundingClientRect();
@@ -1680,6 +1790,44 @@
         return;
       }
 
+      // For edit mode (move/resize), show confirm buttons - don't extract yet
+      if (editMode && dragType !== "create") {
+        showConfirmButtons(currentSelectionBox);
+        return;
+      }
+
+      // For create mode, extract immediately
+      if (dragType === "create") {
+        await extractRegionAndUpdateField();
+      }
+    });
+
+    // Extract region and update field (called on confirm or create)
+    async function extractRegionAndUpdateField() {
+      console.log("extractRegionAndUpdateField called", {
+        hasPageDiv: !!currentPageDiv,
+        hasSelectionBox: !!currentSelectionBox,
+        activeFieldIndex,
+        isProcessing
+      });
+      
+      if (!currentPageDiv || !currentSelectionBox || activeFieldIndex === null || isProcessing) {
+        console.log("extractRegionAndUpdateField: early return");
+        return;
+      }
+
+      const rect = currentPageDiv.getBoundingClientRect();
+      const boxRect = currentSelectionBox.getBoundingClientRect();
+      const left = boxRect.left - rect.left;
+      const top = boxRect.top - rect.top;
+      const width = boxRect.width;
+      const height = boxRect.height;
+
+      if (width < 5 || height < 5) {
+        hideConfirmButtons();
+        return;
+      }
+
       const cw = currentPageCanvas.width;
       const ch = currentPageCanvas.height;
       const x1Norm = left / cw;
@@ -1687,11 +1835,25 @@
       const x2Norm = (left + width) / cw;
       const y2Norm = (top + height) / ch;
 
-      currentSelectionBox.classList.add("editing");
-
-      // Show processing message
       const fieldIndex = activeFieldIndex;
       const fld = fields[fieldIndex];
+
+      // Set processing state
+      isProcessing = true;
+      hideConfirmButtons();
+      showProcessingOverlay(currentSelectionBox);
+      
+      // Disable interactions
+      currentSelectionBox.style.pointerEvents = "none";
+      if (confirmButtonsContainer) {
+        const buttons = confirmButtonsContainer.querySelectorAll('button');
+        buttons.forEach(btn => btn.disabled = true);
+      }
+
+      // Show processing state in field
+      fld._processing = true;
+      fld.value = "processing...";
+      renderFields();
 
       try {
         // Extract selected region from canvas as image
@@ -1758,18 +1920,60 @@
           y2: y2Norm,
         };
 
+        // Clear processing state
+        fld._processing = false;
+        isProcessing = false;
+        hideProcessingOverlay();
+        if (currentSelectionBox) {
+          currentSelectionBox.style.pointerEvents = "auto";
+        }
+
         activeFieldIndex = null;
+        originalRegion = null;
         renderFields();
         resetSelectionState(false);
       } catch (err) {
         console.error("Error extracting text from region:", err);
         alert("Ошибка при извлечении текста: " + (err.message || "Неизвестная ошибка"));
+        
+        // Clear processing state
+        fld._processing = false;
+        fld.value = null;
+        isProcessing = false;
+        hideProcessingOverlay();
+        if (currentSelectionBox) {
+          currentSelectionBox.style.pointerEvents = "auto";
+        }
+        
         if (dragType === "create" && currentSelectionBox.parentNode) {
           currentSelectionBox.parentNode.removeChild(currentSelectionBox);
         }
         resetSelectionState(true);
       }
-    });
+    }
+
+    // Show processing overlay
+    function showProcessingOverlay(box) {
+      hideProcessingOverlay(); // Remove any existing overlay
+      
+      const overlay = document.createElement("div");
+      overlay.className = "selection-processing";
+      overlay.textContent = "Processing, wait for";
+      overlay.id = "processingOverlay";
+      
+      const boxParent = box.parentElement;
+      if (boxParent) {
+        boxParent.appendChild(overlay);
+      }
+    }
+
+    // Hide processing overlay
+    function hideProcessingOverlay() {
+      const overlay = document.getElementById("processingOverlay");
+      if (overlay && overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+      }
+    }
 
     function resetSelectionState(removeBox) {
       selectionMode = false;
@@ -1777,6 +1981,7 @@
       editMode = false;
       dragType = null;
       clearAllOverlays();
+      hideConfirmButtons();
       pdfViewerWrapper.classList.remove("global-dim");
       document.querySelectorAll(".selection-box").forEach((b) =>
         b.classList.remove("editing")
@@ -1785,7 +1990,121 @@
         currentSelectionBox.parentNode.removeChild(currentSelectionBox);
       }
       currentSelectionBox = null;
+      originalRegion = null;
       isDragging = false;
+    }
+
+    // Show confirm/cancel buttons for selection editing
+    function showConfirmButtons(box) {
+      hideConfirmButtons(); // Remove any existing buttons
+
+      const container = document.createElement("div");
+      container.className = "selection-confirm-buttons";
+      
+      const confirmBtn = document.createElement("button");
+      confirmBtn.className = "btn-confirm";
+      confirmBtn.innerHTML = "✓";
+      confirmBtn.title = "Сохранить и запустить OCR";
+      confirmBtn.type = "button";
+      confirmBtn.onmousedown = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      };
+      confirmBtn.onclick = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log("Confirm button clicked");
+        await extractRegionAndUpdateField();
+      };
+
+      const cancelBtn = document.createElement("button");
+      cancelBtn.className = "btn-cancel";
+      cancelBtn.innerHTML = "✕";
+      cancelBtn.title = "Отменить изменения";
+      cancelBtn.type = "button";
+      cancelBtn.onmousedown = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      };
+      cancelBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log("Cancel button clicked");
+        cancelSelectionEdit();
+      };
+
+      container.appendChild(confirmBtn);
+      container.appendChild(cancelBtn);
+      
+      // Position relative to the selection box - attach directly to the box
+      box.appendChild(container);
+      confirmButtonsContainer = container;
+    }
+
+    // Hide confirmation buttons
+    function hideConfirmButtons() {
+      if (confirmButtonsContainer && confirmButtonsContainer.parentNode) {
+        confirmButtonsContainer.parentNode.removeChild(confirmButtonsContainer);
+      }
+      confirmButtonsContainer = null;
+    }
+
+    // Cancel selection editing - restore original region
+    function cancelSelectionEdit() {
+      console.log("cancelSelectionEdit called", {
+        hasOriginalRegion: !!originalRegion,
+        hasSelectionBox: !!currentSelectionBox,
+        activeFieldIndex,
+        isProcessing
+      });
+      
+      if (!originalRegion || !currentSelectionBox || activeFieldIndex === null || isProcessing) {
+        console.log("cancelSelectionEdit: early return");
+        return;
+      }
+
+      const field = fields[activeFieldIndex];
+      const pageDiv = currentPageDiv;
+      const canvas = currentPageCanvas;
+      
+      if (!pageDiv || !canvas) {
+        console.log("cancelSelectionEdit: no pageDiv or canvas");
+        return;
+      }
+
+      // Restore original coordinates
+      const r = originalRegion;
+      const left = r.x1 * canvas.width;
+      const top = r.y1 * canvas.height;
+      const width = (r.x2 - r.x1) * canvas.width;
+      const height = (r.y2 - r.y1) * canvas.height;
+
+      console.log("cancelSelectionEdit: restoring", { left, top, width, height, originalRegion: r });
+
+      // Update box position and size
+      currentSelectionBox.style.left = left + "px";
+      currentSelectionBox.style.top = top + "px";
+      currentSelectionBox.style.width = width + "px";
+      currentSelectionBox.style.height = height + "px";
+
+      // Restore field region
+      field.region = {
+        page: r.page,
+        x1: r.x1,
+        y1: r.y1,
+        x2: r.x2,
+        y2: r.y2
+      };
+
+      // Update overlays and hide buttons
+      updateOverlays(pageDiv, currentSelectionBox);
+      hideConfirmButtons();
+      
+      // Force re-render to update display
+      renderFields();
+      
+      console.log("cancelSelectionEdit: completed, region restored");
+      // Keep originalRegion for potential future cancels
     }
 
     function attachBoxInteractions(box) {
@@ -1826,7 +2145,7 @@
       });
 
       box.addEventListener("mousedown", (e) => {
-        if (!selectionMode || !editMode) return;
+        if (!selectionMode || !editMode || isProcessing) return;
         if (Object.values(handles).includes(e.target)) return;
         if (activeFieldIndex !== fieldIndex) return;
         e.stopPropagation();
@@ -1844,13 +2163,14 @@
         currentPageCanvas = currentPageDiv.querySelector("canvas");
         currentPageIndex = pageIndex;
         clearAllOverlays();
+        hideConfirmButtons(); // Hide buttons when starting to drag
         updateOverlays(currentPageDiv, currentSelectionBox);
       });
 
       Object.entries(handles).forEach(([type, handle]) => {
         if (!handle) return;
         handle.addEventListener("mousedown", (e) => {
-          if (!selectionMode || !editMode) return;
+          if (!selectionMode || !editMode || isProcessing) return;
           if (activeFieldIndex !== fieldIndex) return;
           e.stopPropagation();
           isDragging = true;
@@ -1867,6 +2187,7 @@
           currentPageCanvas = currentPageDiv.querySelector("canvas");
           currentPageIndex = pageIndex;
           clearAllOverlays();
+          hideConfirmButtons(); // Hide buttons when starting to resize
           updateOverlays(currentPageDiv, currentSelectionBox);
         });
       });
