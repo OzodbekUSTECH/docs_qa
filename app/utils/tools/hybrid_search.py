@@ -11,7 +11,8 @@ from app.utils.enums import DocumentType
 logger = logging.getLogger("app.tools.hybrid_search")
 
 
-@function_tool
+# @function_tool
+
 async def hybrid_search(
     query: str,
     document_ids: list[int] | None = None,

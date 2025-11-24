@@ -1,5 +1,6 @@
 from dishka import Provider, Scope, provide_all
 from app.repositories.documents import DocumentsRepository, DocumentFieldValuesRepository
+from app.repositories.chat import ChatRepository
 from app.repositories.extraction_fields import ExtractionFieldsRepository
 from app.repositories.uow import UnitOfWork
 
@@ -12,4 +13,5 @@ class RepositoriesProvider(Provider):
         DocumentsRepository,
         ExtractionFieldsRepository,
         DocumentFieldValuesRepository,
+        ChatRepository,
     )

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from dishka.integrations.fastapi import DishkaRoute
 from fastapi import APIRouter, status, UploadFile, File, HTTPException, Form, Query
 from fastapi.responses import StreamingResponse
@@ -35,6 +35,9 @@ async def upload_file(
     file_upload_interactor: FromDishka[GeminiFileUploadInteractor],
     file: UploadFile = File(...),
     display_name: str = Form(None),
+    chunking_mode: str = Form("auto", description="auto or custom"),
+    max_tokens_per_chunk: Optional[int] = Form(None),
+    max_overlap_tokens: Optional[int] = Form(None),
 ):
     """
     Upload a file to Gemini File Search store.
@@ -46,11 +49,42 @@ async def upload_file(
         tmp_file.write(content)
         tmp_path = tmp_file.name
     
+    # Build chunking configuration if requested
+    chunking_config = None
+    chunking_mode = (chunking_mode or "auto").lower()
+    if chunking_mode not in {"auto", "custom"}:
+        raise HTTPException(status_code=400, detail="chunking_mode must be 'auto' or 'custom'")
+    
+    if chunking_mode == "custom":
+        if max_tokens_per_chunk is None or max_tokens_per_chunk <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="max_tokens_per_chunk must be a positive integer when chunking_mode='custom'",
+            )
+        if max_overlap_tokens is not None and max_overlap_tokens < 0:
+            raise HTTPException(
+                status_code=400,
+                detail="max_overlap_tokens must be zero or positive when chunking_mode='custom'",
+            )
+        if max_overlap_tokens is not None and max_overlap_tokens >= max_tokens_per_chunk:
+            raise HTTPException(
+                status_code=400,
+                detail="max_overlap_tokens must be smaller than max_tokens_per_chunk",
+            )
+        
+        chunking_config = {
+            "white_space_config": {
+                "max_tokens_per_chunk": max_tokens_per_chunk,
+                "max_overlap_tokens": max_overlap_tokens or 0,
+            }
+        }
+    
     try:
         # Upload to File Search store
         file_name = await file_upload_interactor.upload_to_file_search_store(
             file_path=tmp_path,
             display_name=display_name or file.filename,
+            chunking_config=chunking_config,
         )
         return {
             "message": "File uploaded successfully",

@@ -1,2666 +1,1299 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Documents Chat</title>
+    <title>Gemini Docs Chat</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         :root {
-            color-scheme: light dark;
-            --bg: #0f172a;
-            --card: #1e293b;
-            --accent: #38bdf8;
-            --accent-muted: rgba(56, 189, 248, 0.15);
-            --text: #e2e8f0;
-            --subtle: #94a3b8;
-            --border: rgba(148, 163, 184, 0.2);
-            --success: #10b981;
-            --warning: #f59e0b;
-            --error: #ef4444;
-            font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            --bg-color: #0f1115;
+            --sidebar-bg: #161b22;
+            --card-bg: #1e232b;
+            --border-color: #2d3540;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent-color: #4493f8;
+            --accent-hover: #3182ce;
+            --success-color: #238636;
+            --warning-color: #d29922;
+            --error-color: #f85149;
+            --font-main: 'Outfit', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
         }
 
         * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            margin: 0;
-            min-height: 100vh;
-            background: var(--bg);
-            color: var(--text);
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            height: 100vh;
             display: flex;
-            flex-direction: column;
+            overflow: hidden;
         }
 
+        /* Layout */
+        .sidebar {
+            width: 280px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Header */
         .header {
-            background: var(--card);
-            border-bottom: 1px solid var(--border);
-            padding: 20px 24px;
+            padding: 20px 30px;
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-shrink: 0;
+            background: rgba(15, 17, 21, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 10;
         }
 
         .header h1 {
-            margin: 0;
-            font-size: 1.5rem;
-            letter-spacing: 0.03em;
-        }
-
-        .header-info {
+            font-size: 1.2rem;
+            font-weight: 600;
             display: flex;
-            gap: 16px;
             align-items: center;
+            gap: 10px;
         }
 
-        .nav-button {
-            padding: 8px 16px;
-            background: rgba(56, 189, 248, 0.15);
-            border: 1px solid rgba(56, 189, 248, 0.3);
-            border-radius: 8px;
-            color: var(--accent);
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
+        .model-badge {
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            background: rgba(68, 147, 248, 0.15);
+            color: var(--accent-color);
+            border-radius: 12px;
+            border: 1px solid rgba(68, 147, 248, 0.3);
         }
 
-        .nav-button:hover {
-            background: rgba(56, 189, 248, 0.25);
-            border-color: var(--accent);
-            transform: translateY(-1px);
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 12px;
-            border-radius: 999px;
-            font-size: 0.85rem;
-            background: rgba(56, 189, 248, 0.12);
-            color: var(--accent);
-        }
-
-        .status-badge.active {
-            background: rgba(16, 185, 129, 0.15);
-            color: var(--success);
-        }
-
-        .status-badge.error {
-            background: rgba(239, 68, 68, 0.15);
-            color: var(--error);
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: currentColor;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .container {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(300px, 0.4fr);
-            gap: 24px;
-            padding: 24px;
-            flex: 1;
-            overflow: hidden;
-        }
-
-        .chat-panel {
-            display: flex;
-            flex-direction: column;
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.35);
-        }
-
-        .chat-messages {
+        /* Chat List */
+        .chat-list {
             flex: 1;
             overflow-y: auto;
-            padding: 24px;
+        }
+
+        .chat-item {
+            padding: 12px 16px;
+            background: var(--card-bg);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .chat-item:hover {
+            background: rgba(68, 147, 248, 0.1);
+        }
+
+        .chat-item.active {
+            background: rgba(68, 147, 248, 0.2);
+            border: 1px solid rgba(68, 147, 248, 0.4);
+        }
+
+        .new-chat-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .new-chat-btn:hover {
+            background: var(--accent-hover);
+        }
+
+        /* Chat List */
+        .new-chat-btn {
+            width: 100%;
+            padding: 10px;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .new-chat-btn:hover {
+            background: var(--accent-hover);
+        }
+
+        .chat-list {
+            flex: 1;
+            overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 8px;
+        }
+
+        .chat-item {
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: background 0.2s, color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.9rem;
+        }
+
+        .chat-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+        }
+
+        .chat-item.active {
+            background: rgba(68, 147, 248, 0.1);
+            color: var(--accent-color);
+        }
+
+        .chat-item-title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+        }
+
+        .delete-chat-btn {
+            opacity: 0;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: opacity 0.2s, color 0.2s;
+        }
+
+        .chat-item:hover .delete-chat-btn {
+            opacity: 1;
+        }
+
+        .delete-chat-btn:hover {
+            color: var(--error-color);
+            background: rgba(248, 81, 73, 0.1);
+        }
+
+        /* Chat Area */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            scroll-behavior: smooth;
         }
 
         .message {
             display: flex;
-            flex-direction: column;
-            gap: 8px;
-            animation: slideIn 0.3s ease-out;
+            gap: 16px;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+            animation: fadeIn 0.3s ease-out;
         }
 
-        @keyframes slideIn {
+        @keyframes fadeIn {
             from {
                 opacity: 0;
                 transform: translateY(10px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
             }
         }
 
-        .message-header {
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
-            gap: 12px;
-            font-size: 0.85rem;
-            color: var(--subtle);
-        }
-
-        .message-role {
+            justify-content: center;
+            flex-shrink: 0;
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
         }
 
-        .message-role.user {
-            color: var(--accent);
+        .avatar.user {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
         }
 
-        .message-role.assistant {
-            color: var(--success);
-        }
-
-        .message-time {
-            font-size: 0.75rem;
+        .avatar.ai {
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+            color: white;
         }
 
         .message-content {
-            background: rgba(15, 23, 42, 0.65);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 16px;
-            line-height: 1.6;
-            word-wrap: break-word;
+            flex: 1;
+            min-width: 0;
         }
 
-        .message-content.assistant h1,
-        .message-content.assistant h2,
-        .message-content.assistant h3 {
-            margin: 16px 0 8px 0;
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .sender-name {
             font-weight: 600;
+            font-size: 0.95rem;
         }
 
-        .message-content.assistant h1 {
-            font-size: 1.5rem;
-            border-bottom: 2px solid var(--border);
-            padding-bottom: 8px;
+        .timestamp {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
         }
 
-        .message-content.assistant h2 {
-            font-size: 1.3rem;
+        .text-content {
+            line-height: 1.6;
+            font-size: 1rem;
+            color: #d1d5db;
         }
 
-        .message-content.assistant h3 {
-            font-size: 1.1rem;
+        .text-content p {
+            margin-bottom: 1em;
         }
 
-        .message-content.assistant p {
-            margin: 8px 0;
+        .text-content p:last-child {
+            margin-bottom: 0;
         }
 
-        .message-content.assistant ul,
-        .message-content.assistant ol {
-            margin: 8px 0;
-            padding-left: 24px;
-        }
-
-        .message-content.assistant li {
-            margin: 4px 0;
-        }
-
-        .message-content.assistant code {
-            background: rgba(56, 189, 248, 0.2);
+        .text-content code {
+            background: rgba(255, 255, 255, 0.1);
             padding: 2px 6px;
             border-radius: 4px;
-            font-family: 'Courier New', monospace;
+            font-family: var(--font-mono);
             font-size: 0.9em;
         }
 
-        .message-content.assistant pre {
-            background: rgba(15, 23, 42, 0.7);
-            padding: 12px;
-            border-radius: 6px;
+        .text-content pre {
+            background: #111;
+            padding: 16px;
+            border-radius: 8px;
             overflow-x: auto;
-            margin: 8px 0;
-            border: 1px solid var(--border);
+            margin: 1em 0;
+            border: 1px solid var(--border-color);
         }
 
-        .message-content.assistant pre code {
-            background: transparent;
+        /* Thinking Process */
+        .thinking-process {
+            margin-bottom: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: rgba(30, 35, 43, 0.5);
+            overflow: hidden;
+        }
+
+        .thinking-header {
+            padding: 10px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        .thinking-header:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .thinking-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .thinking-title i {
+            width: 16px;
+            height: 16px;
+        }
+
+        .thinking-body {
             padding: 0;
+            display: none;
+            border-top: 1px solid var(--border-color);
         }
 
-        .message-content.assistant strong {
-            font-weight: 600;
-            color: var(--accent);
+        .thinking-process.expanded .thinking-body {
+            display: block;
+            padding: 16px;
         }
 
-        .message-content.assistant em {
+        .step-item {
+            margin-bottom: 16px;
+            padding-left: 16px;
+            border-left: 2px solid var(--border-color);
+            position: relative;
+        }
+
+        .step-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .step-item::before {
+            content: '';
+            position: absolute;
+            left: -5px;
+            top: 6px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--border-color);
+        }
+
+        .step-item.active::before {
+            background: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(68, 147, 248, 0.2);
+        }
+
+        .step-thought {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            margin-bottom: 8px;
             font-style: italic;
         }
 
-        /* Table styles for marked.js output */
-        .message-content.assistant .table-wrapper {
-            overflow-x: auto;
-            margin: 16px 0;
+        .tool-call {
+            background: rgba(0, 0, 0, 0.2);
             border-radius: 8px;
-        }
-
-        .message-content.assistant table {
-            width: 100%;
-            min-width: 500px;
-            border-collapse: collapse;
-            background: rgba(15, 23, 42, 0.5);
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid var(--border);
-        }
-
-        .message-content.assistant table thead {
-            background: rgba(56, 189, 248, 0.15);
-        }
-
-        .message-content.assistant table th {
-            font-weight: 600;
-            padding: 10px 12px;
-            border: 1px solid var(--border);
-            text-align: left;
-            color: var(--text);
-        }
-
-        .message-content.assistant table td {
-            padding: 10px 12px;
-            border: 1px solid var(--border);
-            color: var(--text);
-        }
-
-        .message-content.assistant table tr:hover {
-            background: rgba(56, 189, 248, 0.05);
-        }
-
-        .message-content.assistant table tr:last-child td {
-            border-bottom: none;
-        }
-
-        .message-content.user {
-            background: rgba(56, 189, 248, 0.1);
-            border-color: rgba(56, 189, 248, 0.3);
-        }
-
-        .message-content.assistant {
-            background: rgba(16, 185, 129, 0.1);
-            border-color: rgba(16, 185, 129, 0.3);
-        }
-
-        .thinking-process {
-            margin-top: 12px;
-            border-top: 1px solid var(--border);
-            padding-top: 12px;
-        }
-
-        .thinking-process.collapsed {
-            display: none;
-        }
-
-        .thinking-toggle {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            padding: 8px 12px;
-            background: rgba(15, 23, 42, 0.25);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            color: var(--subtle);
-            transition: all 0.2s ease;
-        }
-
-        .thinking-toggle:hover {
-            background: rgba(15, 23, 42, 0.4);
-            border-color: var(--accent);
-            color: var(--accent);
-        }
-
-        .thinking-toggle.expanded {
-            background: rgba(56, 189, 248, 0.12);
-            border-color: rgba(56, 189, 248, 0.35);
-            color: var(--accent);
-        }
-
-        .thinking-toggle-left {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .thinking-toggle-text {
+            padding: 10px;
+            margin-top: 8px;
+            font-family: var(--font-mono);
             font-size: 0.8rem;
+        }
+
+        .tool-name {
+            color: var(--accent-color);
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .thinking-toggle-icon {
-            transition: transform 0.2s ease;
-            font-size: 0.75rem;
-        }
-
-        .thinking-toggle.expanded .thinking-toggle-icon {
-            transform: rotate(90deg);
-        }
-
-        .thinking-count {
-            font-size: 0.7rem;
-            padding: 2px 8px;
-            border-radius: 999px;
-            background: rgba(56, 189, 248, 0.15);
-            color: var(--accent);
-        }
-
-        .thinking-toggle-hint {
-            font-size: 0.7rem;
-            color: var(--subtle);
-        }
-
-        .thinking-toggle.expanded .thinking-toggle-hint {
-            color: var(--accent);
-        }
-
-        .thinking-content {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-top: 10px;
-        }
-
-        .thinking-item {
-            background: rgba(15, 23, 42, 0.28);
-            border: 1px solid rgba(56, 189, 248, 0.15);
-            border-radius: 12px;
-            padding: 12px 14px;
-            font-size: 0.85rem;
-            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
-        }
-
-        .thinking-item-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .thinking-item-title {
+            margin-bottom: 4px;
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-weight: 600;
-            font-size: 0.82rem;
-            color: var(--text);
-        }
-
-        .thinking-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 3px 8px;
-            border-radius: 999px;
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            background: rgba(56, 189, 248, 0.15);
-            color: var(--accent);
-        }
-
-        .thinking-tag.tool-call {
-            background: rgba(56, 189, 248, 0.2);
-            color: var(--accent);
-        }
-
-        .thinking-tag.tool-result {
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--success);
-        }
-
-        .thinking-tag.reasoning {
-            background: rgba(168, 85, 247, 0.2);
-            color: #c084fc;
-        }
-
-        .thinking-index {
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 6px;
-            background: rgba(148, 163, 184, 0.2);
-            color: var(--subtle);
-        }
-
-        .thinking-meta {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.7rem;
-            color: var(--subtle);
-        }
-
-        .thinking-meta-tag {
-            padding: 2px 6px;
-            border-radius: 6px;
-            background: rgba(148, 163, 184, 0.18);
-        }
-
-        .thinking-item-content {
-            margin-top: 10px;
-            color: var(--text);
-            word-wrap: break-word;
-        }
-
-        .thinking-item-body {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .thinking-row {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-        }
-
-        .thinking-label {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--subtle);
-            width: 120px;
-            flex-shrink: 0;
-        }
-
-        .thinking-value {
-            flex: 1;
-            font-size: 0.85rem;
-            color: var(--text);
-        }
-
-        .thinking-preview {
-            flex: 1;
-            font-size: 0.83rem;
-            color: var(--text);
-            opacity: 0.9;
-        }
-
-        .thinking-json {
-            padding: 12px;
-            background: rgba(15, 23, 42, 0.55);
-            border: 1px solid rgba(56, 189, 248, 0.2);
-            border-radius: 10px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.75rem;
-            overflow-x: auto;
-            white-space: pre;
-        }
-
-        .thinking-collapsible {
-            display: flex;
-            flex-direction: column;
             gap: 6px;
         }
 
-        .tool-result-toggle,
-        .doc-toggle,
-        .tool-args-toggle {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 10px;
-            background: rgba(15, 23, 42, 0.35);
-            border: 1px solid rgba(56, 189, 248, 0.2);
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            color: var(--subtle);
-            font-size: 0.78rem;
-        }
-
-        .tool-result-toggle:hover,
-        .doc-toggle:hover,
-        .tool-args-toggle:hover {
-            background: rgba(56, 189, 248, 0.12);
-            border-color: var(--accent);
-            color: var(--accent);
-        }
-
-        .tool-result-toggle.expanded,
-        .doc-toggle.expanded,
-        .tool-args-toggle.expanded {
-            background: rgba(56, 189, 248, 0.18);
-            border-color: rgba(56, 189, 248, 0.35);
-            color: var(--accent);
-        }
-
-        .tool-result-icon,
-        .doc-toggle-icon,
-        .tool-args-icon {
-            font-size: 0.75rem;
-            transition: transform 0.2s ease;
-        }
-
-        .tool-result-toggle.expanded .tool-result-icon,
-        .doc-toggle.expanded .doc-toggle-icon,
-        .tool-args-toggle.expanded .tool-args-icon {
-            transform: rotate(90deg);
-        }
-
-        .tool-result-hint {
-            margin-left: auto;
-            font-size: 0.7rem;
-            color: var(--subtle);
-        }
-
-        .tool-result-toggle.expanded .tool-result-hint {
-            color: var(--accent);
-        }
-
-        .tool-result-content,
-        .doc-fields-content,
-        .tool-args-content {
-            margin-top: 10px;
-            display: none;
-            border: 1px solid rgba(56, 189, 248, 0.15);
-            background: rgba(15, 23, 42, 0.28);
-            border-radius: 12px;
-            padding: 12px;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .thinking-tool-result {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .tool-result-title {
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-        }
-
-        .tool-result-meta {
-            font-size: 0.7rem;
-            color: var(--subtle);
-        }
-
-        .tool-document-card {
-            border: 1px solid rgba(56, 189, 248, 0.15);
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 12px;
-            background: rgba(15, 23, 42, 0.25);
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .doc-meta {
-            font-size: 0.7rem;
-            color: var(--subtle);
-            margin-left: auto;
-        }
-
-        .doc-title {
-            font-weight: 600;
-            font-size: 0.82rem;
-            color: var(--accent);
-        }
-
-        .matched-fields {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .matched-field {
-            border-left: 3px solid var(--success);
-            padding-left: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .matched-field-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.82rem;
-            color: var(--success);
-            font-weight: 600;
-        }
-
-        .matched-field-score {
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 6px;
-            background: rgba(56, 189, 248, 0.2);
-            color: var(--accent);
-        }
-
-        .matched-field-value {
-            font-size: 0.8rem;
-            color: var(--text);
-            line-height: 1.5;
+        .tool-args {
+            color: var(--text-secondary);
             white-space: pre-wrap;
         }
 
-        .matched-field-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            font-size: 0.7rem;
-            color: var(--subtle);
-        }
-
-        .matched-field-meta span {
-            padding: 2px 6px;
-            border-radius: 6px;
-            background: rgba(148, 163, 184, 0.18);
-        }
-
-        .other-fields-section {
-            margin-top: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .other-fields-title {
-            font-size: 0.72rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--subtle);
-        }
-
-        .other-fields-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-
-        .other-field-chip {
-            padding: 4px 8px;
-            border-radius: 8px;
-            background: rgba(148, 163, 184, 0.18);
-            font-size: 0.7rem;
-            color: var(--subtle);
-        }
-
-        .other-field-chip span {
-            display: block;
-            font-size: 0.65rem;
-            color: rgba(226, 232, 240, 0.7);
-        }
-
-        .chat-input-area {
-            border-top: 1px solid var(--border);
-            padding: 20px 24px;
-            background: rgba(15, 23, 42, 0.3);
-        }
-
-        .input-form {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .input-row {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 12px;
-            align-items: end;
-        }
-
-        .input-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .input-group label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--subtle);
-        }
-
-        .input-group input,
-        .input-group textarea,
-        .input-group select {
-            background: rgba(15, 23, 42, 0.65);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 12px 14px;
-            color: var(--text);
-            font-size: 0.96rem;
-            font-family: inherit;
-            resize: vertical;
-        }
-
-        .input-group select[multiple] {
+        .tool-result {
+            margin-top: 8px;
             padding: 8px;
+            background: rgba(35, 134, 54, 0.1);
+            border: 1px solid rgba(35, 134, 54, 0.2);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: #a3d9a5;
+            max-height: 150px;
             overflow-y: auto;
         }
 
-        .input-group select[multiple] option {
-            padding: 8px 12px;
-            margin: 2px 0;
-            border-radius: 6px;
-            background: rgba(15, 23, 42, 0.8);
+        /* Input Area */
+        .input-area {
+            padding: 24px 30px;
+            background: var(--bg-color);
+            border-top: 1px solid var(--border-color);
         }
 
-        .input-group select[multiple] option:checked {
-            background: rgba(56, 189, 248, 0.3);
-            color: var(--accent);
+        .input-container {
+            max-width: 900px;
+            margin: 0 auto;
+            position: relative;
         }
 
-        .input-group small {
-            display: block;
-        }
-
-        .input-group textarea {
-            min-height: 80px;
-        }
-
-        .input-group input:focus,
-        .input-group textarea:focus,
-        .input-group select:focus {
+        .chat-input {
+            width: 100%;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 16px 50px 16px 20px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 1rem;
+            resize: none;
+            min-height: 60px;
+            max-height: 200px;
             outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
 
-        .input-options {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
+        .chat-input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(68, 147, 248, 0.15);
         }
 
-        button {
+        .send-btn {
+            position: absolute;
+            right: 12px;
+            bottom: 12px;
+            background: var(--accent-color);
+            color: white;
             border: none;
             border-radius: 10px;
-            padding: 12px 24px;
-            font-size: 1rem;
-            font-weight: 600;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            transition: all 0.2s ease;
-            font-family: inherit;
+            transition: background 0.2s;
         }
 
-        button.primary {
-            background: linear-gradient(135deg, var(--accent), #6366f1);
-            color: #0f172a;
-            box-shadow: 0 12px 20px rgba(56, 189, 248, 0.25);
+        .send-btn:hover {
+            background: var(--accent-hover);
         }
 
-        button.primary:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 16px 28px rgba(56, 189, 248, 0.35);
-        }
-
-        button:disabled {
-            opacity: 0.6;
+        .send-btn:disabled {
+            background: var(--border-color);
             cursor: not-allowed;
-        }
-
-        .sidebar {
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-        }
-
-        .sessions-panel {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.35);
-            display: flex;
-            flex-direction: column;
-            max-height: 100%;
-        }
-
-        .sessions-panel header {
-            padding: 20px 24px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .new-chat-btn {
-            padding: 6px 12px;
-            background: rgba(56, 189, 248, 0.15);
-            border: 1px solid rgba(56, 189, 248, 0.3);
-            border-radius: 6px;
-            color: var(--accent);
-            cursor: pointer;
-            font-size: 0.85rem;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-
-        .new-chat-btn:hover {
-            background: rgba(56, 189, 248, 0.25);
-            border-color: var(--accent);
-        }
-
-        .sessions-panel h2 {
-            margin: 0;
-            font-size: 1.1rem;
-        }
-
-        .sessions-panel p {
-            margin: 6px 0 0;
-            color: var(--subtle);
-            font-size: 0.85rem;
-        }
-
-        .session-list {
-            padding: 16px;
-            overflow-y: auto;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .session-card {
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            padding: 14px 16px;
-            background: rgba(15, 23, 42, 0.45);
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .session-card:hover {
-            border-color: var(--accent-muted);
-            background: rgba(15, 23, 42, 0.65);
-        }
-
-        .session-card.active {
-            border-color: var(--accent);
-            background: rgba(56, 189, 248, 0.1);
-        }
-
-        .session-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .session-card-id {
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: var(--text);
-            cursor: pointer;
-            flex: 1;
-        }
-
-        .session-card-id:hover {
-            color: var(--accent);
-        }
-
-        .session-card-actions {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .session-delete-btn {
-            background: rgba(239, 68, 68, 0.15);
-            color: var(--error);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-radius: 6px;
-            padding: 4px 8px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
             opacity: 0.7;
         }
 
-        .session-delete-btn:hover {
-            background: rgba(239, 68, 68, 0.25);
-            border-color: var(--error);
-            opacity: 1;
-            transform: scale(1.1);
-        }
-
-        .session-card-time {
-            font-size: 0.75rem;
-            color: var(--subtle);
-            margin-top: 8px;
-        }
-
-        .session-card-info {
+        /* Navigation Buttons */
+        .nav-btn {
+            padding: 8px 16px;
+            background: rgba(68, 147, 248, 0.15);
+            border: 1px solid rgba(68, 147, 248, 0.3);
+            color: var(--accent-color);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
             display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .session-badge {
-            display: inline-flex;
             align-items: center;
             gap: 6px;
-            background: rgba(56, 189, 248, 0.12);
-            border-radius: 999px;
-            padding: 4px 10px;
-            font-size: 0.75rem;
-            color: var(--accent);
+            text-decoration: none;
         }
 
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: var(--subtle);
+        .nav-btn:hover {
+            background: rgba(68, 147, 248, 0.25);
+            border-color: var(--accent-color);
+            transform: translateY(-1px);
         }
 
-        .empty-state-icon {
-            font-size: 3rem;
-            margin-bottom: 12px;
+        .nav-btn i {
+            width: 16px;
+            height: 16px;
         }
 
-        @media (max-width: 1024px) {
-            .container {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .typing-indicator {
+        /* Citation Badges */
+        .citation-badge {
             display: inline-flex;
-            gap: 4px;
             align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            background: rgba(68, 147, 248, 0.15);
+            border: 1px solid rgba(68, 147, 248, 0.3);
+            border-radius: 12px;
+            color: var(--accent-color);
+            text-decoration: none;
+            font-size: 0.85em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
         }
 
-        .typing-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--accent);
-            animation: typing 1.4s infinite;
+        .citation-badge:hover {
+            background: rgba(68, 147, 248, 0.25);
+            border-color: var(--accent-color);
+            transform: translateY(-1px);
         }
 
-        .typing-dot:nth-child(2) {
-            animation-delay: 0.2s;
+        .citation-badge i {
+            width: 12px;
+            height: 12px;
         }
 
-        .typing-dot:nth-child(3) {
-            animation-delay: 0.4s;
+        /* Document Viewer Sidebar */
+        .document-viewer-sidebar {
+            position: fixed;
+            top: 0;
+            right: -600px;
+            width: 600px;
+            height: 100vh;
+            background: var(--card-bg);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            transition: right 0.3s ease;
+            z-index: 1000;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
         }
 
-        @keyframes typing {
-            0%, 60%, 100% {
-                transform: translateY(0);
-                opacity: 0.7;
-            }
-            30% {
-                transform: translateY(-10px);
-                opacity: 1;
-            }
+        .document-viewer-sidebar.open {
+            right: 0;
+        }
+
+        .viewer-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--sidebar-bg);
+        }
+
+        .viewer-header h3 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .close-viewer-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .close-viewer-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+        }
+
+        .pdf-toolbar {
+            padding: 12px 16px;
+            background: var(--sidebar-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .pdf-toolbar button {
+            padding: 6px 12px;
+            background: rgba(68, 147, 248, 0.15);
+            border: 1px solid var(--border-color);
+            color: var(--accent-color);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pdf-toolbar button:hover {
+            background: rgba(68, 147, 248, 0.25);
+        }
+
+        .pdf-viewer-container {
+            flex: 1;
+            overflow: auto;
+            background: #1a1f2e;
+            padding: 16px;
+        }
+
+        .pdf-page {
+            margin: 0 auto 16px;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .highlight-box {
+            position: absolute;
+            background: rgba(255, 235, 59, 0.3);
+            border: 2px solid rgba(255, 193, 7, 0.8);
+            pointer-events: none;
+            z-index: 10;
         }
     </style>
 </head>
+
 <body>
-    <div class="header">
-        <div style="display: flex; align-items: center; gap: 16px;">
-            <h1>Documents Chat</h1>
-            <a href="/" class="nav-button">📄 Documents</a>
-            <a href="/extraction-fields" class="nav-button">🔍 Extraction Fields</a>
-        </div>
-        <div class="header-info">
-            <div class="status-badge" id="status-badge">
-                <span class="status-dot"></span>
-                <span id="status-text">Ready</span>
+    <div class="sidebar">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+            <div
+                style="width: 32px; height: 32px; background: var(--accent-color); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                <i data-lucide="bot" color="white" size="20"></i>
             </div>
-            <div class="status-badge" id="session-badge" style="display: none;">
-                <span id="session-text">Session: —</span>
+            <span style="font-weight: 600; font-size: 1.1rem;">Docs QA</span>
+        </div>
+
+        <button class="new-chat-btn" onclick="createNewSession()">
+            <i data-lucide="plus" size="16"></i>
+            New Chat
+        </button>
+
+        <div class="chat-list" id="chatList">
+            <!-- Chat items will be loaded here -->
+        </div>
+
+        <div style="padding-top: 20px; border-top: 1px solid var(--border-color);">
+            <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                Powered by Gemini 2.0 Flash
             </div>
         </div>
     </div>
 
-    <div class="container">
-        <div class="chat-panel">
-            <div class="chat-messages" id="chat-messages"></div>
-            <div class="chat-input-area">
-                <form class="input-form" id="chat-form">
-                    <div class="input-group">
-                        <label for="prompt">Your Question</label>
-                        <textarea id="prompt" name="prompt" placeholder="Ask a question about your documents..." required></textarea>
-                    </div>
-                    <div class="input-options">
-                        <div class="input-group">
-                            <label for="document-ids">Documents</label>
-                            <select id="document-ids" multiple style="min-height: 120px;">
-                                <option value="" disabled>Loading documents...</option>
-                            </select>
-                            <small style="color: var(--subtle); font-size: 0.75rem; margin-top: 4px;">
-                                Select documents (Ctrl+Click for multiple selection)
-                            </small>
-                        </div>
-                        <div class="input-group">
-                            <label for="model">Model</label>
-                            <select id="model">
-                                <option value="gpt-4o" selected>gpt-4o</option>
-                                <option value="gpt-4o-mini">gpt-4o-mini</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="input-row">
-                        <div></div>
-                        <button id="submit" type="submit" class="primary">Send</button>
-                    </div>
-                </form>
+    <div class="main-content">
+        <div class="header">
+            <h1>
+                Document Assistant
+                <span class="model-badge">Gemini Agent</span>
+            </h1>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <a href="/" class="nav-btn">
+                    <i data-lucide="file-text"></i>
+                    Documents
+                </a>
+                <a href="/extraction-fields" class="nav-btn">
+                    <i data-lucide="search"></i>
+                    Extraction Fields
+                </a>
             </div>
         </div>
 
-        <div class="sidebar">
-            <div class="sessions-panel">
-                <header>
-                    <div>
-                        <h2>Saved Sessions</h2>
-                        <p>All your conversations are saved locally</p>
+        <div class="chat-container" id="chatContainer">
+            <!-- Welcome Message -->
+            <div class="message">
+                <div class="avatar ai">
+                    <i data-lucide="sparkles" size="20"></i>
+                </div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="sender-name">Assistant</span>
+                        <span class="timestamp">Just now</span>
                     </div>
-                    <button class="new-chat-btn" id="new-chat-btn">+ New Chat</button>
-                </header>
-                <div class="session-list" id="session-list"></div>
+                    <div class="text-content">
+                        <p>Hello! I'm your advanced document assistant. I can search through your documents using a
+                            hybrid approach (vector + keywords) and reason about the results.</p>
+                        <p>How can I help you today?</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <div class="input-container">
+                <textarea class="chat-input" id="userInput" placeholder="Ask a question about your documents..."
+                    rows="1"></textarea>
+                <button class="send-btn" id="sendBtn">
+                    <i data-lucide="send" size="18"></i>
+                </button>
             </div>
         </div>
     </div>
+
+    <!-- Document Viewer Sidebar -->
+    <div class="document-viewer-sidebar" id="documentViewerSidebar">
+        <div class="viewer-header">
+            <h3 id="viewerDocumentName">Document</h3>
+            <button class="close-viewer-btn" onclick="closeDocumentViewer()">
+                <i data-lucide="x" size="20"></i>
+            </button>
+        </div>
+        <div class="pdf-toolbar" id="pdfToolbar">
+            <button onclick="navigatePage(-1)">‹</button>
+            <span id="viewerPageInfo">1 / 1</span>
+            <button onclick="navigatePage(1)">›</button>
+            <span style="margin-left: auto; color: var(--text-secondary);">Zoom:</span>
+            <button onclick="zoomPDF(-0.2)">-</button>
+            <button onclick="zoomPDF(0.2)">+</button>
+        </div>
+        <div class="pdf-viewer-container" id="pdfViewerContainer">
+            <div style="color: var(--text-secondary); text-align: center; padding: 40px;">
+                Select a citation to view the document
+            </div>
+        </div>
+    </div>
+
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 
     <script>
-        const STORAGE_KEY = 'docs-chat-sessions.v2';
-        const CURRENT_SESSION_KEY = 'docs-chat-current-session';
+        // PDF.js worker setup
+        if (window.pdfjsLib) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+        }
+        lucide.createIcons();
 
-        const form = document.getElementById('chat-form');
-        const submitBtn = document.getElementById('submit');
-        const promptEl = document.getElementById('prompt');
-        const docIdsEl = document.getElementById('document-ids');
-        const modelEl = document.getElementById('model');
-        const newChatBtn = document.getElementById('new-chat-btn');
-        const statusBadge = document.getElementById('status-badge');
-        const statusText = document.getElementById('status-text');
-        const sessionBadge = document.getElementById('session-badge');
-        const sessionText = document.getElementById('session-text');
-        const chatMessages = document.getElementById('chat-messages');
-        const sessionList = document.getElementById('session-list');
+        const chatContainer = document.getElementById('chatContainer');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const chatList = document.getElementById('chatList');
 
-        let currentSessionId = null;
-        let currentMessageId = null;
-        let isStreaming = false;
-        let documentsCache = {}; // Кэш документов для отображения имен
+        let currentSessionId = 'new';
 
-        // Загрузка сохранённых сессий
-        function loadSavedSessions() {
+        // Initialize
+        loadSessions();
+
+        // Auto-resize textarea
+        userInput.addEventListener('input', function () {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        userInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        sendBtn.addEventListener('click', sendMessage);
+
+        async function loadSessions() {
             try {
-                const raw = localStorage.getItem(STORAGE_KEY);
-                return raw ? JSON.parse(raw) : {};
+                const response = await fetch('/chat/sessions');
+                const sessions = await response.json();
+                renderChatList(sessions);
             } catch (error) {
-                console.error('Ошибка загрузки сессий', error);
-                return {};
+                console.error('Failed to load sessions:', error);
             }
         }
 
-        function saveSessions(data) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        }
-
-        function getCurrentSession() {
-            try {
-                const raw = localStorage.getItem(CURRENT_SESSION_KEY);
-                return raw ? JSON.parse(raw) : null;
-            } catch (error) {
-                return null;
-            }
-        }
-
-        function setCurrentSession(sessionId) {
-            // НЕ сохраняем временные сессии как текущие
-            if (sessionId && !sessionId.startsWith('temp-')) {
-                localStorage.setItem(CURRENT_SESSION_KEY, JSON.stringify({ sessionId, timestamp: Date.now() }));
-            } else {
-                localStorage.removeItem(CURRENT_SESSION_KEY);
-            }
-        }
-
-        function parseDocumentIds() {
-            const selected = Array.from(docIdsEl.selectedOptions);
-            return selected.map(option => Number(option.value)).filter(id => Number.isInteger(id));
-        }
-
-        async function loadDocuments() {
-            try {
-                // Загружаем все документы с пагинацией
-                let allDocuments = [];
-                let page = 1;
-                let hasMore = true;
-
-                while (hasMore) {
-                    const response = await fetch(`/documents/?page=${page}&size=100`);
-                    if (!response.ok) {
-                        console.error('Ошибка загрузки документов:', response.status, response.statusText);
-                        const errorText = await response.text();
-                        console.error('Error details:', errorText);
-                        break;
-                    }
-                    const data = await response.json();
-                    
-                    if (data.items && data.items.length > 0) {
-                        allDocuments = [...allDocuments, ...data.items];
-                        hasMore = page < data.pages;
-                        page++;
-                    } else {
-                        hasMore = false;
-                    }
-                }
-                
-                // Сохраняем в кэш для использования при отображении чанков
-                documentsCache = {};
-                allDocuments.forEach(doc => {
-                    documentsCache[doc.id] = {
-                        id: doc.id,
-                        filename: doc.filename,
-                        type: doc.type,
-                        status: doc.status
-                    };
-                });
-                
-                // Очищаем текущие опции
-                docIdsEl.innerHTML = '';
-                
-                if (allDocuments.length > 0) {
-                    allDocuments.forEach(doc => {
-                        const option = document.createElement('option');
-                        option.value = doc.id;
-                        option.textContent = `${doc.filename} (ID: ${doc.id})`;
-                        docIdsEl.appendChild(option);
-                    });
-                    console.log(`Загружено ${allDocuments.length} документов`);
-                } else {
-                    const option = document.createElement('option');
-                    option.value = '';
-                    option.textContent = 'Нет доступных документов';
-                    option.disabled = true;
-                    docIdsEl.appendChild(option);
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки документов', error);
-                docIdsEl.innerHTML = '<option value="" disabled>Error loading documents</option>';
-            }
-        }
-
-        function createNewChat() {
-            // Очищаем чат
-            chatMessages.innerHTML = '';
-            currentSessionId = null;
-            currentMessageId = null;
-            updateSessionBadge(null);
-            setCurrentSession(null);
-            promptEl.value = '';
-            // Очищаем выбор документов
-            Array.from(docIdsEl.options).forEach(option => {
-                option.selected = false;
-            });
-            updateStatus('Ready', 'idle');
-        }
-
-        function updateStatus(status, type = 'idle') {
-            statusText.textContent = status;
-            statusBadge.className = 'status-badge';
-            if (type === 'active') {
-                statusBadge.classList.add('active');
-            } else if (type === 'error') {
-                statusBadge.classList.add('error');
-            }
-        }
-
-        function updateSessionBadge(sessionId) {
-            if (sessionId) {
-                sessionText.textContent = `Сессия: ${sessionId}`;
-                sessionBadge.style.display = 'flex';
-                currentSessionId = sessionId;
-            } else {
-                sessionBadge.style.display = 'none';
-                currentSessionId = null;
-            }
-        }
-
-        function formatTime(date) {
-            return new Date(date).toLocaleTimeString('ru-RU', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
-        }
-
-        function formatDateTime(date) {
-            return new Date(date).toLocaleString('ru-RU', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        }
-
-        function createMessageElement(role, content, timestamp, messageId) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message';
-            messageDiv.dataset.messageId = messageId;
-
-            const header = document.createElement('div');
-            header.className = 'message-header';
-            header.innerHTML = `
-                <span class="message-role ${role}">${role === 'user' ? 'You' : 'Assistant'}</span>
-                <span class="message-time">${formatTime(timestamp)}</span>
-            `;
-
-            const contentDiv = document.createElement('div');
-            contentDiv.className = `message-content ${role}`;
-            // Рендерим markdown для ответов ассистента
-            if (role === 'assistant') {
-                contentDiv.innerHTML = renderMarkdown(content);
-            } else {
-                contentDiv.textContent = content;
-            }
-
-            messageDiv.appendChild(header);
-            messageDiv.appendChild(contentDiv);
-
-            return messageDiv;
-        }
-
-        function createThinkingElement(events, messageId) {
-            const thinkingDiv = document.createElement('div');
-            thinkingDiv.className = 'thinking-process';
-            thinkingDiv.id = `thinking-${messageId}`;
-
-            const toggle = document.createElement('div');
-            toggle.className = 'thinking-toggle';
-            toggle.innerHTML = `
-                <div class="thinking-toggle-left">
-                    <span class="thinking-toggle-icon">▶</span>
-                    <span class="thinking-toggle-text">Thinking process</span>
-                    <span class="thinking-count">${events.length} event${events.length === 1 ? '' : 's'}</span>
-                </div>
-                <span class="thinking-toggle-hint">Expand</span>
-            `;
-
-            const content = document.createElement('div');
-            content.className = 'thinking-content';
-
-            events.forEach((eventPayload, idx) => {
-                const item = createThinkingItem(eventPayload, idx + 1);
-                content.appendChild(item);
-            });
-
-            toggle.addEventListener('click', () => {
-                const hint = toggle.querySelector('.thinking-toggle-hint');
-                const isExpanded = toggle.classList.toggle('expanded');
-                content.style.display = isExpanded ? 'flex' : 'none';
-                if (hint) {
-                    hint.textContent = isExpanded ? 'Collapse' : 'Expand';
-                }
-            });
-
-            thinkingDiv.appendChild(toggle);
-            thinkingDiv.appendChild(content);
-            content.style.display = 'none'; // По умолчанию свёрнуто
-
-            return thinkingDiv;
-        }
-
-        function createThinkingItem(eventPayload, index) {
-            const item = document.createElement('div');
-            item.className = 'thinking-item';
-
-            const event = eventPayload.event || eventPayload;
-            const eventType = eventPayload.type || 'unknown';
-            const timestamp = event.timestamp || event.data?.timestamp || new Date().toISOString();
-            const rawType = event.event?.name || eventType || '';
-
-            const header = document.createElement('div');
-            header.className = 'thinking-item-header';
-
-            const typeLabel = getEventTypeLabel(eventType, eventPayload);
-            const typeClass = getEventTypeClass(eventType, eventPayload);
-
-            header.innerHTML = `
-                <div class="thinking-item-title">
-                    <span class="thinking-tag ${typeClass || 'default'}">${escapeHtml(typeLabel)}</span>
-                    <span class="thinking-index">Event ${index}</span>
-                </div>
-                <div class="thinking-meta">
-                    <span class="thinking-time">${formatTime(timestamp)}</span>
-                    ${rawType ? `<span class="thinking-meta-tag">${escapeHtml(rawType)}</span>` : ''}
-                </div>
-            `;
-
-            const content = document.createElement('div');
-            content.className = 'thinking-item-content';
-
-            const formattedData = formatEventData(eventPayload);
-            if (formattedData) {
-                content.innerHTML = formattedData;
-            } else {
-                content.textContent = JSON.stringify(eventPayload, null, 2);
-            }
-
-            item.appendChild(header);
-            item.appendChild(content);
-
-            return item;
-        }
-
-        function getEventTypeLabel(type, eventPayload) {
-            const eventData = eventPayload.event || eventPayload;
-            const data = eventData.data || eventData || {};
-            const item = eventData.item || data.item || {};
-            const rawItem = item.raw_item || {};
-            
-            // Check run_item_stream_event with tool_called
-            if (eventData.name === 'tool_called' || item.type === 'tool_call_item') {
-                const toolName = rawItem.name || item.name || 'unknown';
-                return `🔧 Tool Call: ${toolName}`;
-            }
-            
-            // Check run_item_stream_event with tool_output
-            if (eventData.name === 'tool_output' || item.type === 'tool_call_output_item') {
-                return `✅ Tool Result`;
-            }
-            
-            // Check normalized tool_call type
-            if (type === 'tool_call') {
-                const itemData = data.item || item || {};
-                const rawItemData = itemData.raw_item || rawItem || {};
-                if (itemData.type === 'function_call' || rawItemData.type === 'function_call' || itemData.name) {
-                    return `🔧 Tool Call: ${rawItemData.name || itemData.name || 'unknown'}`;
-                }
-            }
-            
-            // Check normalized tool_result type
-            if (type === 'tool_result') {
-                return `✅ Tool Result`;
-            }
-            
-            // Check tool call event through response.output_item.added
-            if (data.type === 'response.output_item.added') {
-                const itemData = data.item || {};
-                if (itemData.type === 'function_call') {
-                    return `🔧 Tool Call: ${itemData.name || 'unknown'}`;
-                }
-                if (itemData.type === 'function_call_output' || itemData.type === 'tool_output' || itemData.type === 'tool_result') {
-                    return `✅ Tool Result`;
-                }
-            }
-            
-            // Check direct tool call events
-            if (type.includes('tool') || type.includes('function')) {
-                if (type.includes('call') || type.includes('use')) {
-                    const toolName = data.name || data.tool_name || (data.item && data.item.name) || 'unknown';
-                    return `🔧 Tool Call: ${toolName}`;
-                } else if (type.includes('result') || type.includes('output')) {
-                    return `✅ Tool Result`;
-                }
-            }
-            
-            if (type.includes('reasoning')) {
-                return `💭 Reasoning`;
-            }
-            
-            if (type.includes('response') && !type.includes('raw')) {
-                return `💬 Response`;
-            }
-            
-            if (type.includes('message')) {
-                return `📨 Message`;
-            }
-
-            return `📋 ${type}`;
-        }
-
-        function getEventTypeClass(type, eventPayload) {
-            const eventData = eventPayload.event || eventPayload;
-            const data = eventData.data || eventData || {};
-            const item = eventData.item || data.item || {};
-            
-            // Проверяем run_item_stream_event с tool_called
-            if (eventData.name === 'tool_called' || item.type === 'tool_call_item') {
-                return 'tool-call';
-            }
-            
-            // Проверяем run_item_stream_event с tool_output
-            if (eventData.name === 'tool_output' || item.type === 'tool_call_output_item') {
-                return 'tool-result';
-            }
-            
-            // Проверяем нормализованный тип tool_call
-            if (type === 'tool_call') {
-                return 'tool-call';
-            }
-            
-            // Проверяем нормализованный тип tool_result
-            if (type === 'tool_result') {
-                return 'tool-result';
-            }
-            
-            // Проверяем событие tool call через response.output_item.added
-            if (data.type === 'response.output_item.added') {
-                const itemData = data.item || {};
-                if (itemData.type === 'function_call') {
-                    return 'tool-call';
-                }
-                if (itemData.type === 'function_call_output' || itemData.type === 'tool_output' || itemData.type === 'tool_result') {
-                    return 'tool-result';
-                }
-            }
-            
-            if (type.includes('tool') || type.includes('function')) {
-                if (type.includes('call') || type.includes('use')) {
-                    return 'tool-call';
-                } else if (type.includes('result') || type.includes('output')) {
-                    return 'tool-result';
-                }
-            }
-            
-            if (type.includes('reasoning')) {
-                return 'reasoning';
-            }
-            
-            return '';
-        }
-
-        function formatEventData(eventPayload) {
-            const event = eventPayload.event || eventPayload;
-            const data = event.data || eventPayload.data || {};
-            const type = eventPayload.type || event.type || '';
-            const item = event.item || data.item || {};
-            const rawItem = item.raw_item || {};
-
-            const runToolCall = event.name === 'tool_called' || item.type === 'tool_call_item';
-            const normalizedToolCall = type === 'tool_call';
-            const outputItemCall = data.type === 'response.output_item.added' && (data.item && data.item.type === 'function_call');
-            const genericToolCall = (type.includes('tool') || type.includes('function')) && (type.includes('call') || type.includes('use'));
-            const isToolCall = runToolCall || normalizedToolCall || outputItemCall || genericToolCall;
-
-            const runToolResult = event.name === 'tool_output' || item.type === 'tool_call_output_item';
-            const normalizedToolResult = type === 'tool_result' || type === 'tool_output' || type === 'function_call_output';
-            const outputItemResult = data.type === 'response.output_item.added' && ['function_call_output', 'tool_output', 'tool_result'].includes(data.item && data.item.type);
-            const genericToolResult = (type.includes('tool') || type.includes('function')) && (type.includes('result') || type.includes('output'));
-            const isToolResult = runToolResult || normalizedToolResult || outputItemResult || genericToolResult;
-
-            function parseJsonMaybe(value) {
-                if (typeof value === 'string') {
-                    try {
-                        return JSON.parse(value);
-                    } catch {
-                        return value;
-                    }
-                }
-                return value;
-            }
-
-            function extractToolName() {
-                return rawItem.name || item.name || data.name || event.name || 'unknown';
-            }
-
-            function extractToolArgs() {
-                if (rawItem.arguments !== undefined) return parseJsonMaybe(rawItem.arguments);
-                if (item.arguments !== undefined) return parseJsonMaybe(item.arguments);
-                if (data.arguments !== undefined) return parseJsonMaybe(data.arguments);
-                if (data.item && data.item.arguments !== undefined) return parseJsonMaybe(data.item.arguments);
-                if (event.arguments !== undefined) return parseJsonMaybe(event.arguments);
-                return {};
-            }
-
-            function extractToolResult() {
-                if (item.output !== undefined) return parseJsonMaybe(item.output);
-                if (item.result !== undefined) return parseJsonMaybe(item.result);
-                if (rawItem.output !== undefined) return parseJsonMaybe(rawItem.output);
-                if (data.output !== undefined) return parseJsonMaybe(data.output);
-                if (data.result !== undefined) return parseJsonMaybe(data.result);
-                if (event.result !== undefined) return parseJsonMaybe(event.result);
-                if (event.output !== undefined) return parseJsonMaybe(event.output);
-                return null;
-            }
-
-            function createArgsPreview(args) {
-                if (args === null || args === undefined) return 'No arguments';
-                if (typeof args !== 'object') {
-                    const str = String(args);
-                    return str.length > 80 ? `${str.slice(0, 80)}…` : str;
-                }
-                const entries = Object.entries(args);
-                if (!entries.length) return 'No arguments';
-                const previewParts = entries.slice(0, 3).map(([key, value]) => {
-                    if (typeof value === 'object' && value !== null) {
-                        const json = JSON.stringify(value);
-                        return `${key}: ${json.length > 40 ? json.slice(0, 40) + '…' : json}`;
-                    }
-                    const str = String(value);
-                    return `${key}: ${str.length > 40 ? str.slice(0, 40) + '…' : str}`;
-                });
-                if (entries.length > 3) previewParts.push('…');
-                return previewParts.join(', ');
-            }
-
-            function renderToolCall(toolName, toolArgs) {
-                const argsId = `tool-args-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                const hasArgs = toolArgs !== undefined && toolArgs !== null && !(typeof toolArgs === 'object' && Object.keys(toolArgs).length === 0);
-                const preview = createArgsPreview(toolArgs);
-                const serializedArgs = typeof toolArgs === 'string' ? toolArgs : JSON.stringify(toolArgs, null, 2);
-
-                return `
-                    <div class="thinking-item-body">
-                        <div class="thinking-row">
-                            <span class="thinking-label">Tool</span>
-                            <span class="thinking-value"><code>${escapeHtml(toolName)}</code></span>
-                        </div>
-                        <div class="thinking-row">
-                            <span class="thinking-label">Arguments</span>
-                            <span class="thinking-preview">${escapeHtml(preview)}</span>
-                        </div>
-                        ${hasArgs ? `
-                            <div class="thinking-collapsible">
-                                <div class="tool-args-toggle" onclick="toggleToolArgs('${argsId}')">
-                                    <span class="tool-args-icon">▶</span>
-                                    <span>View full arguments</span>
-                                </div>
-                                <div id="${argsId}" class="tool-args-content" style="display: none;">
-                                    <pre class="thinking-json">${escapeHtml(serializedArgs)}</pre>
-                                </div>
-                            </div>
-                        ` : ''}
-                    </div>
+        function renderChatList(sessions) {
+            chatList.innerHTML = '';
+            sessions.forEach(session => {
+                const div = document.createElement('div');
+                div.className = `chat-item ${session.id === currentSessionId ? 'active' : ''}`;
+                div.onclick = () => loadSession(session.id);
+                div.innerHTML = `
+                    <div class="chat-item-title">${session.title}</div>
+                    <button class="delete-chat-btn" onclick="deleteSession(event, '${session.id}')">
+                        <i data-lucide="trash-2" size="14"></i>
+                    </button>
                 `;
-            }
-
-            if (isToolCall) {
-                const toolName = extractToolName();
-                const toolArgs = extractToolArgs();
-                return renderToolCall(toolName, toolArgs);
-            }
-
-            if (isToolResult) {
-                const toolResult = extractToolResult();
-                if (toolResult !== undefined && toolResult !== null) {
-                    return `
-                        <div class="thinking-item-body">
-                            ${formatToolResult(toolResult)}
-                        </div>
-                    `;
-                }
-            }
-
-            const reasoningText = data.content || data.text || data.reasoning || eventPayload.reasoning || eventPayload.thoughts;
-            if (type.includes('reasoning') || event.name === 'reasoning' || reasoningText) {
-                const text = reasoningText || JSON.stringify(eventPayload, null, 2);
-                return `
-                    <div class="thinking-item-body">
-                        <div class="thinking-preview">${escapeHtml(text)}</div>
-                    </div>
-                `;
-            }
-
-            if (type.includes('message') || event.name === 'message') {
-                const messageText = data.content || data.text || item.content || eventPayload.message;
-                if (messageText) {
-                    const text = typeof messageText === 'string' ? messageText : JSON.stringify(messageText, null, 2);
-                    return `
-                        <div class="thinking-item-body">
-                            <div class="thinking-preview">${escapeHtml(text)}</div>
-                        </div>
-                    `;
-                }
-            }
-
-            if (data.delta && (data.type === 'response.output_text.delta' || type === 'response.output_text.delta')) {
-                const delta = typeof data.delta === 'string' ? data.delta : data.delta.text || JSON.stringify(data.delta, null, 2);
-                return `
-                    <div class="thinking-item-body">
-                        <div class="thinking-preview">${escapeHtml(delta)}</div>
-                    </div>
-                `;
-            }
-
-            return `
-                <div class="thinking-item-body">
-                    <pre class="thinking-json">${escapeHtml(JSON.stringify(eventPayload, null, 2))}</pre>
-                </div>
-            `;
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        function formatToolResult(result) {
-            const resultId = `tool-result-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-            let docCount = 0;
-            if (Array.isArray(result.documents)) {
-                docCount = result.documents.length;
-            } else if (Array.isArray(result.chunks)) {
-                docCount = result.chunks.length;
-            }
-
-            let html = `
-                <div class="thinking-tool-result">
-                    <div class="tool-result-toggle" onclick="toggleToolResult('${resultId}')">
-                        <span class="tool-result-icon">▶</span>
-                        <span class="tool-result-title">Tool result</span>
-                        ${docCount > 0 ? `<span class="tool-result-meta">${docCount} document${docCount !== 1 ? 's' : ''}</span>` : ''}
-                        <span class="tool-result-hint">Expand</span>
-                    </div>
-                    <div id="${resultId}" class="tool-result-content" style="display: none;">
-            `;
-
-            if (Array.isArray(result.documents)) {
-                result.documents.forEach((doc, docIdx) => {
-                    const docInfo = documentsCache[doc.document_id];
-                    const docName = docInfo ? docInfo.filename : `Document #${doc.document_id}`;
-                    const docFieldsId = `doc-fields-${resultId}-${docIdx}`;
-                    const matchedFieldCount = doc.matched_fields ? doc.matched_fields.length : 0;
-
-                    html += `
-                        <div class="tool-document-card">
-                            <div class="doc-toggle" onclick="toggleDocFields('${docFieldsId}')">
-                                <span class="doc-toggle-icon">▶</span>
-                                <span class="doc-title">Document #${doc.document_id}: ${escapeHtml(docName)}</span>
-                                <span class="doc-meta">${matchedFieldCount} field${matchedFieldCount !== 1 ? 's' : ''}</span>
-                            </div>
-                            <div id="${docFieldsId}" class="doc-fields-content" style="display: none;">
-                    `;
-
-                    if (doc.matched_fields && doc.matched_fields.length) {
-                        html += `
-                                <div class="matched-fields">
-                                    ${doc.matched_fields.map((field) => {
-                                        const hybridScore = field.hybrid_score !== undefined ? field.hybrid_score : (field.text_score ?? field.vec_score ?? 0);
-                                        const metaPieces = [];
-                                        if (field.page_num) metaPieces.push(`Page ${field.page_num}`);
-                                        if (field.field_id) metaPieces.push(`Field ID ${field.field_id}`);
-                                        if (field.confidence !== undefined && field.confidence !== null) metaPieces.push(`${Math.round(field.confidence * 100)}% confidence`);
-
-                                        return `
-                                        <div class="matched-field">
-                                            <div class="matched-field-header">
-                                                <span>${escapeHtml(field.field_name || 'Field')}</span>
-                                                <span class="matched-field-score">${Number(hybridScore || 0).toFixed(2)}</span>
-                                            </div>
-                                            <div class="matched-field-value">${escapeHtml(field.value_text || 'Not found')}</div>
-                                            ${metaPieces.length ? `<div class="matched-field-meta">${metaPieces.map(piece => `<span>${escapeHtml(piece)}</span>`).join('')}</div>` : ''}
-                                        </div>
-                                        `;
-                                    }).join('')}
-                                </div>
-                        `;
-                    } else {
-                        html += `<div class="thinking-preview">No matched fields</div>`;
-                    }
-
-                    if (doc.other_fields && doc.other_fields.length) {
-                        html += `
-                                <div class="other-fields-section">
-                                    <div class="other-fields-title">Other fields in this document</div>
-                                    <div class="other-fields-grid">
-                                        ${doc.other_fields.map(other => `
-                                            <div class="other-field-chip">
-                                                ${escapeHtml(other.field_name || `Field ${other.field_id}`)}
-                                                ${other.short_description ? `<span>${escapeHtml(other.short_description)}</span>` : ''}
-                                            </div>
-                                        `).join('')}
-                                    </div>
-                                </div>
-                        `;
-                    }
-
-                    html += `
-                            </div>
-                        </div>
-                    `;
-                });
-            } else if (Array.isArray(result.chunks)) {
-                result.chunks.forEach((chunk, idx) => {
-                    const docInfo = documentsCache[chunk.document_id];
-                    const docName = docInfo ? docInfo.filename : `Document #${chunk.document_id}`;
-                    const chunkId = `doc-fields-${resultId}-${idx}`;
-                    const score = chunk.hybrid_score ?? chunk.score ?? 0;
-
-                    html += `
-                        <div class="tool-document-card">
-                            <div class="doc-toggle" onclick="toggleDocFields('${chunkId}')">
-                                <span class="doc-toggle-icon">▶</span>
-                                <span class="doc-title">Document #${chunk.document_id}: ${escapeHtml(docName)}</span>
-                                <span class="doc-meta">${Number(score || 0).toFixed(2)}</span>
-                            </div>
-                            <div id="${chunkId}" class="doc-fields-content" style="display: none;">
-                                <div class="matched-field-value">${escapeHtml(chunk.content || '')}</div>
-                            </div>
-                        </div>
-                    `;
-                });
-            } else {
-                const serialized = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-                html += `<pre class="thinking-json">${escapeHtml(serialized)}</pre>`;
-            }
-
-            html += `
-                    </div>
-                </div>
-            `;
-
-            return html;
-        }
-
-        function toggleToolResult(resultId) {
-            const content = document.getElementById(resultId);
-            if (!content) return;
-            const toggle = content.previousElementSibling;
-            const hint = toggle.querySelector('.tool-result-hint');
-            const expanded = toggle.classList.toggle('expanded');
-            content.style.display = expanded ? 'block' : 'none';
-            if (hint) {
-                hint.textContent = expanded ? 'Collapse' : 'Expand';
-            }
-        }
-
-        function toggleDocFields(docFieldsId) {
-            const content = document.getElementById(docFieldsId);
-            if (!content) return;
-            const toggle = content.previousElementSibling;
-            const expanded = toggle.classList.toggle('expanded');
-            content.style.display = expanded ? 'block' : 'none';
-        }
-
-        function toggleToolArgs(argsId) {
-            const content = document.getElementById(argsId);
-            if (!content) return;
-            const toggle = content.previousElementSibling;
-            const label = toggle.querySelector('span:nth-child(2)');
-            const expanded = toggle.classList.toggle('expanded');
-            content.style.display = expanded ? 'block' : 'none';
-            if (label) {
-                label.textContent = expanded ? 'Hide arguments' : 'View full arguments';
-            }
-        }
-
-        function addUserMessage(text) {
-            const messageId = `msg-${Date.now()}`;
-            const timestamp = new Date();
-            const messageEl = createMessageElement('user', text, timestamp, messageId);
-            chatMessages.appendChild(messageEl);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            return messageId;
-        }
-
-        function addAssistantMessage(messageId, initialText = '') {
-            const timestamp = new Date();
-            const messageEl = createMessageElement('assistant', initialText, timestamp, messageId);
-            chatMessages.appendChild(messageEl);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            return messageEl;
-        }
-
-        function updateAssistantMessage(messageEl, text) {
-            const contentEl = messageEl.querySelector('.message-content');
-            contentEl.innerHTML = renderMarkdown(text);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        // Initialize marked.js for Markdown parsing
-        function initializeMarkdown() {
-            if (typeof marked === 'undefined') {
-                console.warn('marked.js is not loaded, falling back to simple formatting');
-                return false;
-            }
-            
-            // Configure marked options
-            marked.setOptions({
-                breaks: true,          // Convert line breaks to <br>
-                gfm: true,              // GitHub Flavored Markdown
-                tables: true,           // Enable table support
-                sanitize: false,        // We'll sanitize manually if needed
-                smartLists: true,       // Better list handling
-                smartypants: false,     // Don't convert quotes
-                headerIds: false,       // Don't add IDs to headers
-                mangle: false           // Don't mangle email addresses
+                chatList.appendChild(div);
             });
-            
-            // Custom renderer for better table styling
-            const renderer = new marked.Renderer();
-            
-            // Custom table renderer with wrapper for scrolling
-            renderer.table = function(header, body) {
-                return `<div class="table-wrapper" style="overflow-x: auto; margin: 16px 0;">
-                    <table style="width: 100%; min-width: 500px; border-collapse: collapse; background: rgba(15, 23, 42, 0.5); border-radius: 8px; overflow: hidden; border: 1px solid var(--border);">
-                        <thead>${header}</thead>
-                        <tbody>${body}</tbody>
-                    </table>
-                </div>`;
-            };
-            
-            // Custom table header cell renderer
-            renderer.tablecell = function(content, flags) {
-                const tag = flags.header ? 'th' : 'td';
-                const style = flags.header 
-                    ? 'font-weight: 600; background: rgba(56, 189, 248, 0.15); padding: 10px 12px; border: 1px solid var(--border); text-align: left;'
-                    : 'padding: 10px 12px; border: 1px solid var(--border);';
-                return `<${tag} style="${style}">${content}</${tag}>`;
-            };
-            
-            // Custom code block renderer
-            renderer.code = function(code, language) {
-                const lang = language || 'text';
-                const escaped = escapeHtml(code);
-                return `<pre style="background: rgba(15, 23, 42, 0.7); padding: 12px; border-radius: 6px; overflow-x: auto; margin: 8px 0; border: 1px solid var(--border);"><code style="font-family: 'Courier New', monospace; font-size: 0.9em;">${escaped}</code></pre>`;
-            };
-            
-            // Custom inline code renderer
-            renderer.codespan = function(code) {
-                return `<code style="background: rgba(56, 189, 248, 0.2); padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 0.9em;">${escapeHtml(code)}</code>`;
-            };
-            
-            // Custom heading renderers
-            renderer.heading = function(text, level) {
-                const styles = {
-                    1: 'margin: 16px 0 8px 0; font-weight: 600; font-size: 1.5rem; border-bottom: 2px solid var(--border); padding-bottom: 8px;',
-                    2: 'margin: 16px 0 8px 0; font-weight: 600; font-size: 1.3rem; border-bottom: 2px solid var(--border); padding-bottom: 8px;',
-                    3: 'margin: 16px 0 8px 0; font-weight: 600; font-size: 1.1rem;'
-                };
-                const style = styles[level] || 'margin: 16px 0 8px 0; font-weight: 600;';
-                return `<h${level} style="${style}">${text}</h${level}>`;
-            };
-            
-            // Custom paragraph renderer
-            renderer.paragraph = function(text) {
-                return `<p style="margin: 8px 0; line-height: 1.6;">${text}</p>`;
-            };
-            
-            // Custom list renderers
-            renderer.list = function(body, ordered) {
-                const tag = ordered ? 'ol' : 'ul';
-                const style = 'margin: 8px 0; padding-left: 24px;';
-                return `<${tag} style="${style}">${body}</${tag}>`;
-            };
-            
-            renderer.listitem = function(text) {
-                return `<li style="margin: 4px 0;">${text}</li>`;
-            };
-            
-            // Custom blockquote renderer
-            renderer.blockquote = function(quote) {
-                return `<blockquote style="margin: 16px 0; padding: 12px 20px; background: rgba(15, 23, 42, 0.3); border-left: 3px solid var(--accent); border-radius: 4px;">${quote}</blockquote>`;
-            };
-            
-            // Custom strong and em renderers
-            renderer.strong = function(text) {
-                return `<strong style="font-weight: 600; color: var(--accent);">${text}</strong>`;
-            };
-            
-            renderer.em = function(text) {
-                return `<em style="font-style: italic;">${text}</em>`;
-            };
-            
-            marked.setOptions({ renderer });
-            
-            return true;
-        }
-        
-        // Initialize marked on page load
-        let markdownInitialized = false;
-        
-        function renderMarkdown(text) {
-            if (!text) return '';
-            
-            // Initialize marked.js if not already done
-            if (!markdownInitialized) {
-                markdownInitialized = initializeMarkdown();
-            }
-            
-            // Use marked.js if available
-            if (typeof marked !== 'undefined' && markdownInitialized) {
-                try {
-                    return marked.parse(text);
-                } catch (error) {
-                    console.error('Error parsing markdown:', error);
-                    // Fallback to simple formatting
-                    return escapeHtml(text).replace(/\n/g, '<br>');
-                }
-            }
-            
-            // Fallback: simple formatting
-            return escapeHtml(text).replace(/\n/g, '<br>');
+            lucide.createIcons();
         }
 
-        function addTypingIndicator(messageEl) {
-            const contentEl = messageEl.querySelector('.message-content');
-            const indicator = document.createElement('div');
-            indicator.className = 'typing-indicator';
-            indicator.innerHTML = `
-                <span class="typing-dot"></span>
-                <span class="typing-dot"></span>
-                <span class="typing-dot"></span>
+        async function createNewSession() {
+            currentSessionId = 'new';
+            chatContainer.innerHTML = `
+                <div class="message">
+                    <div class="avatar ai">
+                        <i data-lucide="sparkles" size="20"></i>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-header">
+                            <span class="sender-name">Assistant</span>
+                            <span class="timestamp">Just now</span>
+                        </div>
+                        <div class="text-content">
+                            <p>Hello! I'm your advanced document assistant. I can search through your documents using a
+                                hybrid approach (vector + keywords) and reason about the results.</p>
+                            <p>How can I help you today?</p>
+                        </div>
+                    </div>
+                </div>
             `;
-            contentEl.appendChild(indicator);
-        }
-
-        function removeTypingIndicator(messageEl) {
-            const indicator = messageEl.querySelector('.typing-indicator');
-            if (indicator) {
-                indicator.remove();
-            }
-        }
-
-        function saveMessageToSession(sessionId, role, content, timestamp, events = [], documentIds = null) {
-            const sessions = loadSavedSessions();
-            if (!sessions[sessionId]) {
-                sessions[sessionId] = {
-                    messages: [],
-                    created_at: timestamp,
-                    updated_at: timestamp,
-                    model: modelEl.value,
-                    document_ids: documentIds || parseDocumentIds()
-                };
-                console.log('Создана новая сессия:', sessionId);
-            }
-
-            // Обновляем document_ids если они переданы
-            if (documentIds !== null) {
-                sessions[sessionId].document_ids = documentIds;
-            }
-
-            // Проверяем, нет ли уже такого сообщения (избегаем дубликатов)
-            // Проверяем по содержимому и роли, чтобы не создавать дубликаты
-            const isDuplicate = sessions[sessionId].messages.some(msg => 
-                msg.role === role && 
-                msg.content === content &&
-                Math.abs(new Date(msg.timestamp) - new Date(timestamp)) < 5000 // В пределах 5 секунд
-            );
-
-            if (!isDuplicate) {
-                // Создаем стабильный messageId на основе timestamp и роли
-                const timestampMs = new Date(timestamp).getTime();
-                const messageId = `msg-${role}-${timestampMs}`;
-
-                sessions[sessionId].messages.push({
-                    role,
-                    content,
-                    timestamp,
-                    events,
-                    messageId: messageId
-                });
-
-                sessions[sessionId].updated_at = timestamp;
-                saveSessions(sessions);
-                console.log(`Сохранено сообщение в сессию ${sessionId}:`, role, content.substring(0, 50) + '...', `Всего сообщений: ${sessions[sessionId].messages.length}`);
-                renderSessions();
-            } else {
-                console.log('Пропущено дубликат сообщения в сессии:', sessionId, role);
-            }
-        }
-
-        async function loadSessionFromServer(sessionId) {
-            try {
-                const res = await fetch(`/chat/sessions/${encodeURIComponent(sessionId)}/log`);
-                if (!res.ok) return null;
-                const log = await res.json();
-                
-                // Конвертируем серверный лог в формат для отображения
-                const sessions = loadSavedSessions();
-                if (!sessions[sessionId]) {
-                    sessions[sessionId] = {
-                        messages: [],
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString(),
-                        model: log.request?.model || 'gpt-4o',
-                        document_ids: log.request?.document_ids || []
-                    };
-                }
-
-                // Восстанавливаем сообщения из лога
-                if (log.request?.prompt) {
-                    const userMsg = {
-                        role: 'user',
-                        content: log.request.prompt,
-                        timestamp: new Date().toISOString(),
-                        messageId: `msg-user-${Date.now()}`
-                    };
-                    sessions[sessionId].messages.push(userMsg);
-                }
-
-                if (log.final_output) {
-                    // Конвертируем события из серверного формата в формат для отображения
-                    // События на сервере хранятся как event_dict (результат event.model_dump())
-                    // а в стриминге отправляются как {type, event}
-                    const formattedEvents = (log.events || []).map(event => {
-                        // Если событие уже в правильном формате (с type и event)
-                        if (event.type && event.event) {
-                            return event;
-                        }
-                        // Иначе конвертируем из формата сервера (event_dict)
-                        // event_dict уже содержит type внутри
-                        // Извлекаем text_delta если есть
-                        let textDelta = '';
-                        if (event.data) {
-                            const data = event.data;
-                            if (data.type === 'response.output_text.delta') {
-                                if (typeof data.delta === 'string') {
-                                    textDelta = data.delta;
-                                } else if (data.delta?.text) {
-                                    textDelta = data.delta.text;
-                                }
-                            }
-                        }
-                        
-                        return {
-                            type: event.type || 'unknown',
-                            event: event,
-                            text_delta: textDelta || undefined
-                        };
-                    });
-
-                    const assistantMsg = {
-                        role: 'assistant',
-                        content: log.final_output,
-                        timestamp: new Date().toISOString(),
-                        events: formattedEvents,
-                        messageId: `msg-assistant-${Date.now()}`
-                    };
-                    sessions[sessionId].messages.push(assistantMsg);
-                }
-
-                sessions[sessionId].updated_at = new Date().toISOString();
-                saveSessions(sessions);
-                return sessions[sessionId];
-            } catch (error) {
-                console.error('Ошибка загрузки сессии с сервера', error);
-                return null;
-            }
+            // Refresh list to remove active state
+            loadSessions();
         }
 
         async function loadSession(sessionId) {
-            console.log('Загрузка сессии:', sessionId);
-            let sessions = loadSavedSessions();
-            let session = sessions[sessionId];
-            
-            // Если сессии нет локально, пытаемся загрузить с сервера
-            if (!session) {
-                console.log('Сессия не найдена локально, загружаем с сервера');
-                session = await loadSessionFromServer(sessionId);
-                if (!session) {
-                    console.warn('Сессия не найдена:', sessionId);
-                    return;
-                }
-            }
+            if (currentSessionId === sessionId) return;
+            currentSessionId = sessionId;
 
-            // Проверяем, что сессия имеет сообщения
-            if (!session.messages || session.messages.length === 0) {
-                console.warn('Сессия не содержит сообщений:', sessionId, session);
-                return;
-            }
-
-            console.log('Загружаем', session.messages.length, 'сообщений из сессии', sessionId);
-            chatMessages.innerHTML = '';
-            
-            // Сортируем сообщения по timestamp для правильного порядка
-            const sortedMessages = [...session.messages].sort((a, b) => {
-                return new Date(a.timestamp || 0) - new Date(b.timestamp || 0);
-            });
-            
-            sortedMessages.forEach((msg, idx) => {
-                if (!msg.content && msg.role === 'assistant') {
-                    console.warn('Пропущено сообщение без контента:', idx, msg);
-                    return;
-                }
-                
-                const messageEl = createMessageElement(msg.role, msg.content || '', msg.timestamp, msg.messageId || `msg-${Date.now()}`);
-                chatMessages.appendChild(messageEl);
-
-                if (msg.role === 'assistant' && msg.events && msg.events.length > 0) {
-                    const thinkingEl = createThinkingElement(msg.events, msg.messageId || `msg-${Date.now()}`);
-                    messageEl.appendChild(thinkingEl);
-                }
-            });
-
-            console.log('Сообщения загружены и отображены');
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            updateSessionBadge(sessionId);
-            setCurrentSession(sessionId);
-            
-            // Восстанавливаем выбранные документы
-            if (session.document_ids && Array.isArray(session.document_ids)) {
-                Array.from(docIdsEl.options).forEach(option => {
-                    option.selected = session.document_ids.includes(Number(option.value));
-                });
-            } else {
-                docIdsEl.selectedIndex = -1;
-            }
-        }
-
-        async function deleteSession(sessionId) {
-            if (!confirm(`Are you sure you want to delete session "${sessionId}"?`)) {
-                return;
-            }
+            // Refresh list to update active state
+            loadSessions();
 
             try {
-                // Удаляем на сервере
-                const response = await fetch(`/chat/sessions/${encodeURIComponent(sessionId)}`, {
-                    method: 'DELETE'
+                const response = await fetch(`/chat/sessions/${sessionId}/messages`);
+                const messages = await response.json();
+
+                chatContainer.innerHTML = '';
+                messages.forEach(msg => {
+                    appendMessage(msg.role === 'model' ? 'ai' : 'user', msg.content, new Date(msg.created_at).toLocaleTimeString());
                 });
-
-                if (!response.ok && response.status !== 404) {
-                    const error = await response.json().catch(() => ({ detail: 'Ошибка удаления' }));
-                    throw new Error(error.detail || 'Error deleting session');
-                }
-
-                // Удаляем локально
-                const sessions = loadSavedSessions();
-                if (sessions[sessionId]) {
-                    delete sessions[sessionId];
-                    saveSessions(sessions);
-                }
-
-                // Если удаляемая сессия была текущей, очищаем чат
-                if (sessionId === currentSessionId) {
-                    createNewChat();
-                }
-
-                renderSessions();
-                console.log('Сессия удалена:', sessionId);
             } catch (error) {
-                console.error('Ошибка удаления сессии:', error);
-                alert('Error deleting session: ' + error.message);
+                console.error('Failed to load messages:', error);
             }
         }
 
-        function renderSessions() {
-            const sessions = loadSavedSessions();
-            sessionList.innerHTML = '';
-
-            // Фильтруем временные сессии - они не должны показываться в списке
-            const permanentSessions = Object.keys(sessions).filter(id => !id.startsWith('temp-'));
-            const ids = permanentSessions.sort((a, b) => {
-                return new Date(sessions[b].updated_at).getTime() - new Date(sessions[a].updated_at).getTime();
-            });
-
-            if (!ids.length) {
-                const empty = document.createElement('div');
-                empty.className = 'empty-state';
-                empty.innerHTML = `
-                    <div class="empty-state-icon">💬</div>
-                    <div>Нет сохранённых сессий</div>
-                `;
-                sessionList.appendChild(empty);
-                return;
-            }
-
-            ids.forEach((sessionId) => {
-                const session = sessions[sessionId];
-                const card = document.createElement('div');
-                card.className = 'session-card';
-                if (sessionId === currentSessionId) {
-                    card.classList.add('active');
-                }
-
-                card.innerHTML = `
-                    <div class="session-card-header">
-                        <span class="session-card-id" onclick="loadSession('${sessionId}')">${sessionId}</span>
-                        <div class="session-card-actions">
-                            <button class="session-delete-btn" onclick="event.stopPropagation(); deleteSession('${sessionId}')" title="Delete session">✕</button>
-                        </div>
-                    </div>
-                    <div class="session-card-info">
-                        <span class="session-badge">${session.messages.length} messages</span>
-                        <span class="session-badge">${session.model}</span>
-                    </div>
-                    <div class="session-card-time">${formatDateTime(session.updated_at)}</div>
-                `;
-
-                card.addEventListener('click', (e) => {
-                    // Не загружаем сессию если кликнули на кнопку удаления
-                    if (!e.target.closest('.session-delete-btn')) {
-                        loadSession(sessionId);
-                    }
-                });
-
-                sessionList.appendChild(card);
-            });
-        }
-
-        async function streamChat(payload) {
-            const response = await fetch('/chat/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok || !response.body) {
-                throw new Error('Ошибка запуска стриминга');
-            }
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-            let eventIndex = 0;
-            const events = [];
-            const seenEventKeys = new Set(); // Для дедупликации событий
-            let sessionId = payload.session_id || null;
-            let finalOutput = '';
-            let messageEl = null;
-            const currentPayload = payload; // Сохраняем payload для использования в обработке
-            const initialTempSessionId = payload.session_id && payload.session_id.startsWith('temp-') ? payload.session_id : null; // Сохраняем начальный временный ID
-
-            updateStatus('Processing...', 'active');
-            
-            // Function to create unique event key
-            function getEventKey(eventPayload) {
-                const eventType = eventPayload.type || '';
-                const eventData = eventPayload.event || eventPayload;
-                const data = eventData.data || eventData || {};
-                const item = eventData.item || data.item || {};
-                const rawItem = item.raw_item || {};
-                
-                // Extract tool name from all possible locations
-                const toolName = rawItem.name || item.name || data.name || eventData.name || 'unknown';
-                
-                // Check if this is a tool call event (all possible formats)
-                const isToolCall = eventType === 'tool_call' || 
-                                  eventType === 'function_call' ||
-                                  eventData.name === 'tool_called' || 
-                                  item.type === 'tool_call_item' ||
-                                  item.type === 'function_call' ||
-                                  rawItem.type === 'function_call' ||
-                                  (data.type === 'response.output_item.added' && data.item && data.item.type === 'function_call');
-                
-                if (isToolCall) {
-                    // Use only tool name for deduplication - same tool called multiple times is the same event
-                    // Arguments will be shown in the UI but won't affect deduplication
-                    return `tool_call:${toolName}`;
-                }
-                
-                // Check if this is a tool result event (all possible formats)
-                const isToolResult = eventType === 'tool_result' || 
-                                     eventType === 'tool_output' ||
-                                     eventType === 'function_call_output' ||
-                                     eventData.name === 'tool_output' || 
-                                     item.type === 'tool_call_output_item' ||
-                                     item.type === 'function_call_output' ||
-                                     (data.type === 'response.output_item.added' && data.item && 
-                                      (data.item.type === 'function_call_output' || data.item.type === 'tool_output' || data.item.type === 'tool_result'));
-                
-                if (isToolResult) {
-                    const output = item.output || rawItem.output || data.output || data.result || {};
-                    const outputKey = typeof output === 'string' ? output.substring(0, 50) : JSON.stringify(output).substring(0, 50);
-                    return `tool_result:${toolName}:${outputKey}`;
-                }
-                
-                // For other events, use type and timestamp
-                const timestamp = eventData.timestamp || data.timestamp || eventPayload.timestamp || '';
-                return `${eventType}:${timestamp}`;
-            }
-
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-
-                buffer += decoder.decode(value, { stream: true });
-
-                let newlineIndex;
-                while ((newlineIndex = buffer.indexOf('\n')) >= 0) {
-                    const line = buffer.slice(0, newlineIndex).trim();
-                    buffer = buffer.slice(newlineIndex + 1);
-                    if (!line) continue;
-
-                    try {
-                        const eventPayload = JSON.parse(line);
-                        
-                        // Пропускаем технические события
-                        const eventType = eventPayload.type || '';
-                        const eventData = eventPayload.event || {};
-                        const data = eventData.data || {};
-                        const item = eventData.item || data.item || {};
-                        
-                        // Пропускаем только если это действительно техническое событие
-                        // НО не пропускаем если это tool call или tool result через run_item_stream_event
-                        const isToolCall = eventType === 'tool_call' ||
-                                          eventData.name === 'tool_called' ||
-                                          item.type === 'tool_call_item' ||
-                                          (data.type === 'response.output_item.added' && 
-                                           data.item && 
-                                           data.item.type === 'function_call');
-                        
-                        const isToolResult = eventType === 'tool_result' ||
-                                            eventData.name === 'tool_output' ||
-                                            item.type === 'tool_call_output_item' ||
-                                            (data.type === 'response.output_item.added' && 
-                                             data.item && 
-                                             (data.item.type === 'function_call_output' || 
-                                              data.item.type === 'tool_output' || 
-                                              data.item.type === 'tool_result'));
-                        
-                        if (!isToolCall && !isToolResult && (
-                            (eventType.includes('raw_response_event') && !isToolCall && !isToolResult) || 
-                            eventType.includes('agent_updated_stream_event') ||
-                            eventType === 'response.created' ||
-                            eventType === 'response.in_progress' ||
-                            data.type === 'response.created' ||
-                            data.type === 'response.in_progress'
-                        )) {
-                            // Не добавляем в секцию мышления, но сохраняем для истории
-                            continue;
-                        }
-                        
-                        // Обновляем текст ответа для text_delta событий
-                        // Проверяем как прямой text_delta, так и вложенный в event
-                        let deltaText = null;
-                        
-                        if (eventPayload.text_delta) {
-                            deltaText = eventPayload.text_delta;
-                        } else if (eventPayload.type === 'text_delta') {
-                            deltaText = eventPayload.text_delta;
-                        } else {
-                            // Также проверяем text_delta в event.event.data
-                            const eventData = eventPayload.event?.data || {};
-                            if (eventData.type === 'response.output_text.delta' && eventData.delta) {
-                                deltaText = typeof eventData.delta === 'string' ? eventData.delta : (eventData.delta.text || '');
-                            }
-                        }
-                        
-                        if (deltaText) {
-                            if (!messageEl) {
-                                messageEl = addAssistantMessage(currentMessageId);
-                                addTypingIndicator(messageEl);
-                            }
-                            removeTypingIndicator(messageEl);
-                            finalOutput += deltaText;
-                            updateAssistantMessage(messageEl, finalOutput);
-                            // Прокручиваем вниз при каждом обновлении
-                            chatMessages.scrollTop = chatMessages.scrollHeight;
-                            // НЕ добавляем text_delta события в секцию мышления
-                            // Они используются только для обновления финального текста
-                            continue;
-                        }
-
-                        // Дедупликация: пропускаем если это событие уже было обработано
-                        const eventKey = getEventKey(eventPayload);
-                        if (seenEventKeys.has(eventKey)) {
-                            continue; // Пропускаем дубликат
-                        }
-                        seenEventKeys.add(eventKey);
-                        
-                        // Добавляем событие в секцию мышления только если это НЕ text_delta
-                        eventIndex += 1;
-                        events.push(eventPayload);
-
-                        // Финальное событие
-                        if (eventPayload.type === 'final') {
-                            sessionId = eventPayload.session_id || sessionId;
-                            if (eventPayload.final_output) {
-                                finalOutput = eventPayload.final_output;
-                                if (messageEl) {
-                                    updateAssistantMessage(messageEl, finalOutput);
-                                } else {
-                                    messageEl = addAssistantMessage(currentMessageId, finalOutput);
-                                }
-                            }
-
-                            // Добавляем процесс мышления
-                            if (messageEl && events.length > 0) {
-                                const thinkingEl = createThinkingElement(events, currentMessageId);
-                                messageEl.appendChild(thinkingEl);
-                            }
-
-                            // Сохраняем сообщение и обновляем сессию если нужно
-                            if (sessionId) {
-                                const timestamp = new Date().toISOString();
-                                const sessions = loadSavedSessions();
-                                
-                                // ВАЖНО: Обновляем currentSessionId ПЕРЕД сохранением сообщения
-                                // Это гарантирует, что все последующие операции используют правильный ID
-                                if (sessionId !== currentSessionId) {
-                                    console.log('Обновляем currentSessionId с', currentSessionId, 'на', sessionId);
-                                    currentSessionId = sessionId;
-                                    updateSessionBadge(sessionId);
-                                    setCurrentSession(sessionId);
-                                }
-                                
-                                // Сохраняем ответ ассистента ПЕРЕД переносом временной сессии
-                                // Это гарантирует, что сообщение будет в правильной сессии
-                                saveMessageToSession(sessionId, 'assistant', finalOutput, timestamp, events, currentPayload.document_ids);
-                                
-                                // Если была временная сессия, переносим сообщения в реальную
-                                // Используем сохранённый начальный временный ID или ищем в сессиях
-                                let tempSessionId = null;
-                                
-                                // Сначала проверяем сохранённый начальный временный ID
-                                if (initialTempSessionId && initialTempSessionId !== sessionId) {
-                                    tempSessionId = initialTempSessionId;
-                                    console.log('Используем начальный временный ID:', tempSessionId);
-                                } else {
-                                    // Ищем временную сессию в сохранённых сессиях
-                                    const sessionsBeforeSave = loadSavedSessions();
-                                    tempSessionId = Object.keys(sessionsBeforeSave).find(id => id.startsWith('temp-') && id !== sessionId);
-                                }
-                                
-                                if (tempSessionId && tempSessionId !== sessionId) {
-                                    console.log('Найдена временная сессия для переноса:', tempSessionId);
-                                    const sessionsBeforeSave = loadSavedSessions();
-                                    const tempSession = sessionsBeforeSave[tempSessionId];
-                                    if (tempSession && tempSession.messages) {
-                                        // Перезагружаем сессии после сохранения
-                                        const updatedSessions = loadSavedSessions();
-                                        
-                                        // Создаём новую сессию с сообщениями из временной
-                                        if (!updatedSessions[sessionId]) {
-                                            updatedSessions[sessionId] = {
-                                                messages: [...tempSession.messages],
-                                                created_at: tempSession.created_at || timestamp,
-                                                updated_at: timestamp,
-                                                model: tempSession.model || currentPayload.model,
-                                                document_ids: tempSession.document_ids || currentPayload.document_ids || []
-                                            };
-                                        } else {
-                                            // Добавляем сообщения из временной сессии (если их еще нет)
-                                            const existingMessageIds = new Set(updatedSessions[sessionId].messages.map(m => m.messageId));
-                                            const newMessages = tempSession.messages.filter(m => !existingMessageIds.has(m.messageId));
-                                            updatedSessions[sessionId].messages.push(...newMessages);
-                                            // Обновляем document_ids если они есть в временной сессии
-                                            if (tempSession.document_ids) {
-                                                updatedSessions[sessionId].document_ids = tempSession.document_ids;
-                                            }
-                                        }
-                                        delete updatedSessions[tempSessionId];
-                                        saveSessions(updatedSessions);
-                                        renderSessions();
-                                        console.log('Временная сессия перенесена в', sessionId);
-                                    }
-                                }
-                            }
-
-                            updateStatus('Completed', 'idle');
-                            return;
-                        }
-                    } catch (error) {
-                        console.error('Ошибка парсинга события', error, line);
-                    }
-                }
-            }
-        }
-
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-
-            const prompt = promptEl.value.trim();
-            if (!prompt) return;
-
-            const payload = {
-                prompt: prompt,
-                document_ids: parseDocumentIds(),
-                session_id: currentSessionId || undefined,
-                model: modelEl.value,
-            };
-
-            submitBtn.disabled = true;
-            isStreaming = true;
-            updateStatus('Sending...', 'active');
-
-            // Добавляем сообщение пользователя
-            const userMessageId = addUserMessage(prompt);
-            currentMessageId = `msg-${Date.now()}`;
-
-            // Сохраняем сообщение пользователя (создаём сессию если нужно)
-            const timestamp = new Date().toISOString();
-            let sessionIdToUse = payload.session_id;
-            if (!sessionIdToUse) {
-                // Создаём временный ID, который будет заменён на реальный после получения ответа
-                sessionIdToUse = `temp-${Date.now()}`;
-                currentSessionId = sessionIdToUse;
-                updateSessionBadge(sessionIdToUse);
-            }
-            saveMessageToSession(sessionIdToUse, 'user', prompt, timestamp, [], parseDocumentIds());
+        async function deleteSession(event, sessionId) {
+            event.stopPropagation();
+            if (!confirm('Are you sure you want to delete this chat?')) return;
 
             try {
-                await streamChat(payload);
-            } catch (error) {
-                console.error(error);
-                updateStatus('Error', 'error');
-                if (messageEl) {
-                    const contentEl = messageEl.querySelector('.message-content');
-                    contentEl.textContent = 'Error processing request. Please try again.';
-                }
-            } finally {
-                submitBtn.disabled = false;
-                isStreaming = false;
-                promptEl.value = '';
-            }
-        });
-
-        // Обработчик кнопки "Новый чат"
-        newChatBtn.addEventListener('click', () => {
-            createNewChat();
-        });
-
-        // Восстановление текущей сессии при загрузке
-        window.addEventListener('load', async () => {
-            // Initialize marked.js immediately
-            if (typeof marked !== 'undefined') {
-                initializeMarkdown();
-                markdownInitialized = true;
-            }
-            
-            await loadDocuments();
-            
-            // Удаляем все временные сессии при загрузке страницы
-            const sessions = loadSavedSessions();
-            const tempSessionIds = Object.keys(sessions).filter(id => id.startsWith('temp-'));
-            if (tempSessionIds.length > 0) {
-                console.log('Удаляем временные сессии при загрузке:', tempSessionIds);
-                tempSessionIds.forEach(tempId => {
-                    delete sessions[tempId];
-                });
-                saveSessions(sessions);
-            }
-            
-            renderSessions();
-            const current = getCurrentSession();
-            if (current && current.sessionId && !current.sessionId.startsWith('temp-')) {
-                console.log('Восстанавливаем текущую сессию при загрузке:', current.sessionId);
-                // Проверяем, что сессия существует перед загрузкой
-                const updatedSessions = loadSavedSessions();
-                if (updatedSessions[current.sessionId]) {
-                    await loadSession(current.sessionId);
+                await fetch(`/chat/sessions/${sessionId}`, { method: 'DELETE' });
+                if (currentSessionId === sessionId) {
+                    createNewSession();
                 } else {
-                    console.log('Сессия не найдена в localStorage, пытаемся загрузить с сервера');
-                    const session = await loadSessionFromServer(current.sessionId);
-                    if (session) {
-                        await loadSession(current.sessionId);
-                    } else {
-                        console.log('Сессия не найдена ни локально, ни на сервере, очищаем текущую сессию');
-                        setCurrentSession(null);
-                        currentSessionId = null;
-                        // Пытаемся загрузить последнюю сессию
-                        await loadLastSession();
+                    loadSessions();
+                }
+            } catch (error) {
+                console.error('Failed to delete session:', error);
+            }
+        }
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            // Add User Message
+            appendMessage('user', text);
+            userInput.value = '';
+            userInput.style.height = 'auto';
+
+            // Create AI Message Placeholder
+            const aiMessageDiv = createMessageElement('ai');
+            chatContainer.appendChild(aiMessageDiv);
+
+            const contentDiv = aiMessageDiv.querySelector('.message-content');
+
+            // Create Thinking Process Container
+            const thinkingDiv = document.createElement('div');
+            thinkingDiv.className = 'thinking-process';
+            thinkingDiv.innerHTML = `
+                <div class="thinking-header" onclick="this.parentElement.classList.toggle('expanded')">
+                    <div class="thinking-title">
+                        <i data-lucide="brain-circuit"></i>
+                        <span>Thinking Process</span>
+                    </div>
+                    <i data-lucide="chevron-down" size="16"></i>
+                </div>
+                <div class="thinking-body"></div>
+            `;
+            contentDiv.appendChild(thinkingDiv);
+            const thinkingBody = thinkingDiv.querySelector('.thinking-body');
+            lucide.createIcons();
+
+            // Create Text Content Container
+            const textContentDiv = document.createElement('div');
+            textContentDiv.className = 'text-content';
+            contentDiv.appendChild(textContentDiv);
+
+            let currentMarkdown = '';
+            let citationsMap = {}; // Store citation metadata
+
+            // Scroll to bottom
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            try {
+                const response = await fetch('/chat/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: text,
+                        model: 'gemini-2.0-flash-exp',
+                        session_id: currentSessionId,
+                        document_ids: []
+                    })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = JSON.parse(line.slice(6));
+
+                            if (data.type === 'session_info') {
+                                currentSessionId = data.data.session_id;
+                                loadSessions(); // Refresh list to show new chat
+                            }
+                            else if (data.type === 'text_delta') {
+                                currentMarkdown += data.data.delta;
+                                textContentDiv.innerHTML = marked.parse(currentMarkdown);
+                                chatContainer.scrollTop = chatContainer.scrollHeight;
+                            }
+                            else if (data.type === 'citations') {
+                                // Store citations and apply them to rendered text
+                                citationsMap = data.data;
+                                applyCitations(textContentDiv, citationsMap);
+                            }
+                            else {
+                                handleEvent(data, thinkingBody, textContentDiv);
+                            }
+                        }
                     }
                 }
-            } else {
-                console.log('Текущая сессия не найдена или является временной при загрузке');
-                // Очищаем текущую сессию если она временная
-                if (current && current.sessionId && current.sessionId.startsWith('temp-')) {
-                    setCurrentSession(null);
-                    currentSessionId = null;
-                }
-                // Пытаемся загрузить последнюю сессию
-                await loadLastSession();
+            } catch (error) {
+                console.error('Error:', error);
+                textContentDiv.innerHTML += `<p style="color: var(--error-color)">Error: ${error.message}</p>`;
             }
-        });
+        }
 
-        // Функция для загрузки последней сессии
-        async function loadLastSession() {
-            const sessions = loadSavedSessions();
-            // Фильтруем временные сессии
-            const permanentSessions = Object.keys(sessions).filter(id => !id.startsWith('temp-'));
-            
-            if (permanentSessions.length === 0) {
-                console.log('Нет сохранённых сессий для загрузки');
+        function handleEvent(event, thinkingBody, textContentDiv) {
+            const { type, data } = event;
+
+            if (type === 'thinking') {
+                // Add thought step
+                const step = document.createElement('div');
+                step.className = 'step-item active';
+                step.innerHTML = `<div class="step-thought">${data.thought}</div>`;
+                thinkingBody.appendChild(step);
+            }
+            else if (type === 'tool_call') {
+                // Add tool call details
+                const lastStep = thinkingBody.lastElementChild;
+                if (lastStep) {
+                    const toolDiv = document.createElement('div');
+                    toolDiv.className = 'tool-call';
+                    toolDiv.innerHTML = `
+                        <div class="tool-name">
+                            <i data-lucide="terminal" size="14"></i>
+                            ${data.name}
+                        </div>
+                        <div class="tool-args">${JSON.stringify(data.args, null, 2)}</div>
+                    `;
+                    lastStep.appendChild(toolDiv);
+                    lucide.createIcons();
+                }
+            }
+            else if (type === 'tool_result') {
+                // Add tool result
+                const lastStep = thinkingBody.lastElementChild;
+                if (lastStep) {
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'tool-result';
+                    // Truncate large results
+                    const resultStr = JSON.stringify(data.result, null, 2);
+                    resultDiv.textContent = resultStr.length > 500 ? resultStr.slice(0, 500) + '...' : resultStr;
+                    lastStep.appendChild(resultDiv);
+                    lastStep.classList.remove('active'); // Mark step as done
+                }
+            }
+
+            // Auto-scroll chat
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function appendMessage(role, text, timestamp = null) {
+            const div = createMessageElement(role, timestamp);
+            div.querySelector('.text-content').innerHTML = marked.parse(text);
+            chatContainer.appendChild(div);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function createMessageElement(role, timestamp = null) {
+            const div = document.createElement('div');
+            div.className = 'message';
+            div.innerHTML = `
+                <div class="avatar ${role}">
+                    ${role === 'user' ? '<i data-lucide="user" size="20"></i>' : '<i data-lucide="sparkles" size="20"></i>'}
+                </div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="sender-name">${role === 'user' ? 'You' : 'Assistant'}</span>
+                        <span class="timestamp">${timestamp || new Date().toLocaleTimeString()}</span>
+                    </div>
+                    <div class="text-content"></div>
+                </div>
+            `;
+            lucide.createIcons({ root: div });
+            return div;
+        }
+
+        function applyCitations(textContentDiv, citationsMap) {
+            if (!citationsMap || Object.keys(citationsMap).length === 0) return;
+
+            console.log('Applying citations:', citationsMap);
+
+            // Get the current HTML
+            let html = textContentDiv.innerHTML;
+
+            // Replace each citation with an interactive badge
+            for (const [citationKey, citationData] of Object.entries(citationsMap)) {
+                // Match patterns like [Citation Key] in the text
+                const pattern = new RegExp(`\\[${citationKey.replace(/[.*+?^${}()|[\]\\\\]/g, '\\$&')}\\]`, 'g');
+
+                const badge = `<a href="#" class="citation-badge"
+                    data-document-id="${citationData.document_id}"
+                    data-page="${citationData.page_num || 1}"
+                    data-bbox='${citationData.bbox ? JSON.stringify(citationData.bbox) : ""}'
+                    title="${citationData.filename || 'Unknown'} (Page ${citationData.page_num || 1})">
+                    [${citationKey}]
+                    <i data-lucide="external-link"></i>
+                </a>`;
+
+                html = html.replace(pattern, badge);
+            }
+
+            textContentDiv.innerHTML = html;
+
+            // Add click handlers to citations
+            textContentDiv.querySelectorAll('.citation-badge').forEach(badge => {
+                badge.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const docId = parseInt(badge.dataset.documentId);
+                    const page = parseInt(badge.dataset.page);
+                    const bboxStr = badge.dataset.bbox;
+                    const bbox = bboxStr ? JSON.parse(bboxStr) : null;
+                    console.log('Citation clicked:', { docId, page, bbox, datasetPage: badge.dataset.page });
+                    openDocument(docId, page, bbox);
+                });
+            });
+
+            lucide.createIcons({ root: textContentDiv });
+        }
+
+        // PDF Viewer State
+        let pdfDoc = null;
+        let currentPdfPage = 1;
+        let pdfScale = 1.3;
+        let currentHighlight = null;
+
+        async function openDocument(documentId, pageNum, bbox) {
+            console.log('Opening document:', { documentId, pageNum, bbox });
+
+            // Show the sidebar
+            const sidebar = document.getElementById('documentViewerSidebar');
+            sidebar.classList.add('open');
+
+            // Load the document
+            try {
+                const response = await fetch(`/documents/${documentId}`);
+                const docData = await response.json();
+
+                document.getElementById('viewerDocumentName').textContent = docData.filename || 'Document';
+
+                // Normalize file path
+                let pdfUrl = docData.file_path.replace(/\\/g, '/');
+                if (!pdfUrl.startsWith('/storage/')) {
+                    pdfUrl = `/storage/${pdfUrl.replace('storage/', '')}`;
+                }
+
+                // Load PDF
+                pdfDoc = await window.pdfjsLib.getDocument(pdfUrl).promise;
+                currentPdfPage = pageNum || 1;
+                currentHighlight = bbox;
+
+                console.log('PDF loaded, rendering page:', currentPdfPage);
+                await renderPdfPage(currentPdfPage);
+
+                lucide.createIcons();
+            } catch (error) {
+                console.error('Error loading document:', error);
+                document.getElementById('pdfViewerContainer').innerHTML =
+                    `\u003cdiv style=\"color: var(--error-color); text-align: center; padding: 40px;\"\u003eError loading document: ${error.message}\u003c/div\u003e`;
+            }
+        }
+
+        async function renderPdfPage(pageNum) {
+            if (!pdfDoc) return;
+
+            const page = await pdfDoc.getPage(pageNum);
+            const viewport = page.getViewport({ scale: pdfScale });
+
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+
+            const pageDiv = document.createElement('div');
+            pageDiv.className = 'pdf-page';
+            pageDiv.style.width = viewport.width + 'px';
+            pageDiv.style.height = viewport.height + 'px';
+            pageDiv.appendChild(canvas);
+
+            // Render PDF page
+            await page.render({ canvasContext: context, viewport }).promise;
+
+            // Add highlight if bbox is provided and we're on the right page
+            if (currentHighlight && currentPdfPage === pageNum) {
+                const highlightDiv = document.createElement('div');
+                highlightDiv.className = 'highlight-box';
+
+                // bbox is [x1, y1, x2, y2] in normalized coordinates (0-1)
+                const left = currentHighlight[0] * canvas.width;
+                const top = currentHighlight[1] * canvas.height;
+                const width = (currentHighlight[2] - currentHighlight[0]) * canvas.width;
+                const height = (currentHighlight[3] - currentHighlight[1]) * canvas.height;
+
+                highlightDiv.style.left = left + 'px';
+                highlightDiv.style.top = top + 'px';
+                highlightDiv.style.width = width + 'px';
+                highlightDiv.style.height = height + 'px';
+
+                pageDiv.appendChild(highlightDiv);
+            }
+
+            const container = document.getElementById('pdfViewerContainer');
+            container.innerHTML = '';
+            container.appendChild(pageDiv);
+
+            // Update page info
+            document.getElementById('viewerPageInfo').textContent = `${pageNum} / ${pdfDoc.numPages}`;
+        }
+
+        function navigatePage(delta) {
+            if (!pdfDoc) return;
+            const newPage = currentPdfPage + delta;
+            if (newPage >= 1 && newPage <= pdfDoc.numPages) {
+                currentPdfPage = newPage;
+                renderPdfPage(currentPdfPage);
+            }
+        }
+
+        function zoomPDF(delta) {
+            pdfScale = Math.max(0.5, Math.min(3.0, pdfScale + delta));
+            if (pdfDoc) {
+                renderPdfPage(currentPdfPage);
+            }
+        }
+
+        function closeDocumentViewer() {
+            document.getElementById('documentViewerSidebar').classList.remove('open');
+        }
+
+        // Session Management
+        async function loadSessions() {
+            try {
+                const response = await fetch('/chat/sessions');
+                const sessions = await response.json();
+                renderChatList(sessions);
+            } catch (error) {
+                console.error('Error loading sessions:', error);
+            }
+        }
+
+        function renderChatList(sessions) {
+            const chatList = document.getElementById('chatList');
+            if (!sessions || sessions.length === 0) {
+                chatList.innerHTML = '\u003cdiv style="color: var(--text-secondary); padding: 12px; text-align: center; font-size: 0.9rem;"\u003eNo chats yet\u003c/div\u003e';
                 return;
             }
-            
-            // Сортируем по дате обновления (последняя первая)
-            const sortedSessionIds = permanentSessions.sort((a, b) => {
-                const sessionA = sessions[a];
-                const sessionB = sessions[b];
-                const timeA = new Date(sessionA.updated_at || sessionA.created_at || 0).getTime();
-                const timeB = new Date(sessionB.updated_at || sessionB.created_at || 0).getTime();
-                return timeB - timeA;
-            });
-            
-            // Загружаем последнюю сессию
-            const lastSessionId = sortedSessionIds[0];
-            const lastSession = sessions[lastSessionId];
-            
-            // Проверяем, что в сессии есть сообщения
-            if (lastSession && lastSession.messages && lastSession.messages.length > 0) {
-                console.log('Автоматически загружаем последнюю сессию:', lastSessionId);
-                await loadSession(lastSessionId);
-            } else {
-                console.log('Последняя сессия не содержит сообщений');
+
+            chatList.innerHTML = sessions.map(session => `
+                \u003cdiv class="chat-item ${session.id === currentSessionId ? 'active' : ''}" 
+                     onclick="loadSession('${session.id}')"\u003e
+                    \u003cspan\u003e${session.title || 'New Chat'}\u003c/span\u003e
+                    \u003cbutton onclick="deleteSession(event, '${session.id}')" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px;"\u003e
+                        \u003ci data-lucide="trash-2" size="14"\u003e\u003c/i\u003e
+                    \u003c/button\u003e
+                \u003c/div\u003e
+            `).join('');
+
+            lucide.createIcons({ root: chatList });
+        }
+
+        async function createNewSession() {
+            currentSessionId = 'new';
+            chatContainer.innerHTML = '';
+            // Add welcome message
+            const welcomeMsg = createMessageElement('ai');
+            chatContainer.appendChild(welcomeMsg);
+            const welcomeDiv = welcomeMsg.querySelector('.text-content');
+            welcomeDiv.innerHTML = '\u003cp\u003eHello! I\'m your advanced document assistant. I can search through your documents using a hybrid approach (vector + keywords) and reason about the results.\u003c/p\u003e\u003cp\u003eHow can I help you today?\u003c/p\u003e';
+            lucide.createIcons();
+        }
+
+        async function loadSession(sessionId) {
+            currentSessionId = sessionId;
+            chatContainer.innerHTML = '';
+
+            try {
+                const response = await fetch(`/chat/sessions/${sessionId}/messages`);
+                const messages = await response.json();
+
+                for (const msg of messages) {
+                    appendMessage(msg.role === 'user' ? 'user' : 'ai', msg.content, msg.citations);
+                }
+
+                // Mark session as active
+                document.querySelectorAll('.chat-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                document.querySelector(`.chat-item[onclick*="'${sessionId}'"]`)?.classList.add('active');
+            } catch (error) {
+                console.error('Error loading session:', error);
             }
+        }
+
+        async function deleteSession(event, sessionId) {
+            event.stopPropagation();
+            if (!confirm('Delete this chat?')) return;
+
+            try {
+                await fetch(`/chat/sessions/${sessionId}`, { method: 'DELETE' });
+                if (currentSessionId === sessionId) {
+                    createNewSession();
+                }
+                loadSessions();
+            } catch (error) {
+                console.error('Error deleting session:', error);
+            }
+        }
+
+        function appendMessage(role, text, citations = null) {
+            const messageDiv = createMessageElement(role);
+            chatContainer.appendChild(messageDiv);
+            const textContentDiv = messageDiv.querySelector('.text-content');
+            textContentDiv.innerHTML = marked.parse(text);
+
+            // Apply citations if available
+            if (citations && Object.keys(citations).length > 0) {
+                applyCitations(textContentDiv, citations);
+            }
+
+            lucide.createIcons({ root: messageDiv });
+            chatContainer.scrollTop = chatContainer.scrollHeight;
         }
     </script>
 </body>
+
 </html>

@@ -1,0 +1,1943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document AI Processing</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        :root {
+            color-scheme: light dark;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #38bdf8;
+            --accent-muted: rgba(56, 189, 248, 0.15);
+            --text: #e2e8f0;
+            --subtle: #94a3b8;
+            --border: rgba(148, 163, 184, 0.2);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            letter-spacing: 0.03em;
+        }
+
+        .nav-button {
+            padding: 8px 16px;
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 8px;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .nav-button:hover {
+            background: rgba(56, 189, 248, 0.25);
+            border-color: var(--accent);
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            overflow: hidden;
+            max-height: calc(100vh - 80px);
+        }
+
+        .left-panel {
+            flex: 0.7;
+            background: var(--card);
+            border-radius: 12px;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-height: 100%;
+        }
+
+        .right-panel {
+            width: 550px;
+            background: var(--card);
+            border-radius: 12px;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            max-height: 100%;
+        }
+
+        .upload-section {
+            background: rgba(56, 189, 248, 0.1);
+            border: 2px dashed var(--accent);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .upload-section:hover {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: var(--accent);
+        }
+
+        .upload-section input[type="file"] {
+            display: none;
+        }
+
+        .pdf-viewer {
+            position: relative;
+            background: white;
+            border-radius: 8px;
+            min-height: 400px;
+            display: none;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 16px;
+            max-height: calc(100vh - 260px);
+            overflow-y: auto;
+        }
+
+        .pdf-page {
+            position: relative;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .pdf-page canvas {
+            display: block;
+        }
+
+        .bounding-box {
+            position: absolute;
+            border: 3px solid var(--accent);
+            background: rgba(56, 189, 248, 0.15);
+            pointer-events: none;
+            z-index: 10;
+            transition: all 0.2s ease;
+        }
+
+        .bounding-box.edit-box {
+            border: 2px dashed var(--accent);
+            background: rgba(56, 189, 248, 0.12);
+            pointer-events: all;
+            cursor: move;
+            z-index: 20;
+        }
+
+        .bounding-box.kv-box {
+            border-color: var(--success);
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        .bounding-box.field-box {
+            border-color: var(--accent);
+            background: rgba(56, 189, 248, 0.15);
+        }
+
+        .bounding-box.ocr-box {
+            border-color: rgba(148, 163, 184, 0.8);
+            background: rgba(148, 163, 184, 0.2);
+        }
+
+        .bounding-box.hover {
+            border-width: 4px;
+            box-shadow: 0 0 12px rgba(14, 165, 233, 0.5);
+        }
+
+        .bounding-box.highlight {
+            background: rgba(16, 185, 129, 0.3);
+            border-color: var(--success);
+            border-width: 4px;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+
+        .bounding-box.table-box {
+            background: rgba(245, 158, 11, 0.2);
+            border-color: var(--warning);
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            background: rgba(56, 189, 248, 0.05);
+        }
+
+        .page-navigation {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(56, 189, 248, 0.05);
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 16px;
+            border-radius: 12px;
+        }
+
+        .highlight-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: var(--subtle);
+        }
+
+        .highlight-toggle input {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        .page-nav-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            letter-spacing: 0.03em;
+            color: var(--subtle);
+        }
+
+        .page-nav-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .page-control {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 1.1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .page-control:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .page-control:not(:disabled):hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .page-input-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--subtle);
+            font-size: 0.9rem;
+        }
+
+        .page-number-input {
+            width: 60px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: rgba(56, 189, 248, 0.08);
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+
+        .page-go {
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--accent);
+            background: rgba(56, 189, 248, 0.2);
+            color: var(--accent);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .page-go:hover {
+            background: var(--accent);
+            color: white;
+        }
+
+        .page-nav-buttons {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .page-button {
+            padding: 6px 14px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: rgba(56, 189, 248, 0.08);
+            color: var(--text);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .page-button:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .page-button.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+            box-shadow: 0 6px 14px rgba(56, 189, 248, 0.25);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            color: var(--subtle);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab:hover {
+            color: var(--text);
+            background: rgba(56, 189, 248, 0.1);
+        }
+
+        .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            background: rgba(56, 189, 248, 0.1);
+        }
+
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .tab-content.hidden {
+            display: none;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--accent);
+        }
+
+        .add-field-section {
+            margin-bottom: 20px;
+            padding: 12px;
+            background: rgba(56, 189, 248, 0.1);
+            border-radius: 8px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .field-form-group {
+            flex: 1;
+            min-width: 180px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .field-form-group label {
+            font-size: 0.75rem;
+            color: var(--subtle);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .field-form-group input,
+        .field-form-group select,
+        .field-form-group textarea {
+            padding: 8px;
+            background: rgba(56, 189, 248, 0.08);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.85rem;
+        }
+
+        .field-form-group textarea {
+            min-height: 60px;
+            resize: vertical;
+        }
+
+        .add-field-input {
+            flex: 1;
+            padding: 8px;
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+
+        .add-field-button {
+            padding: 8px 16px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .add-field-button:hover {
+            background: #0ea5e9;
+        }
+
+        .fields-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .field-tag {
+            padding: 6px 12px;
+            background: rgba(56, 189, 248, 0.2);
+            border: 1px solid var(--accent);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .field-tag small {
+            color: var(--subtle);
+            font-size: 0.7rem;
+        }
+
+        .field-tag .remove {
+            cursor: pointer;
+            color: var(--error);
+            font-weight: bold;
+        }
+
+        .key-value-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .key-value-item {
+            padding: 12px;
+            background: rgba(56, 189, 248, 0.1);
+            border-radius: 8px;
+            border-left: 3px solid var(--accent);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .key-value-item:hover {
+            background: rgba(56, 189, 248, 0.2);
+            transform: translateX(4px);
+        }
+
+        .key-value-item.highlight {
+            background: rgba(16, 185, 129, 0.2);
+            border-left-color: var(--success);
+            border-left-width: 4px;
+        }
+
+        .key-value-item .key {
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+
+        .key-value-item .value {
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+
+        .field-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 6px;
+            gap: 6px;
+        }
+
+        .field-actions-bar {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 12px;
+        }
+
+        .field-edit-button {
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: rgba(56, 189, 248, 0.08);
+            color: var(--accent);
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .field-edit-button:hover {
+            background: rgba(56, 189, 248, 0.2);
+        }
+
+        .field-delete-button {
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: rgba(239, 68, 68, 0.08);
+            color: var(--error);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+
+        .field-delete-button:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .table-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .table-item {
+            padding: 12px;
+            background: rgba(56, 189, 248, 0.1);
+            border-radius: 8px;
+            border-left: 3px solid var(--accent);
+            transition: all 0.2s ease;
+        }
+
+        .table-item .table-info {
+            font-size: 0.85rem;
+            color: var(--subtle);
+            margin-top: 8px;
+        }
+
+        .table-preview {
+            margin-top: 12px;
+            overflow-x: auto;
+        }
+
+        .table-preview table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .table-preview th,
+        .table-preview td {
+            padding: 6px 8px;
+            border: 1px solid var(--border);
+            text-align: left;
+        }
+
+        .table-preview th {
+            background: rgba(56, 189, 248, 0.2);
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .ocr-text {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: var(--text);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .ocr-item {
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            background: rgba(56, 189, 248, 0.05);
+            border-radius: 6px;
+            border-left: 2px solid var(--accent);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .ocr-item:hover {
+            background: rgba(56, 189, 248, 0.15);
+        }
+
+        .empty-state {
+            padding: 16px;
+            text-align: center;
+            border-radius: 8px;
+            background: rgba(148, 163, 184, 0.08);
+            color: var(--subtle);
+            font-size: 0.9rem;
+        }
+
+        .button {
+            padding: 10px 20px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .button:hover {
+            background: #0ea5e9;
+            transform: translateY(-1px);
+        }
+
+        .button.secondary {
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid var(--accent);
+        }
+
+        .button.secondary:hover {
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent);
+            transform: none;
+        }
+
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--subtle);
+        }
+
+        .error {
+            padding: 16px;
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 3px solid var(--error);
+            border-radius: 8px;
+            color: var(--error);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Document AI Processing</h1>
+        <a href="/" class="nav-button">← Back to Home</a>
+    </div>
+
+    <div class="container">
+        <div class="left-panel">
+            <div class="upload-section" id="uploadSection">
+                <input type="file" id="fileInput" accept=".pdf" />
+                <p>Click or drag PDF file here to upload</p>
+                <p style="font-size: 0.85rem; color: var(--subtle); margin-top: 8px;">
+                    Document will be processed automatically
+                </p>
+            </div>
+
+            <div class="page-navigation" id="pageNavigation">
+                <div class="page-nav-header">
+                    <span>Pages</span>
+                    <span id="pageIndicator"></span>
+                </div>
+                <div class="page-nav-controls">
+                    <button class="page-control" id="prevPageButton">‹</button>
+                    <div class="page-input-group">
+                        <span>[</span>
+                        <input type="number" id="pageNumberInput" class="page-number-input" min="1" value="1" />
+                        <span>] / <span id="pageTotalCount">0</span> pages</span>
+                    </div>
+                    <button class="page-control" id="nextPageButton">›</button>
+                    <button class="page-go" id="goToPageButton">Go</button>
+                    <label class="highlight-toggle">
+                        <input type="checkbox" id="toggleHighlights" checked />
+                        <span>View coordinates</span>
+                    </label>
+                </div>
+                <div class="page-nav-buttons" id="pageNavButtons"></div>
+            </div>
+
+            <div id="pdfViewer" class="pdf-viewer" style="display: none;"></div>
+            <div id="loading" class="loading" style="display: none;">Processing document...</div>
+            <div id="error" class="error" style="display: none;"></div>
+        </div>
+
+        <div class="right-panel">
+            <div class="tabs">
+                <button class="tab" data-tab="fields">FIELDS</button>
+                <button class="tab active" data-tab="keyvalue">KEY VALUE PAIRS</button>
+                <button class="tab" data-tab="tables">TABLES</button>
+                <button class="tab" data-tab="ocr">OCR</button>
+            </div>
+
+            <div class="tab-content hidden" id="fieldsTab">
+                <div class="section-title">CUSTOM FIELDS</div>
+                <div class="add-field-section">
+                    <div class="field-form-group">
+                        <label for="newFieldInput">Name</label>
+                        <input 
+                            type="text" 
+                            id="newFieldInput" 
+                            class="add-field-input" 
+                            placeholder="Enter field name (e.g., contract_number)"
+                        />
+                    </div>
+                    <div class="field-form-group">
+                        <label for="newFieldDescription">Description</label>
+                        <textarea 
+                            id="newFieldDescription" 
+                            placeholder="Add extractor hint or prompt"
+                        ></textarea>
+                    </div>
+                    <div class="field-form-group">
+                        <label for="newFieldOccurrence">Occurrence</label>
+                        <select id="newFieldOccurrence">
+                            <option value="OPTIONAL_ONCE">Optional Once</option>
+                            <option value="OPTIONAL_MULTIPLE">Optional Multiple</option>
+                            <option value="REQUIRED_ONCE">Required Once</option>
+                            <option value="REQUIRED_MULTIPLE">Required Multiple</option>
+                        </select>
+                    </div>
+                    <div class="field-form-group">
+                        <label for="newFieldValueType">Value Type</label>
+                        <select id="newFieldValueType">
+                            <option value="string" selected>String</option>
+                            <option value="integer">Integer</option>
+                            <option value="float">Float</option>
+                            <option value="date">Date</option>
+                            <option value="datetime">DateTime</option>
+                            <option value="time">Time</option>
+                            <option value="boolean">Boolean</option>
+                            <option value="money">Money</option>
+                            <option value="layout">Layout (tables/regions)</option>
+                        </select>
+                    </div>
+                    <button class="add-field-button" id="addFieldButton">Add Field</button>
+                </div>
+                <div class="fields-list" id="fieldsList"></div>
+                <div class="key-value-list" id="fieldsDataList"></div>
+                <div class="field-actions-bar">
+                    <button class="button secondary" id="downloadCustomRawButton" disabled>Download raw JSON</button>
+                </div>
+            </div>
+
+            <div class="tab-content" id="keyvalueTab">
+                <div class="section-title">KEY VALUE PAIRS</div>
+                <div class="key-value-list" id="keyValueList"></div>
+            </div>
+
+            <div class="tab-content hidden" id="tablesTab">
+                <div class="section-title">TABLES</div>
+                <div class="table-list" id="tableList"></div>
+            </div>
+
+            <div class="tab-content hidden" id="ocrTab">
+                <div class="section-title">OCR TEXT</div>
+                <div class="ocr-text" id="ocrText"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let hoverBoundingBoxes = [];
+        let showHighlights = true;
+        let currentFieldEdit = null;
+        let editOverlayElement = null;
+        let isProcessingFields = false;
+
+        const fileInput = document.getElementById('fileInput');
+        const uploadSection = document.getElementById('uploadSection');
+        const pdfViewer = document.getElementById('pdfViewer');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const keyValueList = document.getElementById('keyValueList');
+        const tableList = document.getElementById('tableList');
+        const fieldsDataList = document.getElementById('fieldsDataList');
+        const fieldsList = document.getElementById('fieldsList');
+        const ocrText = document.getElementById('ocrText');
+        const newFieldInput = document.getElementById('newFieldInput');
+        const newFieldDescription = document.getElementById('newFieldDescription');
+        const newFieldOccurrence = document.getElementById('newFieldOccurrence');
+        const newFieldValueType = document.getElementById('newFieldValueType');
+        const addFieldButton = document.getElementById('addFieldButton');
+        const pageNavigation = document.getElementById('pageNavigation');
+        const pageIndicator = document.getElementById('pageIndicator');
+        const pageNavButtons = document.getElementById('pageNavButtons');
+        const prevPageButton = document.getElementById('prevPageButton');
+        const nextPageButton = document.getElementById('nextPageButton');
+        const pageNumberInput = document.getElementById('pageNumberInput');
+        const goToPageButton = document.getElementById('goToPageButton');
+        const pageTotalCount = document.getElementById('pageTotalCount');
+        const toggleHighlights = document.getElementById('toggleHighlights');
+        const downloadCustomRawButton = document.getElementById('downloadCustomRawButton');
+
+        // Tab switching with auto-display
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => {
+                    c.classList.add('hidden');
+                    c.style.display = 'none';
+                });
+                tab.classList.add('active');
+                const content = document.getElementById(tabName + 'Tab');
+                content.classList.remove('hidden');
+                content.style.display = 'block';
+                renderActiveTabContent();
+            });
+        });
+
+        prevPageButton.addEventListener('click', () => {
+            if (activePageNumber > 1) {
+                setActivePage(activePageNumber - 1);
+            }
+        });
+
+        nextPageButton.addEventListener('click', () => {
+            if (activePageNumber < totalPages) {
+                setActivePage(activePageNumber + 1);
+            }
+        });
+
+        goToPageButton.addEventListener('click', () => {
+            const target = Number(pageNumberInput.value);
+            if (!Number.isNaN(target)) {
+                setActivePage(target);
+            }
+        });
+
+        pageNumberInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                goToPageButton.click();
+            }
+        });
+
+        toggleHighlights.addEventListener('change', () => {
+            showHighlights = toggleHighlights.checked;
+            if (!showHighlights) {
+                clearBoundingBoxes('base');
+            }
+            renderActiveTabContent();
+        });
+
+        if (downloadCustomRawButton) {
+            downloadCustomRawButton.addEventListener('click', () => {
+                const raw = allResults && allResults.custom_extractor && allResults.custom_extractor.raw_result;
+                if (!raw) {
+                    return;
+                }
+                const blob = new Blob([JSON.stringify(raw, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                const filename = currentFile ? currentFile.name.replace(/\.[^.]+$/, '') : 'custom_extractor';
+                link.download = `${filename}_custom_extractor_raw.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        // Add field functionality
+        addFieldButton.addEventListener('click', () => {
+            const fieldName = newFieldInput.value.trim();
+            const description = newFieldDescription.value.trim();
+            const occurrence = newFieldOccurrence.value || 'OPTIONAL_ONCE';
+            const valueType = newFieldValueType.value || 'string';
+            if (fieldName && !customFields.some(field => field.name === fieldName)) {
+                customFields.push({
+                    name: fieldName,
+                    description,
+                    occurrence,
+                    value_type: valueType
+                });
+                // Initialize cache entry with processing status
+                if (!fieldResultsCache[fieldName]) {
+                    fieldResultsCache[fieldName] = { status: 'processing', value: null, entity: null };
+                }
+                updateFieldsList();
+                renderFieldsForPage(activePageNumber);
+                newFieldInput.value = '';
+                newFieldDescription.value = '';
+                newFieldOccurrence.value = 'OPTIONAL_ONCE';
+                newFieldValueType.value = 'string';
+                // Re-process if document is already loaded and not already processing
+                if (currentFile && allResults && !isProcessingFields) {
+                    processCustomExtractor();
+                }
+            }
+        });
+
+        newFieldInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addFieldButton.click();
+            }
+        });
+
+        function updateFieldsList() {
+            fieldsList.innerHTML = '';
+            if (customFields.length === 0) {
+                fieldsList.innerHTML = '<div class="empty-state">Add fields to extract custom values.</div>';
+                return;
+            }
+            customFields.forEach(field => {
+                const tag = document.createElement('div');
+                tag.className = 'field-tag';
+                tag.innerHTML = `
+                    <strong>${field.name}</strong>
+                    <small>${(field.value_type || 'string').toUpperCase()}</small>
+                    <small>${field.occurrence || 'OPTIONAL_ONCE'}</small>
+                    ${field.description ? `<small>${field.description}</small>` : ''}
+                    <span class="remove" data-field="${field.name}">×</span>
+                `;
+                tag.querySelector('.remove').addEventListener('click', () => {
+                    customFields = customFields.filter(f => f.name !== field.name);
+                    delete fieldResultsCache[field.name];
+                    updateFieldsList();
+                    renderFieldsForPage(activePageNumber);
+                    if (currentFile && allResults) {
+                        processCustomExtractor();
+                    }
+                });
+                fieldsList.appendChild(tag);
+            });
+        }
+
+        function appendCustomFieldsToFormData(formData) {
+            if (!customFields.length) {
+                return;
+            }
+            const schemaPayload = JSON.stringify(customFields.map(field => ({
+                name: field.name,
+                description: field.description,
+                occurrence: field.occurrence || 'OPTIONAL_ONCE',
+                value_type: field.value_type || 'string'
+            })));
+            formData.append('field_schema', schemaPayload);
+            formData.append('field_names', customFields.map(field => field.name).join(','));
+        }
+
+        function updateRawDownloadButton() {
+            if (!downloadCustomRawButton) {
+                return;
+            }
+            const hasRaw = Boolean(allResults && allResults.custom_extractor && allResults.custom_extractor.raw_result);
+            downloadCustomRawButton.disabled = !hasRaw;
+        }
+
+        // File upload handlers
+        uploadSection.addEventListener('click', () => fileInput.click());
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.style.background = 'rgba(56, 189, 248, 0.2)';
+        });
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.style.background = 'rgba(56, 189, 248, 0.1)';
+        });
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.style.background = 'rgba(56, 189, 248, 0.1)';
+            if (e.dataTransfer.files.length > 0) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileSelect();
+            }
+        });
+
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function resetStateForNewDocument() {
+            allResults = null;
+            fieldResultsCache = {};
+            isProcessingFields = false;
+            perPageData = {
+                keyValues: {},
+                tables: {},
+                customFields: {},
+                ocrText: {},
+                ocrHighlights: {},
+                ocrElements: {}
+            };
+            activePageNumber = 1;
+            totalPages = 0;
+            pageElements = [];
+            keyValueList.innerHTML = '';
+            tableList.innerHTML = '';
+            fieldsDataList.innerHTML = '<div class="empty-state">No fields extracted yet. Add fields above and they will be processed automatically.</div>';
+            ocrText.innerHTML = '';
+            pageNavButtons.innerHTML = '';
+            pageIndicator.textContent = '';
+            pageNavigation.style.display = 'none';
+            pageNumberInput.value = '1';
+            pageTotalCount.textContent = '0';
+            toggleHighlights.checked = true;
+            showHighlights = true;
+            exitFieldEditMode();
+            clearBoundingBoxes();
+            pdfViewer.style.display = 'none';
+            pdfViewer.innerHTML = '';
+            updateRawDownloadButton();
+        }
+
+        async function handleFileSelect() {
+            if (fileInput.files.length > 0) {
+                currentFile = fileInput.files[0];
+                uploadSection.innerHTML = `<p>Processing: ${currentFile.name}</p>`;
+                resetStateForNewDocument();
+                await processDocument();
+            }
+        }
+
+        async function processDocument() {
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            pdfViewer.style.display = 'none';
+
+            try {
+                const formData = new FormData();
+                formData.append('file', currentFile);
+
+                // Always use "all" to get everything
+                let endpoint = '/document-ai/process/all';
+                appendCustomFieldsToFormData(formData);
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Processing failed');
+                }
+
+                const data = await response.json();
+                allResults = data.results;
+
+                // Load PDF
+                await loadPDF(currentFile);
+
+                // Display all results
+                displayAllResults(allResults);
+
+            } catch (err) {
+                error.textContent = `Error: ${err.message}`;
+                error.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        async function processCustomExtractor() {
+            if (!currentFile || customFields.length === 0) {
+                if (allResults) {
+                    allResults.custom_extractor = null;
+                    perPageData.customFields = {};
+                    fieldResultsCache = {};
+                    renderActiveTabContent();
+                    updateRawDownloadButton();
+                }
+                return;
+            }
+
+            // Check if already processing
+            if (isProcessingFields) {
+                return;
+            }
+
+            // Check if all fields are already processed
+            const allProcessed = customFields.every(field => 
+                fieldResultsCache[field.name] && fieldResultsCache[field.name].status === 'done'
+            );
+            if (allProcessed && allResults && allResults.custom_extractor) {
+                return; // Already processed, don't re-fetch
+            }
+
+            isProcessingFields = true;
+            
+            // Mark all fields as processing
+            customFields.forEach(field => {
+                if (!fieldResultsCache[field.name] || fieldResultsCache[field.name].status !== 'done') {
+                    fieldResultsCache[field.name] = { status: 'processing', value: null, entity: null };
+                }
+            });
+            renderFieldsForPage(activePageNumber);
+
+            try {
+                const formData = new FormData();
+                formData.append('file', currentFile);
+                appendCustomFieldsToFormData(formData);
+
+                const response = await fetch('/document-ai/process/custom-extractor', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (allResults) {
+                        allResults.custom_extractor = {
+                            entities: data.entities || [],
+                            text: data.document.text,
+                            raw_result: data.raw_result
+                        };
+                        
+                        // Update cache with results
+                        const entitiesByType = {};
+                        (data.entities || []).forEach(entity => {
+                            const type = entity.type || entity.type_;
+                            if (type) {
+                                if (!entitiesByType[type]) {
+                                    entitiesByType[type] = [];
+                                }
+                                entitiesByType[type].push(entity);
+                            }
+                        });
+                        
+                        customFields.forEach(field => {
+                            const foundEntities = entitiesByType[field.name] || [];
+                            if (foundEntities.length > 0) {
+                                const firstEntity = foundEntities[0];
+                                fieldResultsCache[field.name] = {
+                                    status: 'done',
+                                    value: firstEntity.value || '---',
+                                    entity: firstEntity
+                                };
+                            } else {
+                                fieldResultsCache[field.name] = {
+                                    status: 'done',
+                                    value: '---',
+                                    entity: null
+                                };
+                            }
+                        });
+                        
+                        displayCustomExtractorResults(allResults.custom_extractor);
+                        updateRawDownloadButton();
+                    }
+                } else {
+                    // Mark as error
+                    customFields.forEach(field => {
+                        fieldResultsCache[field.name] = { status: 'error', value: '---', entity: null };
+                    });
+                    renderFieldsForPage(activePageNumber);
+                }
+            } catch (err) {
+                console.error('Error processing custom extractor:', err);
+                // Mark as error
+                customFields.forEach(field => {
+                    fieldResultsCache[field.name] = { status: 'error', value: '---', entity: null };
+                });
+                renderFieldsForPage(activePageNumber);
+            } finally {
+                isProcessingFields = false;
+            }
+        }
+
+        async function loadPDF(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            
+            pdfViewer.innerHTML = '';
+            pageElements = [];
+            clearBoundingBoxes();
+
+            for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+                const page = await pdfDoc.getPage(pageNum);
+                const viewport = page.getViewport({ scale: 1.5 });
+
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const pageDiv = document.createElement('div');
+                pageDiv.className = 'pdf-page';
+                pageDiv.style.width = `${viewport.width}px`;
+                pageDiv.style.height = `${viewport.height}px`;
+                pageDiv.setAttribute('data-page', pageNum);
+
+                canvas.style.display = 'block';
+                pageDiv.appendChild(canvas);
+
+                pdfViewer.appendChild(pageDiv);
+                pageElements.push(pageDiv);
+
+                await page.render({
+                    canvasContext: context,
+                    viewport: viewport
+                }).promise;
+            }
+
+            totalPages = pdfDoc.numPages;
+            setActivePage(1, { scroll: false });
+            updatePageVisibility();
+        }
+
+        function clearBoundingBoxes(target = 'all') {
+            if (target === 'all' || target === 'base') {
+                baseBoundingBoxes.forEach(box => box.remove());
+                baseBoundingBoxes = [];
+            }
+            if (target === 'all' || target === 'hover') {
+                hoverBoundingBoxes.forEach(box => box.remove());
+                hoverBoundingBoxes = [];
+            }
+        }
+
+        function normalizePageNumber(value, fallback = 1) {
+            const num = Number(value);
+            if (!Number.isNaN(num) && num > 0) {
+                return num;
+            }
+            return fallback;
+        }
+
+        function groupItemsByPage(items = []) {
+            const grouped = {};
+            items.forEach((item, index) => {
+                const pageNumber = normalizePageNumber(item.page_number || item.pageNumber, index + 1);
+                if (!grouped[pageNumber]) {
+                    grouped[pageNumber] = [];
+                }
+                grouped[pageNumber].push(item);
+            });
+            return grouped;
+        }
+
+        function renderEmptyState(element, message) {
+            element.innerHTML = `<div class="empty-state">${message}</div>`;
+        }
+
+        function setActivePage(pageNumber, options = {}) {
+            if (!totalPages) {
+                return;
+            }
+            const previousPage = activePageNumber;
+            const targetPage = Math.min(Math.max(1, pageNumber), totalPages);
+            if (currentFieldEdit) {
+                const editPage = getEntityPageNumber(currentFieldEdit.entity);
+                if (editPage !== targetPage) {
+                    exitFieldEditMode();
+                }
+            }
+            activePageNumber = targetPage;
+            updatePageNavigation();
+            if (options.scroll !== false) {
+                scrollPdfToPage(targetPage);
+            }
+            const shouldRender = options.skipRender ? (targetPage !== previousPage) : true;
+            if (shouldRender) {
+                renderActiveTabContent();
+            }
+            updatePageVisibility();
+        }
+
+        function updatePageNavigation() {
+            if (!totalPages) {
+                pageNavigation.style.display = 'none';
+                prevPageButton.disabled = true;
+                nextPageButton.disabled = true;
+                return;
+            }
+            pageNavigation.style.display = 'flex';
+            pageIndicator.textContent = `Page ${activePageNumber} of ${totalPages}`;
+            pageNavButtons.innerHTML = '';
+            pageNumberInput.value = activePageNumber;
+            pageNumberInput.max = totalPages;
+            pageTotalCount.textContent = totalPages;
+            prevPageButton.disabled = activePageNumber <= 1;
+            nextPageButton.disabled = activePageNumber >= totalPages;
+
+            for (let i = 1; i <= totalPages; i++) {
+                const button = document.createElement('button');
+                button.className = `page-button${i === activePageNumber ? ' active' : ''}`;
+                button.textContent = `${i}`;
+                button.addEventListener('click', () => setActivePage(i, { scroll: true }));
+                pageNavButtons.appendChild(button);
+            }
+        }
+
+        function scrollPdfToPage(pageNumber) {
+            const pageDiv = document.querySelector(`.pdf-page[data-page="${pageNumber}"]`);
+            if (pageDiv) {
+                pageDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function updatePageVisibility() {
+            if (!pageElements.length) {
+                pdfViewer.style.display = 'none';
+                return;
+            }
+            pageElements.forEach((el, idx) => {
+                el.style.display = (idx + 1 === activePageNumber) ? 'block' : 'none';
+            });
+            pdfViewer.style.display = 'flex';
+            pdfViewer.scrollTop = 0;
+        }
+
+        function drawBoundingBox(pageNum, bbox, color = '#38bdf8', className = '') {
+            const pageDiv = document.querySelector(`.pdf-page[data-page="${pageNum}"]`);
+            if (!pageDiv || !bbox) return null;
+
+            const width = pageDiv.offsetWidth;
+            const height = pageDiv.offsetHeight;
+
+            const box = document.createElement('div');
+            box.className = `bounding-box ${className}`;
+            box.style.left = `${bbox.x1 * width}px`;
+            box.style.top = `${bbox.y1 * height}px`;
+            box.style.width = `${(bbox.x2 - bbox.x1) * width}px`;
+            box.style.height = `${(bbox.y2 - bbox.y1) * height}px`;
+            box.style.borderColor = color;
+
+            pageDiv.appendChild(box);
+            return box;
+        }
+
+        function resolveBoundingBox(item) {
+            if (!item) return null;
+            if (item.bounding_box) return item.bounding_box;
+            if (item.value_bbox) return item.value_bbox;
+            if (item.key_bbox) return item.key_bbox;
+            return null;
+        }
+
+        function setBaseHighlights(items = [], color = '#38bdf8', className = '') {
+            clearBoundingBoxes('base');
+            if (!showHighlights || !items || !items.length) {
+                return;
+            }
+            items.forEach(item => {
+                const bbox = resolveBoundingBox(item);
+                const pageNumber = normalizePageNumber(item.page_number || item.pageNumber, activePageNumber);
+                if (bbox) {
+                    const box = drawBoundingBox(pageNumber, bbox, color, className);
+                    if (box) {
+                        baseBoundingBoxes.push(box);
+                    }
+                }
+            });
+        }
+
+        function setHoverHighlights(items = [], color = '#0ea5e9', className = 'highlight') {
+            clearBoundingBoxes('hover');
+            items.forEach(item => {
+                const bbox = resolveBoundingBox(item);
+                const pageNumber = normalizePageNumber(item.page_number || item.pageNumber, activePageNumber);
+                if (bbox) {
+                    const box = drawBoundingBox(pageNumber, bbox, color, className);
+                    if (box) {
+                        hoverBoundingBoxes.push(box);
+                    }
+                }
+            });
+        }
+
+        function flattenGroupedData(grouped) {
+            return Object.values(grouped || {}).reduce((acc, list) => {
+                if (Array.isArray(list)) {
+                    acc.push(...list);
+                }
+                return acc;
+            }, []);
+        }
+
+        function getEntityPageNumber(entity) {
+            if (!entity) {
+                return activePageNumber;
+            }
+            return normalizePageNumber(entity.page_number || entity.pageNumber, activePageNumber);
+        }
+
+        function toggleFieldEditMode(entity, listItem) {
+            if (!entity) return;
+            if (currentFieldEdit && currentFieldEdit.entity === entity) {
+                exitFieldEditMode();
+                return;
+            }
+            startFieldEdit(entity, listItem);
+        }
+
+        function startFieldEdit(entity, listItem) {
+            exitFieldEditMode();
+            const targetPage = getEntityPageNumber(entity);
+            const skipRender = targetPage === activePageNumber;
+            setActivePage(targetPage, { scroll: true, skipRender });
+            currentFieldEdit = { entity, listItem };
+            requestAnimationFrame(() => {
+                editOverlayElement = createEditableOverlay(entity);
+            });
+        }
+
+        function createEditableOverlay(entity) {
+            const pageNumber = getEntityPageNumber(entity);
+            const pageDiv = document.querySelector(`.pdf-page[data-page="${pageNumber}"]`);
+            if (!pageDiv) {
+                return null;
+            }
+            const bbox = resolveBoundingBox(entity) || { x1: 0.1, y1: 0.1, x2: 0.3, y2: 0.2 };
+            const overlay = document.createElement('div');
+            overlay.className = 'bounding-box edit-box';
+            const pageWidth = pageDiv.offsetWidth || 1;
+            const pageHeight = pageDiv.offsetHeight || 1;
+            overlay.style.left = `${bbox.x1 * pageWidth}px`;
+            overlay.style.top = `${bbox.y1 * pageHeight}px`;
+            overlay.style.width = `${Math.max(20, (bbox.x2 - bbox.x1) * pageWidth)}px`;
+            overlay.style.height = `${Math.max(20, (bbox.y2 - bbox.y1) * pageHeight)}px`;
+            pageDiv.appendChild(overlay);
+            enableOverlayDrag(overlay, pageDiv, entity);
+            return overlay;
+        }
+
+        function enableOverlayDrag(overlay, pageDiv, entity) {
+            let isDragging = false;
+            let startX = 0;
+            let startY = 0;
+            let originLeft = 0;
+            let originTop = 0;
+
+            const onMouseMove = (event) => {
+                if (!isDragging) return;
+                const dx = event.clientX - startX;
+                const dy = event.clientY - startY;
+                let newLeft = originLeft + dx;
+                let newTop = originTop + dy;
+                const maxLeft = pageDiv.offsetWidth - overlay.offsetWidth;
+                const maxTop = pageDiv.offsetHeight - overlay.offsetHeight;
+                newLeft = Math.min(Math.max(0, newLeft), Math.max(0, maxLeft));
+                newTop = Math.min(Math.max(0, newTop), Math.max(0, maxTop));
+                overlay.style.left = `${newLeft}px`;
+                overlay.style.top = `${newTop}px`;
+            };
+
+            const onMouseUp = () => {
+                if (!isDragging) return;
+                isDragging = false;
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                applyOverlayPositionToEntity(overlay, pageDiv, entity);
+            };
+
+            overlay.addEventListener('mousedown', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                isDragging = true;
+                startX = event.clientX;
+                startY = event.clientY;
+                originLeft = overlay.offsetLeft;
+                originTop = overlay.offsetTop;
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+        }
+
+        function applyOverlayPositionToEntity(overlay, pageDiv, entity) {
+            const pageWidth = pageDiv.offsetWidth || 1;
+            const pageHeight = pageDiv.offsetHeight || 1;
+            const newBBox = {
+                x1: overlay.offsetLeft / pageWidth,
+                y1: overlay.offsetTop / pageHeight,
+                x2: (overlay.offsetLeft + overlay.offsetWidth) / pageWidth,
+                y2: (overlay.offsetTop + overlay.offsetHeight) / pageHeight
+            };
+            entity.bounding_box = newBBox;
+            entity.page_number = parseInt(pageDiv.getAttribute('data-page'), 10) || entity.page_number || 1;
+            updateFieldValueFromBoundingBox(entity);
+            refreshFieldHighlights();
+        }
+
+        function updateFieldValueFromBoundingBox(entity) {
+            const pageNumber = getEntityPageNumber(entity);
+            const newValue = getTextForBoundingBox(pageNumber, entity.bounding_box);
+            if (newValue) {
+                entity.value = newValue;
+                if (currentFieldEdit && currentFieldEdit.entity === entity) {
+                    const valueEl = currentFieldEdit.listItem?.querySelector('.value');
+                    if (valueEl) {
+                        valueEl.textContent = newValue;
+                    }
+                }
+            }
+        }
+
+        function exitFieldEditMode() {
+            if (editOverlayElement && editOverlayElement.parentNode) {
+                editOverlayElement.parentNode.removeChild(editOverlayElement);
+            }
+            editOverlayElement = null;
+            currentFieldEdit = null;
+        }
+
+        function refreshFieldHighlights() {
+            const fieldsTab = document.querySelector('.tab[data-tab="fields"]');
+            if (fieldsTab && fieldsTab.classList.contains('active')) {
+                setBaseHighlights(flattenGroupedData(perPageData.customFields), '#38bdf8', 'field-box');
+            }
+        }
+
+        function getTextForBoundingBox(pageNumber, bbox) {
+            if (!bbox) {
+                return '';
+            }
+            const elements = (perPageData.ocrElements && perPageData.ocrElements[pageNumber]) || [];
+            let bestMatch = '';
+            let bestScore = 0;
+            elements.forEach(element => {
+                if (!element.bounding_box) return;
+                const score = calculateOverlapRatio(bbox, element.bounding_box);
+                if (score > bestScore && element.text) {
+                    bestScore = score;
+                    bestMatch = element.text;
+                }
+            });
+            return bestMatch.trim();
+        }
+
+        function calculateOverlapRatio(a, b) {
+            if (!a || !b) return 0;
+            const x1 = Math.max(a.x1, b.x1);
+            const y1 = Math.max(a.y1, b.y1);
+            const x2 = Math.min(a.x2, b.x2);
+            const y2 = Math.min(a.y2, b.y2);
+            if (x2 <= x1 || y2 <= y1) {
+                return 0;
+            }
+            const intersection = (x2 - x1) * (y2 - y1);
+            const areaA = (a.x2 - a.x1) * (a.y2 - a.y1) || 0.0001;
+            return intersection / areaA;
+        }
+
+        function displayFormParserResults(data) {
+            perPageData.keyValues = groupItemsByPage(data.key_value_pairs || []);
+            perPageData.tables = groupItemsByPage(data.tables || []);
+            renderActiveTabContent();
+        }
+
+        function renderKeyValuesForPage(pageNumber) {
+            const items = perPageData.keyValues[pageNumber] || [];
+            if (!items.length) {
+                renderEmptyState(keyValueList, 'No key value pairs detected on this page.');
+                return;
+            }
+            keyValueList.innerHTML = '';
+            items.forEach(kv => {
+                const item = document.createElement('div');
+                item.className = 'key-value-item';
+                item.innerHTML = `
+                    <div class="key">${kv.key || ''}</div>
+                    <div class="value">${kv.value || ''}</div>
+                `;
+                item.addEventListener('mouseenter', () => {
+                    setHoverHighlights([kv], '#10b981', 'kv-box hover');
+                    item.classList.add('highlight');
+                });
+                item.addEventListener('mouseleave', () => {
+                    clearBoundingBoxes('hover');
+                    item.classList.remove('highlight');
+                });
+                keyValueList.appendChild(item);
+            });
+        }
+
+        function renderTablesForPage(pageNumber) {
+            const tables = perPageData.tables[pageNumber] || [];
+            if (!tables.length) {
+                renderEmptyState(tableList, 'No tables detected on this page.');
+                return;
+            }
+            tableList.innerHTML = '';
+            tables.forEach(table => {
+                const item = document.createElement('div');
+                item.className = 'table-item';
+                item.innerHTML = `
+                    <div><strong>Table ${table.table_index}</strong> (Page ${table.page_number})</div>
+                    <div class="table-info">${table.rows.length} rows</div>
+                    <div class="table-preview">
+                        <table>
+                            ${table.rows.map(row => `
+                                <tr>
+                                    ${row.map(cell => `<td>${cell.text || ''}</td>`).join('')}
+                                </tr>
+                            `).join('')}
+                        </table>
+                    </div>
+                `;
+                item.addEventListener('mouseenter', () => {
+                    setHoverHighlights([table], '#f59e0b', 'table-box hover');
+                    item.style.background = 'rgba(245, 158, 11, 0.2)';
+                });
+                item.addEventListener('mouseleave', () => {
+                    clearBoundingBoxes('hover');
+                    item.style.background = 'rgba(56, 189, 248, 0.1)';
+                });
+                tableList.appendChild(item);
+            });
+        }
+
+        function displayOCRResults(data) {
+            const { textByPage, highlightsByPage, elementsByPage } = processOcrData(data);
+            perPageData.ocrText = textByPage;
+            perPageData.ocrHighlights = highlightsByPage;
+            perPageData.ocrElements = elementsByPage;
+            renderActiveTabContent();
+        }
+
+        function extractTextFromLayout(layout, fullText) {
+            if (!layout) return '';
+            const textAnchor = layout.textAnchor || layout.text_anchor || {};
+            if (!textAnchor) return '';
+            if (textAnchor.content) {
+                return textAnchor.content.trim();
+            }
+            const segments = textAnchor.textSegments || textAnchor.text_segments || [];
+            if (!segments.length || !fullText) return '';
+            let text = '';
+            segments.forEach(segment => {
+                const start = parseInt(segment.startIndex ?? segment.start_index ?? 0, 10);
+                const end = parseInt(segment.endIndex ?? segment.end_index ?? fullText.length, 10);
+                text += fullText.slice(start, end);
+            });
+            return text.trim();
+        }
+
+        function processOcrData(data) {
+            const textByPage = {};
+            const highlightsByPage = {};
+            const elementsByPage = {};
+            if (!data) {
+                return { textByPage, highlightsByPage, elementsByPage };
+            }
+            const fullText = data.text || '';
+            const pages = data.pages || [];
+            const fallbackPages = fullText ? fullText.split('\f') : [];
+
+            if (pages.length) {
+                pages.forEach((page, idx) => {
+                    const pageNumber = normalizePageNumber(page.pageNumber || page.page_number, idx + 1);
+                    const layout = page.layout || {};
+                    let pageText = extractTextFromLayout(layout, fullText);
+                    if (!pageText && fallbackPages[pageNumber - 1]) {
+                        pageText = fallbackPages[pageNumber - 1];
+                    }
+                    if (pageText) {
+                        textByPage[pageNumber] = pageText;
+                    }
+                    const highlights = extractOcrHighlightsFromPage(page, pageNumber);
+                    if (highlights.length) {
+                        highlightsByPage[pageNumber] = highlights;
+                    }
+                    const textualContainers = page.paragraphs || page.lines || page.tokens || [];
+                    textualContainers.forEach(container => {
+                        const containerLayout = container.layout || {};
+                        const text = extractTextFromLayout(containerLayout, fullText);
+                        const boundingPoly = containerLayout.boundingPoly || containerLayout.bounding_poly || {};
+                        const bbox = normalizeBoundingPoly(boundingPoly);
+                        if (text && bbox) {
+                            if (!elementsByPage[pageNumber]) {
+                                elementsByPage[pageNumber] = [];
+                            }
+                            elementsByPage[pageNumber].push({
+                                text: text.trim(),
+                                bounding_box: bbox
+                            });
+                        }
+                    });
+                });
+            } else if (fallbackPages.length) {
+                fallbackPages.forEach((pageText, idx) => {
+                    textByPage[idx + 1] = pageText;
+                });
+            }
+            return { textByPage, highlightsByPage, elementsByPage };
+        }
+
+        function extractOcrHighlightsFromPage(page, pageNumber) {
+            const highlights = [];
+            if (!page) return highlights;
+            const containers = page.paragraphs || page.lines || page.blocks || [];
+            containers.forEach(container => {
+                const layout = container.layout || {};
+                const poly = layout.boundingPoly || layout.bounding_poly || {};
+                const bbox = normalizeBoundingPoly(poly);
+                if (bbox) {
+                    highlights.push({
+                        page_number: pageNumber,
+                        bounding_box: bbox
+                    });
+                }
+            });
+            if (!highlights.length && page.layout) {
+                const layoutPoly = page.layout.boundingPoly || page.layout.bounding_poly;
+                const bbox = normalizeBoundingPoly(layoutPoly);
+                if (bbox) {
+                    highlights.push({
+                        page_number: pageNumber,
+                        bounding_box: bbox
+                    });
+                }
+            }
+            return highlights;
+        }
+
+        function normalizeBoundingPoly(boundingPoly = {}) {
+            const vertices = boundingPoly.normalizedVertices || boundingPoly.normalized_vertices;
+            if (!vertices || !vertices.length) {
+                return null;
+            }
+            const xs = vertices.map(v => (typeof v.x === 'number' ? v.x : null)).filter(v => v !== null);
+            const ys = vertices.map(v => (typeof v.y === 'number' ? v.y : null)).filter(v => v !== null);
+            if (!xs.length || !ys.length) {
+                return null;
+            }
+            return {
+                x1: Math.max(0, Math.min(...xs)),
+                y1: Math.max(0, Math.min(...ys)),
+                x2: Math.min(1, Math.max(...xs)),
+                y2: Math.min(1, Math.max(...ys))
+            };
+        }
+
+        function renderOCRForPage(pageNumber) {
+            const pageText = perPageData.ocrText[pageNumber];
+            if (!pageText) {
+                renderEmptyState(ocrText, 'No OCR text for this page yet.');
+                return;
+            }
+            const lines = pageText.split('\n').filter(l => l.trim());
+            if (!lines.length) {
+                renderEmptyState(ocrText, 'No OCR text for this page yet.');
+                return;
+            }
+            ocrText.innerHTML = lines.map(line => 
+                `<div class="ocr-item">${line}</div>`
+            ).join('');
+        }
+
+        function displayCustomExtractorResults(data) {
+            exitFieldEditMode();
+            perPageData.customFields = groupItemsByPage(data.entities || []);
+            // Results are already cached in processCustomExtractor
+            renderActiveTabContent();
+            updateRawDownloadButton();
+        }
+
+        function renderFieldsForPage(pageNumber) {
+            if (!customFields.length) {
+                renderEmptyState(fieldsDataList, 'No fields extracted yet. Add fields above and they will be processed automatically.');
+                exitFieldEditMode();
+                return;
+            }
+            
+            fieldsDataList.innerHTML = '';
+            
+            // Show all fields from customFields, not just found ones
+            customFields.forEach(field => {
+                const cacheEntry = fieldResultsCache[field.name] || { status: 'processing', value: null, entity: null };
+                const item = document.createElement('div');
+                item.className = 'key-value-item';
+                
+                let valueDisplay = '---';
+                if (cacheEntry.status === 'processing') {
+                    valueDisplay = '<span style="color: var(--accent);">processing...</span>';
+                } else if (cacheEntry.status === 'done' && cacheEntry.value) {
+                    valueDisplay = cacheEntry.value;
+                } else if (cacheEntry.status === 'error') {
+                    valueDisplay = '<span style="color: var(--error);">---</span>';
+                }
+                
+                item.innerHTML = `
+                    <div class="key">${field.name}</div>
+                    <div class="value">${valueDisplay}</div>
+                `;
+                
+                const actions = document.createElement('div');
+                actions.className = 'field-actions';
+                
+                // Edit button (only if entity exists)
+                if (cacheEntry.entity) {
+                    const editButtonEl = document.createElement('button');
+                    editButtonEl.className = 'field-edit-button';
+                    editButtonEl.type = 'button';
+                    editButtonEl.textContent = '✏️';
+                    editButtonEl.title = 'Adjust selection on document';
+                    editButtonEl.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        toggleFieldEditMode(cacheEntry.entity, item);
+                    });
+                    actions.appendChild(editButtonEl);
+                }
+                
+                // Delete button
+                const deleteButtonEl = document.createElement('button');
+                deleteButtonEl.className = 'field-delete-button';
+                deleteButtonEl.type = 'button';
+                deleteButtonEl.textContent = '×';
+                deleteButtonEl.title = 'Remove field';
+                deleteButtonEl.style.color = 'var(--error)';
+                deleteButtonEl.style.cursor = 'pointer';
+                deleteButtonEl.style.marginLeft = '8px';
+                deleteButtonEl.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    customFields = customFields.filter(f => f.name !== field.name);
+                    delete fieldResultsCache[field.name];
+                    updateFieldsList();
+                    renderFieldsForPage(activePageNumber);
+                    if (currentFile && allResults) {
+                        processCustomExtractor();
+                    }
+                });
+                actions.appendChild(deleteButtonEl);
+                
+                item.appendChild(actions);
+                
+                // Hover highlight only if entity exists
+                if (cacheEntry.entity) {
+                    item.addEventListener('mouseenter', () => {
+                        setHoverHighlights([cacheEntry.entity], '#38bdf8', 'field-box hover');
+                        item.classList.add('highlight');
+                    });
+                    item.addEventListener('mouseleave', () => {
+                        clearBoundingBoxes('hover');
+                        item.classList.remove('highlight');
+                    });
+                }
+                
+                fieldsDataList.appendChild(item);
+            });
+        }
+
+        function renderActiveTabContent() {
+            const activeTab = document.querySelector('.tab.active');
+            if (!activeTab) return;
+            clearBoundingBoxes('hover');
+            const tabName = activeTab.dataset.tab;
+            if (tabName !== 'fields') {
+                exitFieldEditMode();
+            }
+            if (tabName === 'keyvalue') {
+                renderKeyValuesForPage(activePageNumber);
+                setBaseHighlights(flattenGroupedData(perPageData.keyValues), '#10b981', 'kv-box');
+            } else if (tabName === 'tables') {
+                renderTablesForPage(activePageNumber);
+                setBaseHighlights(flattenGroupedData(perPageData.tables), '#f59e0b', 'table-box');
+            } else if (tabName === 'fields') {
+                renderFieldsForPage(activePageNumber);
+                setBaseHighlights(flattenGroupedData(perPageData.customFields), '#38bdf8', 'field-box');
+            } else if (tabName === 'ocr') {
+                renderOCRForPage(activePageNumber);
+                setBaseHighlights(perPageData.ocrHighlights[activePageNumber] || [], '#94a3b8', 'ocr-box');
+            }
+        }
+
+        function displayAllResults(results) {
+            // Custom Extractor (FIELDS tab)
+            if (results.custom_extractor && !results.custom_extractor.error) {
+                // Update cache from results
+                const entitiesByType = {};
+                (results.custom_extractor.entities || []).forEach(entity => {
+                    const type = entity.type || entity.type_;
+                    if (type) {
+                        if (!entitiesByType[type]) {
+                            entitiesByType[type] = [];
+                        }
+                        entitiesByType[type].push(entity);
+                    }
+                });
+                
+                customFields.forEach(field => {
+                    const foundEntities = entitiesByType[field.name] || [];
+                    if (foundEntities.length > 0) {
+                        const firstEntity = foundEntities[0];
+                        fieldResultsCache[field.name] = {
+                            status: 'done',
+                            value: firstEntity.value || '---',
+                            entity: firstEntity
+                        };
+                    } else {
+                        fieldResultsCache[field.name] = {
+                            status: 'done',
+                            value: '---',
+                            entity: null
+                        };
+                    }
+                });
+                
+                displayCustomExtractorResults(results.custom_extractor);
+            } else if (!results.custom_extractor) {
+                perPageData.customFields = {};
+                // Mark all fields as done with no results
+                customFields.forEach(field => {
+                    if (!fieldResultsCache[field.name] || fieldResultsCache[field.name].status === 'processing') {
+                        fieldResultsCache[field.name] = { status: 'done', value: '---', entity: null };
+                    }
+                });
+                renderFieldsForPage(activePageNumber);
+            }
+
+            // Form Parser (KEY VALUE PAIRS and TABLES tabs)
+            if (results.form_parser && !results.form_parser.error) {
+                displayFormParserResults(results.form_parser);
+            }
+
+            // OCR (OCR tab)
+            if (results.ocr && !results.ocr.error) {
+                displayOCRResults(results.ocr);
+            }
+        }
+    </script>
+</body>
+</html>

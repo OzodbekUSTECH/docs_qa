@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -142,7 +143,8 @@
             border-collapse: collapse;
         }
 
-        th, td {
+        th,
+        td {
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid var(--border);
@@ -797,6 +799,42 @@
             word-wrap: break-word;
         }
 
+        .field-value-table {
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+
+        .field-value-table table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .field-value-table table th,
+        .field-value-table table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8rem;
+        }
+
+        .field-value-table table th {
+            background: rgba(56, 189, 248, 0.15);
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .field-value-table table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .field-value-table table tr:hover {
+            background: rgba(15, 23, 42, 0.7);
+        }
+
         .field-value-meta {
             display: flex;
             gap: 12px;
@@ -985,6 +1023,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="header">
         <div class="header-left">
@@ -1091,9 +1130,11 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer" style="padding: 20px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 12px;">
+            <div class="modal-footer"
+                style="padding: 20px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 12px;">
                 <button class="btn-secondary" onclick="closeRerunExtractionModal()">Cancel</button>
-                <button class="btn-primary" id="rerunExtractionBtn" onclick="handleRerunExtraction()">Rerun Extraction</button>
+                <button class="btn-primary" id="rerunExtractionBtn" onclick="handleRerunExtraction()">Rerun
+                    Extraction</button>
             </div>
         </div>
     </div>
@@ -1124,7 +1165,8 @@
                     </select>
                 </div>
             </div>
-            <div class="modal-footer" style="padding: 20px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 12px;">
+            <div class="modal-footer"
+                style="padding: 20px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 12px;">
                 <button class="btn-secondary" onclick="closeUpdateDocumentModal()">Cancel</button>
                 <button class="btn-primary" id="updateDocumentBtn" onclick="handleUpdateDocument()">Update</button>
             </div>
@@ -1141,7 +1183,7 @@
         let selectedFiles = [];
         let availableExtractionFields = [];
         let selectedExtractionFieldIds = [];
-        
+
         // Variables for rerun extraction and update modals
         let currentRerunDocumentId = null;
         let currentRerunDocumentType = null;
@@ -1294,8 +1336,26 @@
         }
 
         function computeBoundingRect(bbox, metrics) {
-            if (!bbox || bbox.length < 4 || !metrics) return null;
-            const values = bbox.map(Number);
+            if (!bbox || !metrics) return null;
+
+            // Handle both array format [x1, y1, x2, y2] and dict format
+            let values = null;
+            if (Array.isArray(bbox)) {
+                if (bbox.length < 4) return null;
+                values = bbox.map(Number);
+            } else if (typeof bbox === 'object' && bbox !== null) {
+                // If it's a dict, try to extract array from it
+                // Could be {"2": [x1, y1, x2, y2]} or {"combined": [x1, y1, x2, y2]}
+                const bboxArray = bbox.combined || (Object.values(bbox)[0]);
+                if (Array.isArray(bboxArray) && bboxArray.length >= 4) {
+                    values = bboxArray.map(Number);
+                } else {
+                    return null;
+                }
+            } else {
+                return null;
+            }
+
             if (values.some(v => !Number.isFinite(v))) return null;
 
             const [a, b, c, d] = values;
@@ -1405,26 +1465,72 @@
             if (!documentData.field_values) return;
 
             documentData.field_values.forEach((fv, index) => {
-                const pageNum = fv.page_num || 1;
-                const metrics = pdfPageMetrics.get(pageNum);
-                if (!metrics) return;
+                if (!fv.bbox) return;
 
-                const rect = computeBoundingRect(fv.bbox, metrics);
-                if (!rect) return;
+                // Handle new JSONB format: {"2": [x1, y1, x2, y2], "3": [x1, y1, x2, y2]} or {"combined": [x1, y1, x2, y2]}
+                // Or old format: [x1, y1, x2, y2] (backward compatibility)
+                let bboxToUse = null;
+                let pagesToRender = [];
 
-                const highlight = document.createElement('div');
-                highlight.className = 'bbox-highlight';
-                highlight.style.left = `${rect.left}px`;
-                highlight.style.top = `${rect.top}px`;
-                highlight.style.width = `${rect.width}px`;
-                highlight.style.height = `${rect.height}px`;
-                highlight.setAttribute('data-field-index', index);
-                highlight.onclick = (e) => {
-                    e.stopPropagation();
-                    highlightField(index);
-                };
+                if (Array.isArray(fv.bbox)) {
+                    // Old format: [x1, y1, x2, y2]
+                    bboxToUse = fv.bbox;
+                    const pageNum = parseInt(fv.page_num) || 1;
+                    pagesToRender = [pageNum];
+                } else if (typeof fv.bbox === 'object' && fv.bbox !== null) {
+                    // New JSONB format: {"2": [x1, y1, x2, y2], "3": [x1, y1, x2, y2]}
+                    // Parse page_num to get list of pages
+                    if (fv.page_num) {
+                        const pageNums = fv.page_num.split(/[,\-]/).map(p => parseInt(p.trim())).filter(p => !isNaN(p));
+                        pagesToRender = pageNums;
 
-                metrics.overlay.appendChild(highlight);
+                        // Use page-specific bbox if available, otherwise use combined
+                        for (const pageNum of pageNums) {
+                            if (fv.bbox[String(pageNum)]) {
+                                bboxToUse = fv.bbox[String(pageNum)];
+                                break;
+                            }
+                        }
+                        // If no page-specific bbox, try combined
+                        if (!bboxToUse && fv.bbox.combined) {
+                            bboxToUse = fv.bbox.combined;
+                        }
+                    } else if (fv.bbox.combined) {
+                        bboxToUse = fv.bbox.combined;
+                        // Try to infer pages from keys
+                        const pageKeys = Object.keys(fv.bbox).filter(k => k !== 'combined');
+                        pagesToRender = pageKeys.map(k => parseInt(k)).filter(p => !isNaN(p));
+                    }
+                }
+
+                if (!bboxToUse || pagesToRender.length === 0) return;
+
+                // Render highlight on each page that has coordinates
+                for (const pageNum of pagesToRender) {
+                    const metrics = pdfPageMetrics.get(pageNum);
+                    if (!metrics) continue;
+
+                    // Use page-specific bbox if available, otherwise use the one we found
+                    const pageBbox = (typeof fv.bbox === 'object' && fv.bbox[String(pageNum)]) ? fv.bbox[String(pageNum)] : bboxToUse;
+
+                    const rect = computeBoundingRect(pageBbox, metrics);
+                    if (!rect) continue;
+
+                    const highlight = document.createElement('div');
+                    highlight.className = 'bbox-highlight';
+                    highlight.style.left = `${rect.left}px`;
+                    highlight.style.top = `${rect.top}px`;
+                    highlight.style.width = `${rect.width}px`;
+                    highlight.style.height = `${rect.height}px`;
+                    highlight.setAttribute('data-field-index', index);
+                    highlight.setAttribute('data-page', pageNum);
+                    highlight.onclick = (e) => {
+                        e.stopPropagation();
+                        highlightField(index);
+                    };
+
+                    metrics.overlay.appendChild(highlight);
+                }
             });
 
             applyActiveHighlightState();
@@ -1449,7 +1555,26 @@
             overlay.innerHTML = '';
 
             documentData.field_values.forEach((fv, index) => {
-                const rect = computeBoundingRect(fv.bbox, metrics);
+                if (!fv.bbox) return;
+
+                // Handle new JSONB format or old array format
+                let bboxToUse = null;
+                if (Array.isArray(fv.bbox)) {
+                    bboxToUse = fv.bbox;
+                } else if (typeof fv.bbox === 'object' && fv.bbox !== null) {
+                    // Use combined bbox or first available page bbox
+                    bboxToUse = fv.bbox.combined;
+                    if (!bboxToUse) {
+                        const pageKeys = Object.keys(fv.bbox).filter(k => k !== 'combined');
+                        if (pageKeys.length > 0) {
+                            bboxToUse = fv.bbox[pageKeys[0]];
+                        }
+                    }
+                }
+
+                if (!bboxToUse) return;
+
+                const rect = computeBoundingRect(bboxToUse, metrics);
                 if (!rect) return;
 
                 const highlight = document.createElement('div');
@@ -1557,7 +1682,7 @@
             try {
                 console.log('loadDocuments called with page=', page, 'filename=', filename);
                 console.log('API_BASE=', API_BASE);
-                
+
                 document.getElementById('loading').style.display = 'block';
                 document.getElementById('documentsTable').style.display = 'none';
 
@@ -1572,28 +1697,28 @@
 
                 const url = `${API_BASE}/?${params}`;
                 console.log('Fetching URL:', url);
-                
+
                 const response = await fetch(url);
-                
+
                 if (!response.ok) {
                     const errorMessage = await parseErrorResponse(response);
                     throw new Error(errorMessage);
                 }
 
                 const data = await response.json();
-                
+
                 console.log('Documents loaded:', data);
-                
+
                 currentPage = data.page;
                 totalPages = data.pages;
-                
+
                 if (!data.items || data.items.length === 0) {
                     console.log('No documents found');
                 }
-                
+
                 renderTable(data.items);
                 renderPagination();
-                
+
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('documentsTable').style.display = 'table';
 
@@ -1607,7 +1732,7 @@
                 showMessage('Error loading documents: ' + error.message, 'error');
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('documentsTable').style.display = 'table';
-                document.getElementById('documentsTableBody').innerHTML = 
+                document.getElementById('documentsTableBody').innerHTML =
                     '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--subtle);">Failed to load documents</td></tr>';
                 scheduleAutoRefresh(false);
             }
@@ -1636,7 +1761,7 @@
                     <td>${createdAt}</td>
                     <td>
                         <div class="action-buttons">
-                            <button class="btn-info" onclick="viewDocument(${doc.id})">View</button>
+                            <button class="btn-info" onclick="window.location.href='/view?id=${doc.id}'">View</button>
                             <button class="btn-info" onclick="openRerunExtractionModal(${doc.id})">Rerun Extraction</button>
                             <button class="btn-info" onclick="openUpdateDocumentModal(${doc.id})">Update</button>
                             <button class="btn-danger" onclick="deleteDocument(${doc.id})">Delete</button>
@@ -1645,6 +1770,7 @@
                 `;
                 tbody.appendChild(row);
             });
+
         }
 
         // Рендеринг пагинации
@@ -1721,7 +1847,7 @@
         // Загрузка extraction fields по document type
         async function loadExtractionFields(documentType) {
             const container = document.getElementById('extractionFieldsContainer');
-            
+
             if (!documentType) {
                 container.classList.add('empty');
                 container.innerHTML = '<div class="extraction-fields-loading">Select document type</div>';
@@ -1741,7 +1867,7 @@
                 params.append('document_types', documentType);
 
                 const response = await fetch(`${EXTRACTION_FIELDS_API}/?${params}`);
-                
+
                 if (!response.ok) {
                     const errorMessage = await parseErrorResponse(response);
                     throw new Error(errorMessage);
@@ -1760,7 +1886,7 @@
         // Рендеринг списка extraction fields
         function renderExtractionFields(fields) {
             const container = document.getElementById('extractionFieldsContainer');
-            
+
             if (fields.length === 0) {
                 container.innerHTML = '<div class="extraction-fields-loading">No available fields for this document type</div>';
                 return;
@@ -1823,7 +1949,7 @@
 
             const uploadBtn = document.getElementById('uploadBtn');
             const originalButtonText = uploadBtn.textContent;
-            
+
             uploadBtn.disabled = true;
             uploadBtn.textContent = 'Uploading...';
 
@@ -1835,7 +1961,7 @@
                     const formData = new FormData();
                     formData.append('file', file);
                     formData.append('type', typeSelect.value);
-                    
+
                     // Добавляем каждый extraction_field_id отдельно
                     selectedExtractionFieldIds.forEach(id => {
                         formData.append('extraction_field_ids', id.toString());
@@ -1877,13 +2003,13 @@
             const modal = document.getElementById('contentModal');
             const modalBody = document.getElementById('modalBody');
             const modalTitle = document.getElementById('modalTitle');
-            
+
             modal.style.display = 'block';
             modalBody.innerHTML = '<div class="loading">Loading...</div>';
-            
+
             try {
                 const response = await fetch(`${API_BASE}/${id}`);
-                
+
                 if (!response.ok) {
                     const errorMessage = await parseErrorResponse(response);
                     throw new Error(errorMessage);
@@ -1894,11 +2020,11 @@
                 isPdfDocument = isPdfFile(doc.filename);
                 currentDocumentUrl = normalizeFileUrl(doc.file_path);
                 pdfDocumentInstance = null;
-                
+
                 // Формируем HTML для двухколоночного layout
                 const leftPanel = createDocumentViewer(doc);
                 const rightPanel = createDocumentInfoPanel(doc);
-                
+
                 modalBody.innerHTML = `
                     <div class="modal-left-panel">
                         ${leftPanel}
@@ -1907,9 +2033,9 @@
                         ${rightPanel}
                     </div>
                 `;
-                
+
                 modalTitle.textContent = `View: ${doc.filename}`;
-                
+
                 // Инициализируем визуализацию после загрузки изображения
                 setTimeout(async () => {
                     await initializeDocumentViewer(doc);
@@ -1926,7 +2052,7 @@
         function createDocumentViewer(doc) {
             const fileUrl = normalizeFileUrl(doc.file_path);
             const isPdf = isPdfFile(doc.filename);
-            
+
             if (isPdf) {
                 return `
                     <div class="document-viewer">
@@ -1934,7 +2060,7 @@
                     </div>
                 `;
             }
-            
+
             return `
                 <div class="document-viewer single-image">
                     <div class="document-viewer-content" id="documentViewerContent">
@@ -1963,8 +2089,8 @@
             const fieldsHtml = `
                 <div class="extracted-fields-panel">
                     <h4>Extracted Fields (${fieldsCount})</h4>
-                    ${doc.field_values && doc.field_values.length > 0 ? 
-                        doc.field_values.map((fv, index) => `
+                    ${doc.field_values && doc.field_values.length > 0 ?
+                    doc.field_values.map((fv, index) => `
                             <div class="field-value-item" data-field-index="${index}" data-page="${fv.page_num || ''}" onclick="toggleFieldValue(${index}, event)">
                                 <div class="field-value-header">
                                     <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
@@ -1974,7 +2100,7 @@
                                     ${fv.confidence !== null ? `<div class="field-value-confidence">${Math.round(fv.confidence * 100)}%</div>` : ''}
                                 </div>
                                 <div class="field-value-content">
-                                    <div class="field-value-text">${escapeHtml(fv.value_text || 'Not found')}</div>
+                                    ${renderFieldValue(fv)}
                                     <div class="field-value-meta">
                                         ${fv.page_num ? `<div class="field-value-meta-item">📄 Page ${fv.page_num}</div>` : ''}
                                         ${fv.bbox ? `<div class="field-value-meta-item">📍 Coordinates</div>` : ''}
@@ -1982,12 +2108,135 @@
                                 </div>
                             </div>
                         `).join('') :
-                        '<div class="empty-state">No fields extracted</div>'
-                    }
+                    '<div class="empty-state">No fields extracted</div>'
+                }
                 </div>
             `;
 
             return infoHtml + fieldsHtml;
+        }
+
+        function renderFieldValue(fv) {
+            if (!fv.value_text) {
+                return '<div class="field-value-text">Not found</div>';
+            }
+
+            const valueText = fv.value_text.trim();
+
+            // Check if field type is TABLE
+            const isTable = fv.field && fv.field.type === 'TABLE';
+
+            // Check if value_text looks like a markdown table (starts with | and contains separator)
+            const hasMultipleRows = valueText.split('\n').filter(l => l.trim().startsWith('|')).length >= 2;
+            const isMarkdownTable = valueText.startsWith('|') && (
+                valueText.includes('---') ||
+                valueText.includes('|-') ||
+                valueText.match(/\|\s*[-:|]+\s*\|/) ||
+                hasMultipleRows
+            );
+
+            // Debug logging
+            if (isTable || isMarkdownTable) {
+                console.log('Converting table:', { isTable, isMarkdownTable, fieldType: fv.field?.type, valuePreview: valueText.substring(0, 100) });
+            }
+
+            if (isTable || isMarkdownTable) {
+                // Convert markdown table to HTML
+                try {
+                    const html = convertMarkdownTableToHTML(valueText);
+                    console.log('Table converted successfully');
+                    return html;
+                } catch (e) {
+                    console.error('Error converting markdown table:', e, valueText.substring(0, 200));
+                    return `<div class="field-value-text">${escapeHtml(valueText)}</div>`;
+                }
+            }
+
+            // Regular text
+            return `<div class="field-value-text">${escapeHtml(valueText)}</div>`;
+        }
+
+        function convertMarkdownTableToHTML(markdown) {
+            const lines = markdown.trim().split('\n');
+            if (lines.length === 0) {
+                return '<div class="field-value-text">Empty table</div>';
+            }
+
+            let html = '<div class="field-value-table"><table>';
+            let headerProcessed = false;
+            let tbodyOpened = false;
+            let lastRowWasSeparator = false;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+
+                // Skip empty lines
+                if (!line) {
+                    continue;
+                }
+
+                // Skip code block markers
+                if (line.startsWith('```')) {
+                    continue;
+                }
+
+                // Check if this is a separator line (|---|, |-|-|-|, etc.)
+                // Matches: |---|, |-|-|-|, |:---|, etc.
+                const isSeparator = line.match(/^\|[\s\-:|]+\|$/);
+
+                if (isSeparator) {
+                    // If we haven't processed header yet, the previous line was header
+                    if (!headerProcessed && i > 0) {
+                        const prevLine = lines[i - 1].trim();
+                        if (prevLine.startsWith('|') && prevLine.endsWith('|')) {
+                            const cells = prevLine.slice(1, -1).split('|').map(cell => cell.trim());
+                            html += '<thead><tr>';
+                            cells.forEach(cell => {
+                                html += `<th>${escapeHtml(cell)}</th>`;
+                            });
+                            html += '</tr></thead><tbody>';
+                            tbodyOpened = true;
+                            headerProcessed = true;
+                        }
+                    }
+                    lastRowWasSeparator = true;
+                    continue;
+                }
+
+                // Parse table row
+                if (line.startsWith('|') && line.endsWith('|')) {
+                    const cells = line.slice(1, -1).split('|').map(cell => cell.trim());
+
+                    // If header not processed and this is first data row after separator
+                    if (!headerProcessed) {
+                        // First row is header
+                        html += '<thead><tr>';
+                        cells.forEach(cell => {
+                            html += `<th>${escapeHtml(cell)}</th>`;
+                        });
+                        html += '</tr></thead><tbody>';
+                        tbodyOpened = true;
+                        headerProcessed = true;
+                    } else {
+                        if (!tbodyOpened) {
+                            html += '<tbody>';
+                            tbodyOpened = true;
+                        }
+                        html += '<tr>';
+                        cells.forEach(cell => {
+                            html += `<td>${escapeHtml(cell)}</td>`;
+                        });
+                        html += '</tr>';
+                    }
+                    lastRowWasSeparator = false;
+                }
+            }
+
+            if (!tbodyOpened) {
+                html += '<tbody>';
+            }
+            html += '</tbody></table></div>';
+            return html;
         }
 
         function toggleFieldValue(index, event) {
@@ -1996,7 +2245,7 @@
             if (fieldItem) {
                 const wasExpanded = fieldItem.classList.contains('expanded');
                 fieldItem.classList.toggle('expanded');
-                
+
                 // If expanding, also highlight the field on the document
                 if (!wasExpanded) {
                     highlightField(index);
@@ -2046,10 +2295,18 @@
             if (!currentDocument || !currentDocument.field_values) return;
 
             const fieldItemData = currentDocument.field_values[index];
-            const pageNum = fieldItemData && fieldItemData.page_num ? fieldItemData.page_num : 1;
+            // Parse page_num string (e.g., "2", "2,3", "2-3") to get first page
+            let firstPageNum = 1;
+            if (fieldItemData && fieldItemData.page_num) {
+                const pageNumStr = String(fieldItemData.page_num);
+                const firstPageMatch = pageNumStr.match(/^(\d+)/);
+                if (firstPageMatch) {
+                    firstPageNum = parseInt(firstPageMatch[1]);
+                }
+            }
 
             if (isPdfDocument) {
-                const pageContainer = document.querySelector(`.pdf-page[data-page="${pageNum}"]`);
+                const pageContainer = document.querySelector(`.pdf-page[data-page="${firstPageNum}"]`);
                 if (pageContainer) {
                     pageContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
@@ -2100,11 +2357,11 @@
         }
 
         // Закрытие модальных окон при клике вне их
-        window.onclick = function(event) {
+        window.onclick = function (event) {
             const contentModal = document.getElementById('contentModal');
             const rerunModal = document.getElementById('rerunExtractionModal');
             const updateModal = document.getElementById('updateDocumentModal');
-            
+
             if (event.target === contentModal) {
                 closeContentModal();
             }
@@ -2128,37 +2385,37 @@
             if (!text) return '';
             // Простой markdown рендеринг
             let html = escapeHtml(text);
-            
+
             // Код блоки (до других замен)
             html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-            
+
             // Инлайн код
             html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-            
+
             // Заголовки
             html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
             html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
             html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
-            
+
             // Жирный текст (после кода, чтобы не конфликтовать)
             html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             html = html.replace(/__(.*?)__/g, '<strong>$1</strong>');
-            
+
             // Курсив (после жирного, избегаем конфликтов)
             html = html.replace(/\b\*([^*]+?)\*\b/g, '<em>$1</em>');
             html = html.replace(/\b_([^_]+?)_\b/g, '<em>$1</em>');
-            
+
             // Нумерованные списки
             const lines = html.split('\n');
             let inOrderedList = false;
             let inUnorderedList = false;
             let result = [];
-            
+
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
                 const orderedMatch = line.match(/^(\d+)\.\s+(.*)$/);
                 const unorderedMatch = line.match(/^[-*]\s+(.*)$/);
-                
+
                 if (orderedMatch) {
                     if (!inOrderedList) {
                         if (inUnorderedList) {
@@ -2193,19 +2450,19 @@
                     }
                 }
             }
-            
+
             if (inOrderedList) result.push('</ol>');
             if (inUnorderedList) result.push('</ul>');
-            
+
             html = result.join('\n');
-            
+
             // Параграфы (только для строк, которые не являются HTML тегами)
             html = html.split('\n').map(line => {
                 line = line.trim();
                 if (!line || line.startsWith('<') || line.match(/^<\/[ou]l>$/)) return line;
                 return '<p>' + line + '</p>';
             }).join('\n');
-            
+
             return html;
         }
 
@@ -2370,11 +2627,11 @@
             const modal = document.getElementById('rerunExtractionModal');
             const container = document.getElementById('rerunExtractionFieldsContainer');
             const messageDiv = document.getElementById('rerunExtractionMessage');
-            
+
             messageDiv.style.display = 'none';
             modal.style.display = 'block';
             container.innerHTML = '<div class="extraction-fields-loading">Loading document and fields...</div>';
-            
+
             try {
                 // Load document to get type and existing field values
                 const docResponse = await fetch(`${API_BASE}/${documentId}`);
@@ -2383,30 +2640,30 @@
                 }
                 const document = await docResponse.json();
                 currentRerunDocumentType = document.type;
-                
+
                 // Get existing field IDs from document
-                const existingFieldIds = document.field_values 
+                const existingFieldIds = document.field_values
                     ? document.field_values.map(fv => fv.field.id)
                     : [];
-                
+
                 // Load available extraction fields for this document type
                 const params = new URLSearchParams({
                     page: '1',
                     size: '100'
                 });
                 params.append('document_types', document.type);
-                
+
                 const fieldsResponse = await fetch(`${EXTRACTION_FIELDS_API}/?${params}`);
                 if (!fieldsResponse.ok) {
                     throw new Error('Failed to load extraction fields');
                 }
-                
+
                 const fieldsData = await fieldsResponse.json();
                 const availableFields = fieldsData.items || [];
-                
+
                 // Pre-select fields that already exist in the document
                 rerunSelectedFieldIds = [...existingFieldIds];
-                
+
                 // Render fields with pre-selected checkboxes
                 renderRerunExtractionFields(availableFields, existingFieldIds);
             } catch (error) {
@@ -2416,12 +2673,12 @@
 
         function renderRerunExtractionFields(fields, existingFieldIds) {
             const container = document.getElementById('rerunExtractionFieldsContainer');
-            
+
             if (fields.length === 0) {
                 container.innerHTML = '<div class="extraction-fields-loading">No available fields for this document type</div>';
                 return;
             }
-            
+
             container.innerHTML = fields.map(field => {
                 const isChecked = existingFieldIds.includes(field.id);
                 return `
@@ -2458,17 +2715,17 @@
                 showRerunMessage('Document ID is missing', 'error');
                 return;
             }
-            
+
             if (rerunSelectedFieldIds.length === 0) {
                 showRerunMessage('Select at least one extraction field', 'error');
                 return;
             }
-            
+
             const btn = document.getElementById('rerunExtractionBtn');
             const originalText = btn.textContent;
             btn.disabled = true;
             btn.textContent = 'Rerunning...';
-            
+
             try {
                 const response = await fetch(`${API_BASE}/${currentRerunDocumentId}/rerun-extraction`, {
                     method: 'POST',
@@ -2479,12 +2736,12 @@
                         extraction_field_ids: rerunSelectedFieldIds
                     })
                 });
-                
+
                 if (!response.ok) {
                     const errorMessage = await parseErrorResponse(response);
                     throw new Error(errorMessage);
                 }
-                
+
                 showRerunMessage('Extraction rerun started successfully', 'success');
                 closeRerunExtractionModal();
                 loadDocuments(currentPage, document.getElementById('searchInput').value);
@@ -2501,7 +2758,7 @@
             messageDiv.className = `message ${type}`;
             messageDiv.textContent = message;
             messageDiv.style.display = 'block';
-            
+
             setTimeout(() => {
                 messageDiv.style.display = 'none';
             }, 5000);
@@ -2520,10 +2777,10 @@
             const modal = document.getElementById('updateDocumentModal');
             const messageDiv = document.getElementById('updateDocumentMessage');
             const typeSelect = document.getElementById('updateTypeSelect');
-            
+
             messageDiv.style.display = 'none';
             modal.style.display = 'block';
-            
+
             try {
                 // Load document to get current type
                 const response = await fetch(`${API_BASE}/${documentId}`);
@@ -2531,7 +2788,7 @@
                     throw new Error('Failed to load document');
                 }
                 const document = await response.json();
-                
+
                 // Set current type in select
                 typeSelect.value = document.type || '';
             } catch (error) {
@@ -2544,20 +2801,20 @@
                 showUpdateMessage('Document ID is missing', 'error');
                 return;
             }
-            
+
             const typeSelect = document.getElementById('updateTypeSelect');
             const newType = typeSelect.value;
-            
+
             if (!newType) {
                 showUpdateMessage('Select document type', 'error');
                 return;
             }
-            
+
             const btn = document.getElementById('updateDocumentBtn');
             const originalText = btn.textContent;
             btn.disabled = true;
             btn.textContent = 'Updating...';
-            
+
             try {
                 const response = await fetch(`${API_BASE}/${currentUpdateDocumentId}`, {
                     method: 'PATCH',
@@ -2568,12 +2825,12 @@
                         type: newType
                     })
                 });
-                
+
                 if (!response.ok) {
                     const errorMessage = await parseErrorResponse(response);
                     throw new Error(errorMessage);
                 }
-                
+
                 showUpdateMessage('Document updated successfully', 'success');
                 closeUpdateDocumentModal();
                 loadDocuments(currentPage, document.getElementById('searchInput').value);
@@ -2590,7 +2847,7 @@
             messageDiv.className = `message ${type}`;
             messageDiv.textContent = message;
             messageDiv.style.display = 'block';
-            
+
             setTimeout(() => {
                 messageDiv.style.display = 'none';
             }, 5000);
@@ -2600,6 +2857,1622 @@
             document.getElementById('updateDocumentModal').style.display = 'none';
             currentUpdateDocumentId = null;
         }
+
+        // Process Console Function
+        let consoleData = null;
+        let currentConsolePage = 1;
+        let totalConsolePages = 1;
+        let selectedFieldForEdit = null;
+
+        async function processConsole(documentId) {
+            try {
+                // Load document to get extraction field IDs
+                const docResponse = await fetch(`${API_BASE}/${documentId}`);
+                if (!docResponse.ok) {
+                    throw new Error('Failed to load document');
+                }
+                const doc = await docResponse.json();
+
+                // Get field IDs from existing field values
+                const fieldIds = doc.field_values
+                    ? doc.field_values.map(fv => fv.field.id)
+                    : [];
+
+                if (fieldIds.length === 0) {
+                    showMessage('No extraction fields found for this document. Please run extraction first.', 'error');
+                    return;
+                }
+
+                showMessage('Processing document with Console...', 'success');
+
+                // Call console processing endpoint
+                const formData = new FormData();
+                formData.append('document_id', documentId);
+                formData.append('extraction_field_ids', fieldIds.join(','));
+
+                const response = await fetch('/document-ai/process/console', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorMessage = await parseErrorResponse(response);
+                    throw new Error(errorMessage);
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('Console processing completed! Opening results...', 'success');
+                    consoleData = result.data;
+                    currentConsolePage = 1;
+                    totalConsolePages = consoleData.total_pages || 1;
+                    viewConsoleResults(documentId);
+                } else {
+                    throw new Error(result.detail || 'Processing failed');
+                }
+            } catch (error) {
+                showMessage('Console processing error: ' + error.message, 'error');
+            }
+        }
+
+        // View Console Results with Page Navigation
+        function viewConsoleResults(documentId) {
+            const modal = document.getElementById('contentModal');
+            const modalBody = document.getElementById('modalBody');
+            const modalTitle = document.getElementById('modalTitle');
+
+            modal.style.display = 'block';
+            modalTitle.textContent = `Console - Document ${documentId} - Page ${currentConsolePage}/${totalConsolePages}`;
+
+            const pages = consoleData.pages || [];
+            const currentPageData = pages.find(p => p.page_number === currentConsolePage) || { fields: [] };
+
+            let html = '<div class="modal-left-panel">';
+            html += '<div class="document-info-panel">';
+            html += `<h4>Document AI Console</h4>`;
+            html += `<p>Document ID: ${documentId}</p>`;
+            html += `<p>Page: ${currentConsolePage} / ${totalConsolePages}</p>`;
+
+            // Page Navigation
+            html += '<div style="display: flex; gap: 8px; margin-top: 12px;">';
+            html += `<button class="btn-secondary" onclick="changeConsolePage(-1)" ${currentConsolePage === 1 ? 'disabled' : ''}>← Prev</button>`;
+            html += `<button class="btn-secondary" onclick="changeConsolePage(1)" ${currentConsolePage === totalConsolePages ? 'disabled' : ''}>Next →</button>`;
+            html += '</div>';
+            html += '</div></div>';
+
+            html += '<div class="modal-right-panel"><div class="extracted-fields-panel">';
+            html += `<h4>Fields on Page ${currentConsolePage}</h4>`;
+
+            // Display fields for current page
+            if (currentPageData.fields && currentPageData.fields.length > 0) {
+                currentPageData.fields.forEach((field, fieldIdx) => {
+                    html += `<div class="field-value-item" style="margin-bottom: 16px;">`;
+                    html += `<div class="field-value-header">`;
+                    html += `<div class="field-value-name">${escapeHtml(field.field_name)}</div>`;
+                    html += `</div>`;
+                    html += '<div class="field-value-content" style="display: block;">';
+
+                    // Display occurrences
+                    if (field.occurrences && field.occurrences.length > 0) {
+                        field.occurrences.forEach((occ, occIdx) => {
+                            const confidence = occ.confidence ? Math.round(occ.confidence * 100) : 0;
+                            html += `<div style="background: rgba(15, 23, 42, 0.5); padding: 8px; margin: 4px 0; border-radius: 4px; border: 1px solid var(--border);">`;
+                            html += `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">`;
+                            html += `<span style="font-size: 0.75rem; color: var(--subtle);">Occurrence ${occIdx + 1}</span>`;
+                            html += `<span class="field-value-confidence">${confidence}%</span>`;
+                            html += `</div>`;
+                            html += `<input type="text" value="${escapeHtml(occ.value || '')}" 
+                                onchange="updateOccurrenceValue(${currentConsolePage}, ${fieldIdx}, ${occIdx}, this.value)"
+                                style="width: 100%; background: rgba(15, 23, 42, 0.65); border: 1px solid var(--border); border-radius: 6px; padding: 6px; color: var(--text); font-size: 0.85rem; margin-bottom: 4px;">`;
+                            html += `<div style="display: flex; gap: 4px;">`;
+                            html += `<button class="btn-secondary" style="font-size: 0.75rem; padding: 4px 8px;" onclick="removeOccurrence(${currentConsolePage}, ${fieldIdx}, ${occIdx})">Remove</button>`;
+                            html += `</div>`;
+                            html += `</div>`;
+                        });
+                    } else {
+                        html += `<div style="color: var(--subtle); font-size: 0.85rem; margin: 8px 0;">Not found</div>`;
+                    }
+
+                    // Add occurrence button
+                    html += `<button class="btn-info" style="font-size: 0.75rem; padding: 4px 8px; margin-top: 8px;" onclick="addOccurrence(${currentConsolePage}, ${fieldIdx})">+ Add Value</button>`;
+
+                    html += '</div></div>';
+                });
+            } else {
+                html += '<div class="empty-state">No fields for this page</div>';
+            }
+
+            html += '</div>';
+
+            // Save Button
+            html += `<div style="padding: 20px; border-top: 1px solid var(--border);">`;
+            html += `<button class="btn-primary" onclick="saveConsoleData(${documentId})">Save to Knowledge Base</button>`;
+            html += '</div>';
+
+            html += '</div>';
+
+            modalBody.innerHTML = html;
+        }
+
+        function changeConsolePage(delta) {
+            const newPage = currentConsolePage + delta;
+            if (newPage >= 1 && newPage <= totalConsolePages) {
+                currentConsolePage = newPage;
+                viewConsoleResults(consoleData.document_id);
+            }
+        }
+
+        function updateOccurrenceValue(pageNum, fieldIdx, occIdx, newValue) {
+            const page = consoleData.pages.find(p => p.page_number === pageNum);
+            if (page && page.fields[fieldIdx] && page.fields[fieldIdx].occurrences[occIdx]) {
+                page.fields[fieldIdx].occurrences[occIdx].value = newValue;
+            }
+        }
+
+        function removeOccurrence(pageNum, fieldIdx, occIdx) {
+            const page = consoleData.pages.find(p => p.page_number === pageNum);
+            if (page && page.fields[fieldIdx]) {
+                page.fields[fieldIdx].occurrences.splice(occIdx, 1);
+                viewConsoleResults(consoleData.document_id);
+            }
+        }
+
+        function addOccurrence(pageNum, fieldIdx) {
+            const page = consoleData.pages.find(p => p.page_number === pageNum);
+            if (page && page.fields[fieldIdx]) {
+                page.fields[fieldIdx].occurrences.push({
+                    value: '',
+                    confidence: 1.0,
+                    bbox: null
+                });
+                viewConsoleResults(consoleData.document_id);
+            }
+        }
+
+        // Save Console Data
+        async function saveConsoleData(documentId) {
+            try {
+                const formData = new FormData();
+                formData.append('document_id', documentId);
+                formData.append('curated_data', JSON.stringify(consoleData));
+
+                const response = await fetch('/document-ai/save/console', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorMessage = await parseErrorResponse(response);
+                    throw new Error(errorMessage);
+                }
+
+                showMessage('Data saved successfully to Knowledge Base!', 'success');
+                closeContentModal();
+                loadDocuments(currentPage, document.getElementById('searchInput').value);
+            } catch (error) {
+                showMessage('Error saving data: ' + error.message, 'error');
+            }
+        }
+
+        // Interactive View Functions
+        let currentViewDocument = null;
+        let viewPdfDoc = null;
+        let viewAvailableFields = [];
+        let viewExtractedFields = []; // All fields across all pages: {field_id/custom_field_name, field_name, value, bbox, page_number, status, confidence}
+        let currentViewPage = 1;
+        let totalViewPages = 1;
+        let isDrawingBbox = false;
+        let bboxStartX, bboxStartY;
+        let currentEditingFieldIndex = null;
+        let selectionBox = null;
+        let draggedBbox = null;
+        let draggedBboxIndex = null;
+        let resizeHandle = null;
+
+        async function openInteractiveView(documentId) {
+            currentViewDocument = documentId;
+            document.getElementById('interactiveViewModal').style.display = 'flex';
+
+            await loadViewDocument(documentId);
+            await loadViewAvailableFields(documentId);
+            await loadExistingFieldValues(documentId);
+            renderViewFieldsList();
+        }
+
+        function closeInteractiveView() {
+            document.getElementById('interactiveViewModal').style.display = 'none';
+            currentViewDocument = null;
+            viewPdfDoc = null;
+            currentViewPage = 1;
+            viewExtractedFields = [];
+            resetBboxEditing();
+        }
+
+        async function loadExistingFieldValues(documentId) {
+            try {
+                const response = await fetch(`/documents/${documentId}`);
+                const doc = await response.json();
+                
+                viewExtractedFields = [];
+                if (doc.field_values && doc.field_values.length > 0) {
+                    doc.field_values.forEach(fv => {
+                        // Parse page_num (can be "2", "2,3", "2-3")
+                        const pageNums = parsePageNumbers(fv.page_num);
+                        
+                        pageNums.forEach(pageNum => {
+                            // Get bbox for this page - handle different formats
+                            let bbox = null;
+                            if (fv.bbox) {
+                                if (Array.isArray(fv.bbox)) {
+                                    // Direct array format [x1, y1, x2, y2]
+                                    bbox = fv.bbox;
+                                } else if (typeof fv.bbox === 'object') {
+                                    // Object format: {"2": [x1, y1, x2, y2]} or {"combined": [x1, y1, x2, y2]}
+                                    bbox = fv.bbox[String(pageNum)] || fv.bbox.combined || fv.bbox[pageNum];
+                                    // If still object with x1, y1, x2, y2, convert to array
+                                    if (bbox && typeof bbox === 'object' && !Array.isArray(bbox)) {
+                                        if ('x1' in bbox || 'x' in bbox) {
+                                            bbox = [
+                                                bbox.x1 || bbox.x || 0,
+                                                bbox.y1 || bbox.y || 0,
+                                                bbox.x2 || (bbox.x || 0) + (bbox.width || 0),
+                                                bbox.y2 || (bbox.y || 0) + (bbox.height || 0)
+                                            ];
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            viewExtractedFields.push({
+                                field_id: fv.field?.id || null,
+                                custom_field_name: fv.custom_field_name || null,
+                                field_name: fv.field?.name || fv.custom_field_name || 'Unknown',
+                                value: fv.value_text,
+                                bbox: bbox,
+                                page_number: pageNum,
+                                status: 'found',
+                                confidence: fv.confidence || 1.0
+                            });
+                        });
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading existing field values:', error);
+            }
+        }
+
+        function parsePageNumbers(pageNumStr) {
+            if (!pageNumStr) return [1];
+            const str = String(pageNumStr).trim();
+            if (str.includes(',')) {
+                return str.split(',').map(p => parseInt(p.trim())).filter(p => !isNaN(p));
+            } else if (str.includes('-')) {
+                const [start, end] = str.split('-').map(p => parseInt(p.trim()));
+                const pages = [];
+                for (let i = start; i <= end; i++) {
+                    pages.push(i);
+                }
+                return pages;
+            } else {
+                const num = parseInt(str);
+                return isNaN(num) ? [1] : [num];
+            }
+        }
+
+        async function loadViewDocument(documentId) {
+            try {
+                const response = await fetch(`/documents/${documentId}`);
+                const doc = await response.json();
+
+                // Use actual file_path from document
+                const pdfUrl = doc.file_path;
+                const loadingTask = pdfjsLib.getDocument(pdfUrl);
+                viewPdfDoc = await loadingTask.promise;
+                totalViewPages = viewPdfDoc.numPages;
+
+                await renderViewPage(1);
+            } catch (error) {
+                console.error('Error loading document:', error);
+            }
+        }
+
+        async function renderViewPage(pageNum) {
+            if (!viewPdfDoc || pageNum < 1 || pageNum > totalViewPages) return;
+
+            currentViewPage = pageNum;
+            const page = await viewPdfDoc.getPage(pageNum);
+            const canvas = document.getElementById('viewPdfCanvas');
+            const ctx = canvas.getContext('2d');
+
+            const viewport = page.getViewport({ scale: 1.5 });
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+
+            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+            // Update page info
+            document.getElementById('viewPageInfo').textContent = `Page ${currentViewPage} / ${totalViewPages}`;
+
+            // Render bboxes for current page
+            renderViewBboxes();
+
+            // Update fields list to show only fields from current page
+            renderViewFieldsList();
+        }
+
+        function changeViewPage(delta) {
+            const newPage = currentViewPage + delta;
+            if (newPage >= 1 && newPage <= totalViewPages) {
+                renderViewPage(newPage);
+            }
+        }
+
+        function renderViewBboxes() {
+            const container = document.getElementById('viewBboxContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            container.style.pointerEvents = 'auto'; // Enable interaction with bboxes
+
+            const canvas = document.getElementById('viewPdfCanvas');
+            if (!canvas) return;
+
+            // Get fields for current page
+            const pageFields = viewExtractedFields.filter(f => f.page_number === currentViewPage);
+
+            pageFields.forEach((field, localIndex) => {
+                const globalIndex = viewExtractedFields.indexOf(field);
+                if (!field.bbox) return;
+                
+                // Handle different bbox formats
+                let bboxArray = null;
+                if (Array.isArray(field.bbox)) {
+                    bboxArray = field.bbox;
+                } else if (typeof field.bbox === 'object') {
+                    // Try to get bbox for current page or combined
+                    bboxArray = field.bbox[String(currentViewPage)] || field.bbox.combined;
+                    // If still object, convert
+                    if (bboxArray && typeof bboxArray === 'object' && !Array.isArray(bboxArray)) {
+                        if ('x1' in bboxArray || 'x' in bboxArray) {
+                            bboxArray = [
+                                bboxArray.x1 || bboxArray.x || 0,
+                                bboxArray.y1 || bboxArray.y || 0,
+                                bboxArray.x2 || (bboxArray.x || 0) + (bboxArray.width || 0),
+                                bboxArray.y2 || (bboxArray.y || 0) + (bboxArray.height || 0)
+                            ];
+                        }
+                    }
+                }
+                
+                if (!bboxArray || !Array.isArray(bboxArray) || bboxArray.length < 4) return;
+
+                const [x1, y1, x2, y2] = bboxArray;
+                const left = x1 * canvas.width;
+                const top = y1 * canvas.height;
+                const width = (x2 - x1) * canvas.width;
+                const height = (y2 - y1) * canvas.height;
+
+                const box = document.createElement('div');
+                box.className = 'bbox-highlight editable-bbox';
+                box.setAttribute('data-field-index', globalIndex);
+                box.style.position = 'absolute';
+                // Highlight active field being edited
+                const isActive = currentEditingFieldIndex === globalIndex;
+                box.style.border = isActive ? '3px solid #a855f7' : '2px solid #38bdf8';
+                box.style.background = isActive ? 'rgba(168, 85, 247, 0.3)' : 'rgba(56, 189, 248, 0.2)';
+                box.style.left = `${left}px`;
+                box.style.top = `${top}px`;
+                box.style.width = `${width}px`;
+                box.style.height = `${height}px`;
+                box.style.cursor = 'move';
+                box.style.pointerEvents = 'auto'; // Enable interaction
+                const valuePreview = field.value ? field.value.substring(0, 50) + (field.value.length > 50 ? '...' : '') : '';
+                box.title = `${field.field_name}${valuePreview ? ': ' + valuePreview : ''} (Click to edit, drag to move, corners to resize)`;
+
+                // Add resize handles
+                const handles = ['nw', 'ne', 'sw', 'se'];
+                handles.forEach(pos => {
+                    const handle = document.createElement('div');
+                    handle.className = `resize-handle resize-${pos}`;
+                    handle.setAttribute('data-field-index', globalIndex);
+                    handle.setAttribute('data-position', pos);
+                    box.appendChild(handle);
+                });
+
+                // Make box draggable and clickable
+                box.addEventListener('mousedown', (e) => {
+                    if (e.target.classList.contains('resize-handle')) {
+                        e.stopPropagation();
+                        startResizeBbox(globalIndex, e.target.getAttribute('data-position'), e);
+                        return;
+                    }
+                    e.stopPropagation();
+                    // Select this field for editing when clicked
+                    currentEditingFieldIndex = globalIndex;
+                    renderViewFieldsList();
+                    renderViewBboxes();
+                    startDragBbox(globalIndex, e);
+                });
+
+                // Add resize handlers
+                box.querySelectorAll('.resize-handle').forEach(handle => {
+                    handle.addEventListener('mousedown', (e) => {
+                        e.stopPropagation();
+                        startResizeBbox(globalIndex, handle.getAttribute('data-position'), e);
+                    });
+                });
+
+                container.appendChild(box);
+            });
+        }
+
+        function startResizeBbox(fieldIndex, position, e) {
+            e.preventDefault();
+            e.stopPropagation();
+            resizeHandle = { fieldIndex, position };
+            const field = viewExtractedFields[fieldIndex];
+            if (!field.bbox) return;
+
+            const canvas = document.getElementById('viewPdfCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const [startX1, startY1, startX2, startY2] = field.bbox;
+            const startMouseX = e.clientX;
+            const startMouseY = e.clientY;
+
+            const onMouseMove = (e) => {
+                const deltaX = (e.clientX - startMouseX) / rect.width;
+                const deltaY = (e.clientY - startMouseY) / rect.height;
+
+                let [x1, y1, x2, y2] = [startX1, startY1, startX2, startY2];
+
+                switch(position) {
+                    case 'nw':
+                        x1 = Math.max(0, Math.min(x2 - 0.01, startX1 + deltaX));
+                        y1 = Math.max(0, Math.min(y2 - 0.01, startY1 + deltaY));
+                        break;
+                    case 'ne':
+                        x2 = Math.max(x1 + 0.01, Math.min(1, startX2 + deltaX));
+                        y1 = Math.max(0, Math.min(y2 - 0.01, startY1 + deltaY));
+                        break;
+                    case 'sw':
+                        x1 = Math.max(0, Math.min(x2 - 0.01, startX1 + deltaX));
+                        y2 = Math.max(y1 + 0.01, Math.min(1, startY2 + deltaY));
+                        break;
+                    case 'se':
+                        x2 = Math.max(x1 + 0.01, Math.min(1, startX2 + deltaX));
+                        y2 = Math.max(y1 + 0.01, Math.min(1, startY2 + deltaY));
+                        break;
+                }
+
+                // Ensure valid bbox (minimum size)
+                if (x2 > x1 && y2 > y1) {
+                    field.bbox = [x1, y1, x2, y2];
+                    renderViewBboxes();
+                }
+            };
+
+            const onMouseUp = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                resizeHandle = null;
+            };
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        }
+
+        function startDragBbox(fieldIndex, e) {
+            e.preventDefault();
+            e.stopPropagation();
+            draggedBboxIndex = fieldIndex;
+            const field = viewExtractedFields[fieldIndex];
+            if (!field.bbox) return;
+
+            const canvas = document.getElementById('viewPdfCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const [startX1, startY1, startX2, startY2] = field.bbox;
+            const startMouseX = e.clientX;
+            const startMouseY = e.clientY;
+
+            const onMouseMove = (e) => {
+                const deltaX = (e.clientX - startMouseX) / rect.width;
+                const deltaY = (e.clientY - startMouseY) / rect.height;
+
+                const width = startX2 - startX1;
+                const height = startY2 - startY1;
+                
+                let newX1 = startX1 + deltaX;
+                let newY1 = startY1 + deltaY;
+                let newX2 = startX2 + deltaX;
+                let newY2 = startY2 + deltaY;
+
+                // Clamp to canvas bounds
+                if (newX1 < 0) {
+                    newX1 = 0;
+                    newX2 = width;
+                }
+                if (newX2 > 1) {
+                    newX2 = 1;
+                    newX1 = 1 - width;
+                }
+                if (newY1 < 0) {
+                    newY1 = 0;
+                    newY2 = height;
+                }
+                if (newY2 > 1) {
+                    newY2 = 1;
+                    newY1 = 1 - height;
+                }
+
+                field.bbox = [
+                    Math.max(0, Math.min(1, newX1)),
+                    Math.max(0, Math.min(1, newY1)),
+                    Math.max(0, Math.min(1, newX2)),
+                    Math.max(0, Math.min(1, newY2))
+                ];
+
+                renderViewBboxes();
+            };
+
+            const onMouseUp = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                draggedBboxIndex = null;
+            };
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        }
+
+        function showSelectionHint() {
+            // Remove existing hint if any
+            const existingHint = document.getElementById('selectionHint');
+            if (existingHint) {
+                existingHint.remove();
+            }
+
+            const canvas = document.getElementById('viewPdfCanvas');
+            const container = document.getElementById('viewBboxContainer');
+            
+            const hint = document.createElement('div');
+            hint.id = 'selectionHint';
+            hint.style.position = 'absolute';
+            hint.style.top = '20px';
+            hint.style.left = '50%';
+            hint.style.transform = 'translateX(-50%)';
+            hint.style.background = 'rgba(168, 85, 247, 0.95)';
+            hint.style.color = 'white';
+            hint.style.padding = '12px 24px';
+            hint.style.borderRadius = '8px';
+            hint.style.zIndex = '10000';
+            hint.style.fontSize = '14px';
+            hint.style.fontWeight = '600';
+            hint.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+            hint.style.pointerEvents = 'none';
+            hint.innerHTML = '🎯 Click and drag on document to select area';
+            
+            container.appendChild(hint);
+            
+            setTimeout(() => {
+                if (hint.parentNode) {
+                    hint.style.opacity = '0';
+                    hint.style.transition = 'opacity 0.3s';
+                    setTimeout(() => hint.remove(), 300);
+                }
+            }, 3000);
+        }
+
+        function hideSelectionHint() {
+            const existingHint = document.getElementById('selectionHint');
+            if (existingHint) {
+                existingHint.remove();
+            }
+        }
+
+        function enableBboxDrawing() {
+            const canvas = document.getElementById('viewPdfCanvas');
+            const container = document.getElementById('viewBboxContainer');
+
+            canvas.style.cursor = 'crosshair';
+            // Don't reset currentEditingFieldIndex - keep it active
+            isDrawingBbox = false;
+            if (selectionBox) {
+                selectionBox.remove();
+                selectionBox = null;
+            }
+
+            const onMouseDown = (e) => {
+                // Allow clicking on canvas or empty area
+                if (e.target !== canvas) {
+                    // If clicking on existing bbox, allow editing it
+                    const clickedBbox = e.target.closest('.bbox-highlight');
+                    if (!clickedBbox) return;
+                    // If clicking on resize handle, don't start new selection
+                    if (e.target.classList.contains('resize-handle')) return;
+                }
+                isDrawingBbox = true;
+                e.preventDefault();
+                e.stopPropagation();
+                const rect = canvas.getBoundingClientRect();
+                bboxStartX = (e.clientX - rect.left) / canvas.width;
+                bboxStartY = (e.clientY - rect.top) / canvas.height;
+
+                selectionBox = document.createElement('div');
+                selectionBox.style.position = 'absolute';
+                selectionBox.style.border = '2px dashed #10b981';
+                selectionBox.style.background = 'rgba(16, 185, 129, 0.1)';
+                selectionBox.style.pointerEvents = 'none';
+                selectionBox.style.zIndex = '1000';
+                container.appendChild(selectionBox);
+            };
+
+            const onMouseMove = (e) => {
+                if (!isDrawingBbox || !selectionBox) return;
+
+                const rect = canvas.getBoundingClientRect();
+                const currentX = (e.clientX - rect.left) / canvas.width;
+                const currentY = (e.clientY - rect.top) / canvas.height;
+
+                const left = Math.min(bboxStartX, currentX);
+                const top = Math.min(bboxStartY, currentY);
+                const width = Math.abs(currentX - bboxStartX);
+                const height = Math.abs(currentY - bboxStartY);
+
+                selectionBox.style.left = `${left * canvas.width}px`;
+                selectionBox.style.top = `${top * canvas.height}px`;
+                selectionBox.style.width = `${width * canvas.width}px`;
+                selectionBox.style.height = `${height * canvas.height}px`;
+            };
+
+            const onMouseUp = async (e) => {
+                if (!isDrawingBbox) return;
+
+                const rect = canvas.getBoundingClientRect();
+                const endX = (e.clientX - rect.left) / canvas.width;
+                const endY = (e.clientY - rect.top) / canvas.height;
+
+                const bbox = [
+                    Math.max(0, Math.min(1, Math.min(bboxStartX, endX))),
+                    Math.max(0, Math.min(1, Math.min(bboxStartY, endY))),
+                    Math.max(0, Math.min(1, Math.max(bboxStartX, endX))),
+                    Math.max(0, Math.min(1, Math.max(bboxStartY, endY)))
+                ];
+
+                // Validate bbox size
+                if (bbox[2] <= bbox[0] || bbox[3] <= bbox[1]) {
+                    resetBboxEditing();
+                    return;
+                }
+
+                if (currentEditingFieldIndex !== null) {
+                    const field = viewExtractedFields[currentEditingFieldIndex];
+                    
+                    // Save bbox FIRST - this is critical!
+                    field.bbox = bbox;
+                    field.page_number = currentViewPage;
+                    
+                    // Show loading state
+                    field.status = 'processing';
+                    renderViewFieldsList();
+                    renderViewBboxes(); // Render bbox immediately so it stays visible
+                    
+                    // Try to extract text from selected area - try multiple methods
+                    let extractedText = '';
+                    
+                    // Method 1: Try client-side PDF text extraction
+                    console.log('Extracting text from bbox:', bbox);
+                    extractedText = await extractTextFromBbox(bbox);
+                    console.log('Client-side extraction result:', extractedText);
+                    
+                    // Method 2: If no text found or contains undefined, try server-side OCR
+                    if (!extractedText || extractedText.trim().length === 0 || extractedText.includes('undefined')) {
+                        console.log('No valid text from client-side, trying server-side OCR...');
+                        try {
+                            const formData = new FormData();
+                            formData.append('page_number', currentViewPage);
+                            formData.append('bbox', JSON.stringify(bbox));
+                            
+                            const response = await fetch(`/documents/${currentViewDocument}/extract-text-from-area`, {
+                                method: 'POST',
+                                body: formData
+                            });
+                            
+                            const result = await response.json();
+                            console.log('Server-side OCR result:', result);
+                            if (result.success && result.text && result.text.trim().length > 0) {
+                                extractedText = result.text.trim();
+                            }
+                        } catch (error) {
+                            console.error('Error extracting text via OCR:', error);
+                        }
+                    }
+                    
+                    // Clean extracted text - remove any undefined values
+                    if (extractedText) {
+                        extractedText = extractedText.replace(/undefined/g, '').trim();
+                    }
+                    
+                    // Update field value
+                    if (extractedText && extractedText.length > 0 && !extractedText.includes('undefined')) {
+                        field.value = extractedText;
+                        field.status = 'found';
+                    } else {
+                        // Keep bbox even if no text - user can manually enter
+                        field.value = '';
+                        field.status = 'not-found';
+                    }
+                    
+                    console.log('Final field value:', field.value);
+
+                    // Auto-expand field after selection so user can see the extracted value
+                    field._expanded = true;
+                    
+                    // Save field index before resetting currentEditingFieldIndex
+                    const savedFieldIndex = currentEditingFieldIndex;
+                    
+                    // Reset drawing state IMMEDIATELY so user can interact with other fields right away
+                    isDrawingBbox = false;
+                    if (selectionBox) {
+                        selectionBox.remove();
+                        selectionBox = null;
+                    }
+                    // Reset currentEditingFieldIndex so user can click on field to expand/collapse
+                    currentEditingFieldIndex = null;
+                    hideSelectionHint();
+                    
+                    // Re-render AFTER resetting state so UI is immediately interactive
+                    renderViewFieldsList();
+                    renderViewBboxes(); // Re-render to ensure bbox is visible
+                    
+                    // Scroll to the field in the list so user can see it
+                    setTimeout(() => {
+                        const fieldItem = document.querySelector(`[data-field-index="${savedFieldIndex}"]`);
+                        if (fieldItem) {
+                            fieldItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+                    }, 100);
+                } else {
+                    // If no valid selection, reset everything
+                    resetBboxEditing();
+                }
+            };
+
+            canvas.addEventListener('mousedown', onMouseDown);
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+
+            // Store handlers for cleanup
+            canvas._bboxHandlers = { onMouseDown, onMouseMove, onMouseUp };
+        }
+
+        function resetBboxEditing() {
+            isDrawingBbox = false;
+            currentEditingFieldIndex = null; // Reset field selection
+            if (selectionBox) {
+                selectionBox.remove();
+                selectionBox = null;
+            }
+            const canvas = document.getElementById('viewPdfCanvas');
+            if (canvas && canvas._bboxHandlers) {
+                canvas.removeEventListener('mousedown', canvas._bboxHandlers.onMouseDown);
+                document.removeEventListener('mousemove', canvas._bboxHandlers.onMouseMove);
+                document.removeEventListener('mouseup', canvas._bboxHandlers.onMouseUp);
+                canvas._bboxHandlers = null;
+            }
+            if (canvas) {
+                canvas.style.cursor = 'default';
+            }
+        }
+        
+        function cancelSelection() {
+            // Cancel current selection mode
+            resetBboxEditing();
+            renderViewFieldsList();
+            renderViewBboxes(); // Re-render to show existing bboxes
+        }
+
+        async function extractTextFromBbox(bbox) {
+            // Enhanced text extraction from PDF page - works with both text-based and scanned PDFs
+            try {
+                const page = await viewPdfDoc.getPage(currentViewPage);
+                const textContent = await page.getTextContent();
+                const viewport = page.getViewport({ scale: 1 });
+
+                let extractedText = '';
+                const items = [];
+                
+                // Get page dimensions for coordinate conversion
+                const pageWidth = viewport.width;
+                const pageHeight = viewport.height;
+                
+                textContent.items.forEach(item => {
+                    // Validate item has required properties
+                    if (!item) return;
+                    
+                    // Get text - check multiple possible properties
+                    const text = item.str || item.text || '';
+                    if (!text || typeof text !== 'string' || text.trim().length === 0) return;
+                    
+                    // Validate transform exists and is array
+                    if (!item.transform || !Array.isArray(item.transform) || item.transform.length < 6) {
+                        console.warn('Invalid transform for item:', item);
+                        return;
+                    }
+                    
+                    const transform = item.transform;
+                    // PDF.js transform matrix: [a, b, c, d, e, f]
+                    // e = x translation, f = y translation (bottom-left origin)
+                    const xPx = transform[4]; // e
+                    const yPx = transform[5]; // f
+                    
+                    if (typeof xPx !== 'number' || typeof yPx !== 'number' || 
+                        !isFinite(xPx) || !isFinite(yPx)) {
+                        console.warn('Invalid coordinates for item:', item);
+                        return;
+                    }
+                    
+                    // Convert to normalized coordinates (0-1) with top-left origin
+                    const x = xPx / pageWidth;
+                    const y = 1 - (yPx / pageHeight); // Flip Y axis
+                    
+                    // Get width/height of text item
+                    const itemWidth = (item.width && typeof item.width === 'number') ? item.width / pageWidth : 0;
+                    const itemHeight = (item.height && typeof item.height === 'number') ? item.height / pageHeight : 0;
+                    
+                    // If no width/height, estimate from font size
+                    let effectiveWidth = itemWidth;
+                    let effectiveHeight = itemHeight;
+                    if (effectiveWidth === 0 || effectiveHeight === 0) {
+                        const fontSize = item.height || item.fontSize || 12;
+                        effectiveWidth = (text.length * fontSize * 0.6) / pageWidth;
+                        effectiveHeight = fontSize / pageHeight;
+                    }
+                    
+                    // Check if item overlaps with bbox (strict overlap, minimal margin)
+                    // Use smaller margin to avoid capturing text outside selection
+                    const margin = 0.002; // Much smaller margin - only 0.2% tolerance
+                    const itemX2 = x + effectiveWidth;
+                    const itemY2 = y + effectiveHeight;
+                    
+                    // Strict overlap check - item must be mostly inside bbox
+                    // Item center should be within bbox, or item should significantly overlap
+                    const itemCenterX = (x + itemX2) / 2;
+                    const itemCenterY = (y + itemY2) / 2;
+                    const itemOverlapX = Math.max(0, Math.min(itemX2, bbox[2]) - Math.max(x, bbox[0]));
+                    const itemOverlapY = Math.max(0, Math.min(itemY2, bbox[3]) - Math.max(y, bbox[1]));
+                    const itemArea = effectiveWidth * effectiveHeight;
+                    const overlapArea = itemOverlapX * itemOverlapY;
+                    
+                    // Item must have significant overlap (at least 30% of its area) OR center must be inside bbox
+                    const hasSignificantOverlap = itemArea > 0 && (overlapArea / itemArea) >= 0.3;
+                    const centerInside = itemCenterX >= bbox[0] && itemCenterX <= bbox[2] && 
+                                        itemCenterY >= bbox[1] && itemCenterY <= bbox[3];
+                    
+                    if (hasSignificantOverlap || centerInside) {
+                        // Store original text without trimming to preserve spacing
+                        items.push({ 
+                            text: text, // Keep original text, don't trim yet
+                            x, 
+                            y, 
+                            x2: itemX2,
+                            y2: itemY2,
+                            transform,
+                            width: effectiveWidth,
+                            height: effectiveHeight
+                        });
+                    }
+                });
+
+                if (items.length === 0) {
+                    console.log('No text items found in bbox area - document may be scanned/image, will try OCR');
+                    return '';
+                }
+
+                // Sort by Y then X to maintain reading order
+                items.sort((a, b) => {
+                    const yDiff = b.y - a.y; // Top to bottom
+                    if (Math.abs(yDiff) > 0.005) return yDiff; // Smaller threshold for rows (0.5%)
+                    return a.x - b.x; // Left to right
+                });
+
+                // Calculate average line height from items to better detect line breaks
+                let lineHeights = [];
+                for (let i = 1; i < items.length; i++) {
+                    const yDiff = Math.abs(items[i].y - items[i-1].y);
+                    if (yDiff > 0.005) { // Different lines
+                        lineHeights.push(yDiff);
+                    }
+                }
+                const avgLineHeight = lineHeights.length > 0 
+                    ? lineHeights.reduce((a, b) => a + b, 0) / lineHeights.length 
+                    : 0.01; // Default fallback
+
+                // Build text preserving original formatting
+                let lastY = null;
+                let lastX = null;
+                let lastX2 = null; // End X of previous item
+                
+                items.forEach((item, idx) => {
+                    const textToAdd = String(item.text || '').trim();
+                    if (!textToAdd || textToAdd === 'undefined' || textToAdd.length === 0) return;
+                    
+                    // Use item height to determine line spacing more accurately
+                    const itemHeight = item.height || avgLineHeight;
+                    const lineThreshold = Math.max(itemHeight * 0.5, 0.003); // At least 0.3% or half of item height
+                    
+                    // Determine if this is a new line based on Y position difference
+                    const isNewLine = lastY !== null && Math.abs(item.y - lastY) > lineThreshold;
+                    
+                    if (isNewLine) {
+                        // New line - add newline character (but not if text already ends with newline)
+                        if (extractedText.length > 0 && !extractedText.endsWith('\n')) {
+                            extractedText += '\n';
+                        }
+                        extractedText += textToAdd;
+                    } else {
+                        // Same line - check if we need a space based on actual gap
+                        if (lastX2 !== null) {
+                            // Calculate gap between end of previous item and start of current item
+                            const gap = item.x - lastX2;
+                            // Only add space if there's a significant gap (more than 0.5% of page width)
+                            // This prevents adding spaces between characters/words that are naturally close
+                            const spaceThreshold = Math.max((item.width || 0.01) * 0.1, 0.005); // 10% of item width or 0.5%
+                            if (gap > spaceThreshold) {
+                                extractedText += ' ';
+                            }
+                        }
+                        extractedText += textToAdd;
+                    }
+                    
+                    // Update tracking variables
+                    lastY = item.y;
+                    lastX = item.x;
+                    lastX2 = item.x2; // End X position of current item
+                });
+
+                const result = extractedText.trim().replace(/undefined/g, '').trim();
+                console.log(`Extracted ${items.length} text items, result length: ${result.length}`);
+                if (result.length > 0) {
+                    console.log(`Extracted text preview: "${result.substring(0, 100)}${result.length > 100 ? '...' : ''}"`);
+                } else {
+                    console.log('No text extracted - document may be scanned/image or bbox area has no text');
+                }
+                return result;
+            } catch (error) {
+                console.error('Error extracting text:', error);
+                return '';
+            }
+        }
+
+        async function loadViewAvailableFields(documentId) {
+            try {
+                const response = await fetch(`/documents/${documentId}/available-fields`);
+                viewAvailableFields = await response.json();
+            } catch (error) {
+                console.error('Error loading fields:', error);
+            }
+        }
+
+        function showViewFieldDropdown() {
+            const dropdown = document.getElementById('viewFieldDropdown');
+            dropdown.innerHTML = '';
+
+            // Add option to create custom field
+            const customItem = document.createElement('div');
+            customItem.className = 'view-field-dropdown-item';
+            customItem.style.fontWeight = '600';
+            customItem.style.color = '#a855f7';
+            customItem.innerHTML = '➕ Create Custom Field';
+            customItem.onclick = () => {
+                dropdown.style.display = 'none';
+                showCustomFieldDialog();
+            };
+            dropdown.appendChild(customItem);
+
+            // Add separator
+            const separator = document.createElement('div');
+            separator.style.height = '1px';
+            separator.style.background = '#334155';
+            separator.style.margin = '8px 0';
+            dropdown.appendChild(separator);
+
+            // Add available extraction fields
+            viewAvailableFields.forEach(field => {
+                const item = document.createElement('div');
+                item.className = 'view-field-dropdown-item';
+                item.textContent = field.name;
+                item.onclick = () => {
+                    dropdown.style.display = 'none';
+                    addViewField(field);
+                };
+                dropdown.appendChild(item);
+            });
+
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function showCustomFieldDialog() {
+            const fieldName = prompt('Enter custom field name:');
+            if (fieldName && fieldName.trim()) {
+                addCustomField(fieldName.trim());
+            }
+        }
+
+        async function addCustomField(fieldName) {
+            const fieldData = {
+                field_id: null,
+                custom_field_name: fieldName,
+                field_name: fieldName,
+                value: null,
+                status: 'processing',
+                page_number: currentViewPage,
+                confidence: 0
+            };
+
+            viewExtractedFields.push(fieldData);
+            renderViewFieldsList();
+
+            await extractCustomField(fieldName);
+        }
+
+        async function addViewField(field) {
+            const fieldData = {
+                field_id: field.id,
+                custom_field_name: null,
+                field_name: field.name,
+                value: null,
+                status: 'processing',
+                page_number: currentViewPage,
+                confidence: 0
+            };
+
+            viewExtractedFields.push(fieldData);
+            renderViewFieldsList();
+
+            await extractViewField(field.id);
+        }
+
+        async function extractCustomField(customFieldName) {
+            try {
+                const formData = new FormData();
+                formData.append('custom_field_name', customFieldName);
+                formData.append('page_number', currentViewPage);
+
+                const response = await fetch(`/documents/${currentViewDocument}/extract-field`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                const fieldIndex = viewExtractedFields.findIndex(f => 
+                    f.custom_field_name === customFieldName && f.page_number === currentViewPage
+                );
+                if (fieldIndex !== -1) {
+                    updateFieldAfterExtraction(fieldIndex, result);
+                }
+            } catch (error) {
+                console.error('Error extracting custom field:', error);
+                const fieldIndex = viewExtractedFields.findIndex(f => 
+                    f.custom_field_name === customFieldName && f.page_number === currentViewPage
+                );
+                if (fieldIndex !== -1) {
+                    viewExtractedFields[fieldIndex].status = 'not-found';
+                    viewExtractedFields[fieldIndex].value = null;
+                    renderViewFieldsList();
+                }
+            }
+        }
+
+        async function extractViewField(fieldId) {
+            try {
+                const formData = new FormData();
+                formData.append('field_id', fieldId);
+                formData.append('page_number', currentViewPage);
+
+                const response = await fetch(`/documents/${currentViewDocument}/extract-field`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                const fieldIndex = viewExtractedFields.findIndex(f => 
+                    f.field_id === fieldId && f.page_number === currentViewPage
+                );
+                if (fieldIndex !== -1) {
+                    updateFieldAfterExtraction(fieldIndex, result);
+                }
+            } catch (error) {
+                console.error('Error extracting field:', error);
+                const fieldIndex = viewExtractedFields.findIndex(f => 
+                    f.field_id === fieldId && f.page_number === currentViewPage
+                );
+                if (fieldIndex !== -1) {
+                    viewExtractedFields[fieldIndex].status = 'not-found';
+                    viewExtractedFields[fieldIndex].value = null;
+                    renderViewFieldsList();
+                }
+            }
+        }
+
+        function updateFieldAfterExtraction(fieldIndex, result) {
+            if (result.found && result.value) {
+                viewExtractedFields[fieldIndex].value = result.value;
+                viewExtractedFields[fieldIndex].status = 'found';
+            } else {
+                viewExtractedFields[fieldIndex].value = null;
+                viewExtractedFields[fieldIndex].status = 'not-found';
+            }
+            
+            viewExtractedFields[fieldIndex].confidence = result.confidence || 0;
+            
+            // Convert bbox format if needed
+            if (result.bbox) {
+                if (Array.isArray(result.bbox)) {
+                    viewExtractedFields[fieldIndex].bbox = result.bbox;
+                } else if (typeof result.bbox === 'object') {
+                    // Convert {x1, y1, x2, y2} to [x1, y1, x2, y2]
+                    viewExtractedFields[fieldIndex].bbox = [
+                        result.bbox.x1 || result.bbox[0] || 0,
+                        result.bbox.y1 || result.bbox[1] || 0,
+                        result.bbox.x2 || result.bbox[2] || 1,
+                        result.bbox.y2 || result.bbox[3] || 1
+                    ];
+                }
+            }
+            
+            if (result.page_number) {
+                viewExtractedFields[fieldIndex].page_number = result.page_number;
+            }
+
+            renderViewFieldsList();
+            renderViewBboxes();
+        }
+
+
+        function renderViewFieldsList() {
+            const container = document.getElementById('viewFieldsList');
+            container.innerHTML = '';
+
+            // Filter fields for current page
+            const pageFields = viewExtractedFields.filter(f => f.page_number === currentViewPage);
+
+            if (pageFields.length === 0) {
+                container.innerHTML = '<div style="text-align:center;color:var(--subtle);padding:20px;">No fields for this page</div>';
+                return;
+            }
+
+            pageFields.forEach((field) => {
+                const globalIndex = viewExtractedFields.indexOf(field);
+                const displayValue = field.value || '----';
+                const hasValue = field.value && field.value !== '----';
+                const statusText = field.status === 'processing' ? 'Processing...' :
+                    field.status === 'found' ? `Found (${Math.round((field.confidence || 0) * 100)}%)` :
+                        'Not found';
+                
+                // Format bbox coordinates for display
+                let bboxInfo = '';
+                if (field.bbox && Array.isArray(field.bbox) && field.bbox.length >= 4) {
+                    const [x1, y1, x2, y2] = field.bbox;
+                    bboxInfo = `📍 Coords: [${(x1 * 100).toFixed(1)}%, ${(y1 * 100).toFixed(1)}%] → [${(x2 * 100).toFixed(1)}%, ${(y2 * 100).toFixed(1)}%]`;
+                } else if (!field.bbox) {
+                    bboxInfo = '⚠️ No coordinates';
+                }
+
+                const item = document.createElement('div');
+                item.className = 'view-field-item';
+                item.setAttribute('data-field-index', globalIndex);
+                
+                // Create expandable content
+                // Check if field was previously expanded (store in field object)
+                const isExpanded = field._expanded || false;
+                const valuePreview = hasValue ? (displayValue.length > 50 ? displayValue.substring(0, 50) + '...' : displayValue) : '----';
+                
+                if (isExpanded) {
+                    item.classList.add('expanded');
+                }
+                
+                item.innerHTML = `
+                    <div class="view-field-header" onclick="event.stopPropagation(); toggleFieldExpanded(${globalIndex})">
+                        <div class="view-field-name">
+                            ${field.custom_field_name ? '🔧 ' : ''}${escapeHtml(field.field_name)}
+                            <span class="expand-icon">${isExpanded ? '▼' : '▶'}</span>
+                        </div>
+                        <div class="view-field-status ${field.status}">${statusText}</div>
+                    </div>
+                    <div class="view-field-content" style="display: ${isExpanded ? 'block' : 'none'};">
+                        <div class="view-field-value-container">
+                            <textarea class="view-field-value-textarea" rows="5" style="width:100%;min-height:80px;padding:8px;border:1px solid #ddd;border-radius:4px;font-family:monospace;font-size:13px;resize:vertical;" 
+                                onchange="viewExtractedFields[${globalIndex}].value = this.value || null; viewExtractedFields[${globalIndex}].status = this.value ? 'found' : 'not-found'; renderViewFieldsList();"
+                                oninput="viewExtractedFields[${globalIndex}].value = this.value || null; viewExtractedFields[${globalIndex}].status = this.value ? 'found' : 'not-found';">${escapeHtml(displayValue)}</textarea>
+                        </div>
+                        ${bboxInfo ? `<div class="view-field-bbox-info">${bboxInfo}</div>` : ''}
+                        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                            <button class="view-btn-select" onclick="event.stopPropagation(); startFieldSelection(${globalIndex})" style="flex:1;min-width:120px;padding:6px;background:#a855f7;color:white;border:none;border-radius:4px;cursor:pointer;">
+                                ${field.bbox ? '✏️ Edit Area' : '📍 Select Area'}
+                            </button>
+                            ${currentEditingFieldIndex === globalIndex ? '<button class="view-btn-cancel" onclick="event.stopPropagation(); cancelSelection()" style="padding:6px 12px;background:#f59e0b;color:white;border:none;border-radius:4px;cursor:pointer;">Cancel</button>' : ''}
+                            <button class="view-btn-remove" onclick="event.stopPropagation(); removeViewField(${globalIndex})" style="padding:6px 12px;background:#ef4444;color:white;border:none;border-radius:4px;cursor:pointer;">Remove</button>
+                        </div>
+                    </div>
+                    <div class="view-field-preview" style="display: ${isExpanded ? 'none' : 'block'};">
+                        <div class="view-field-value-preview">${escapeHtml(valuePreview)}</div>
+                        ${bboxInfo ? `<div class="view-field-bbox-info-small">${bboxInfo}</div>` : ''}
+                    </div>
+                `;
+
+                container.appendChild(item);
+            });
+        }
+
+        function toggleFieldExpanded(index) {
+            // Prevent toggle if we're in the middle of drawing a bbox
+            if (isDrawingBbox) {
+                return;
+            }
+            
+            // Store expanded state in field object to persist across re-renders
+            if (viewExtractedFields[index]) {
+                viewExtractedFields[index]._expanded = !viewExtractedFields[index]._expanded;
+            }
+            
+            const item = document.querySelector(`[data-field-index="${index}"]`);
+            if (item) {
+                item.classList.toggle('expanded');
+                const content = item.querySelector('.view-field-content');
+                const preview = item.querySelector('.view-field-preview');
+                const icon = item.querySelector('.expand-icon');
+                if (content && preview && icon) {
+                    if (item.classList.contains('expanded')) {
+                        content.style.display = 'block';
+                        preview.style.display = 'none';
+                        icon.textContent = '▼';
+                    } else {
+                        content.style.display = 'none';
+                        preview.style.display = 'block';
+                        icon.textContent = '▶';
+                    }
+                }
+            }
+        }
+
+        function startFieldSelection(index) {
+            // Cancel any previous selection
+            if (currentEditingFieldIndex !== null && currentEditingFieldIndex !== index) {
+                resetBboxEditing();
+            }
+            currentEditingFieldIndex = index;
+            enableBboxDrawing();
+            showSelectionHint();
+            
+            // Highlight the field in the list
+            const item = document.querySelector(`[data-field-index="${index}"]`);
+            if (item) {
+                item.style.border = '2px solid #a855f7';
+                setTimeout(() => {
+                    item.style.border = '';
+                }, 2000);
+            }
+        }
+
+        function startQuickSelection() {
+            // Create a temporary custom field for quick selection
+            const fieldName = prompt('Enter field name for selected area:');
+            if (!fieldName || !fieldName.trim()) return;
+
+            const fieldData = {
+                field_id: null,
+                custom_field_name: fieldName.trim(),
+                field_name: fieldName.trim(),
+                value: null,
+                status: 'processing',
+                page_number: currentViewPage,
+                confidence: 0
+            };
+
+            viewExtractedFields.push(fieldData);
+            const newIndex = viewExtractedFields.length - 1;
+            renderViewFieldsList();
+            
+            // Expand the new field and start selection
+            setTimeout(() => {
+                toggleFieldExpanded(newIndex);
+                startFieldSelection(newIndex);
+            }, 100);
+        }
+
+        function removeViewField(index) {
+            viewExtractedFields.splice(index, 1);
+            renderViewFieldsList();
+        }
+
+        async function saveViewFieldValues() {
+            try {
+                const fieldValues = viewExtractedFields
+                    .filter(f => f.value && f.value !== '----' && f.bbox) // Must have value and bbox
+                    .map(f => ({
+                        field_id: f.field_id || null,
+                        custom_field_name: f.custom_field_name || null,
+                        value: f.value,
+                        confidence: f.confidence || 1.0,
+                        bbox: f.bbox,
+                        page_number: f.page_number
+                    }));
+
+                if (fieldValues.length === 0) {
+                    showMessage('No fields to save. Fields must have values and coordinates.', 'error');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('field_values', JSON.stringify(fieldValues));
+
+                const response = await fetch(`/documents/${currentViewDocument}/save-field-values`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('Saved successfully!', 'success');
+                    closeInteractiveView();
+                    loadDocuments(currentPage, document.getElementById('searchInput').value);
+                } else {
+                    showMessage('Error saving: ' + (result.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                showMessage('Error saving: ' + error.message, 'error');
+            }
+        }
+    </script>
+
+    <!-- Interactive View Modal -->
+    <div id="interactiveViewModal"
+        style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:10000;align-items:center;justify-content:center;">
+        <div style="display:flex;width:95%;height:90%;background:#1e293b;border-radius:8px;overflow:hidden;">
+            <div style="flex:1;background:#0f172a;display:flex;flex-direction:column;">
+                <!-- Page Navigation -->
+                <div
+                    style="padding:15px;background:#1e293b;border-bottom:1px solid #334155;display:flex;justify-content:space-between;align-items:center;">
+                    <button onclick="changeViewPage(-1)"
+                        style="padding:8px 16px;background:#38bdf8;color:white;border:none;border-radius:4px;cursor:pointer;">←
+                        Prev</button>
+                    <span id="viewPageInfo" style="color:#e2e8f0;font-weight:600;">Page 1 / 1</span>
+                    <button onclick="changeViewPage(1)"
+                        style="padding:8px 16px;background:#38bdf8;color:white;border:none;border-radius:4px;cursor:pointer;">Next
+                        →</button>
+                </div>
+                <!-- PDF Canvas with bbox overlay -->
+                <div style="flex:1;overflow:auto;padding:20px;position:relative;">
+                    <div style="position:relative;display:inline-block;">
+                        <canvas id="viewPdfCanvas"></canvas>
+                        <div id="viewBboxContainer" style="position:absolute;top:0;left:0;pointer-events:auto;"></div>
+                    </div>
+                </div>
+            </div>
+            <div
+                style="width:400px;background:#1e293b;border-left:1px solid #334155;display:flex;flex-direction:column;">
+                <div style="padding:20px;border-bottom:1px solid #334155;">
+                    <h2 style="margin:0 0 15px 0;color:#e2e8f0;">Extraction Fields</h2>
+                    <button onclick="showViewFieldDropdown()"
+                        style="width:100%;padding:10px;background:#38bdf8;color:white;border:none;border-radius:6px;cursor:pointer;margin-bottom:8px;">+
+                        Add Field</button>
+                    <button onclick="startQuickSelection()"
+                        style="width:100%;padding:10px;background:#a855f7;color:white;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                        <span style="font-size:16px;">⊞</span> Quick Select Area
+                    </button>
+                    <div id="viewFieldDropdown"
+                        style="position:absolute;background:#1e293b;border:1px solid #334155;border-radius:6px;max-height:300px;overflow-y:auto;display:none;z-index:1000;">
+                    </div>
+                </div>
+                <div id="viewFieldsList" style="flex:1;overflow-y:auto;padding:20px;"></div>
+                <div style="padding:20px;border-top:1px solid #334155;">
+                    <button onclick="saveViewFieldValues()"
+                        style="width:100%;padding:12px;background:#10b981;color:white;border:none;border-radius:6px;cursor:pointer;font-size:16px;font-weight:600;">💾
+                        Save</button>
+                    <button onclick="closeInteractiveView()"
+                        style="width:100%;padding:10px;background:#ef4444;color:white;border:none;border-radius:6px;cursor:pointer;margin-top:10px;">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .view-field-dropdown-item {
+            padding: 10px 15px;
+            color: #e2e8f0;
+            cursor: pointer;
+        }
+
+        .view-field-dropdown-item:hover {
+            background: #334155;
+        }
+
+        .view-field-item {
+            background: #334155;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .view-field-name {
+            color: #38bdf8;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .view-field-value {
+            width: 100%;
+            padding: 8px;
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 4px;
+            color: #e2e8f0;
+            margin-bottom: 8px;
+        }
+
+        .view-field-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding: 8px 0;
+            user-select: none;
+        }
+
+        .view-field-header:hover {
+            background: rgba(56, 189, 248, 0.1);
+            border-radius: 4px;
+            padding: 8px;
+            margin: -8px;
+        }
+
+        .expand-icon {
+            margin-left: 8px;
+            font-size: 10px;
+            color: var(--subtle);
+        }
+
+        .view-field-content {
+            margin-top: 12px;
+        }
+
+        .view-field-value-container {
+            margin-bottom: 8px;
+        }
+
+        .view-field-value-textarea {
+            width: 100%;
+            padding: 8px;
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 4px;
+            color: #e2e8f0;
+            font-family: inherit;
+            font-size: 0.9rem;
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .view-field-value-textarea:focus {
+            outline: none;
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+        }
+
+        .view-field-bbox-info {
+            font-size: 11px;
+            color: var(--subtle);
+            padding: 6px;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 4px;
+            margin-bottom: 8px;
+            font-family: monospace;
+        }
+
+        .view-field-bbox-info-small {
+            font-size: 10px;
+            color: var(--subtle);
+            margin-top: 4px;
+            font-family: monospace;
+        }
+
+        .view-field-preview {
+            margin-top: 8px;
+        }
+
+        .view-field-value-preview {
+            color: var(--text);
+            font-size: 0.85rem;
+            padding: 6px;
+            background: rgba(15, 23, 42, 0.3);
+            border-radius: 4px;
+            word-break: break-word;
+        }
+
+        .view-field-item.expanded {
+            background: rgba(15, 23, 42, 0.5);
+        }
+
+        .view-field-status {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 8px;
+        }
+
+        .view-field-status.processing {
+            color: #f59e0b;
+        }
+
+        .view-field-status.found {
+            color: #10b981;
+        }
+
+        .view-field-status.not-found {
+            color: #ef4444;
+        }
+
+        .view-btn-remove {
+            padding: 6px 12px;
+            font-size: 12px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .editable-bbox {
+            position: relative;
+        }
+
+        .resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #38bdf8;
+            border: 2px solid #0f172a;
+            border-radius: 50%;
+            cursor: nwse-resize;
+            z-index: 10;
+        }
+
+        .resize-handle:hover {
+            background: #0ea5e9;
+            transform: scale(1.2);
+        }
+
+        .resize-nw {
+            top: -5px;
+            left: -5px;
+            cursor: nw-resize;
+        }
+
+        .resize-ne {
+            top: -5px;
+            right: -5px;
+            cursor: ne-resize;
+        }
+
+        .resize-sw {
+            bottom: -5px;
+            left: -5px;
+            cursor: sw-resize;
+        }
+
+        .resize-se {
+            bottom: -5px;
+            right: -5px;
+            cursor: se-resize;
+        }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
 </body>
+
 </html>

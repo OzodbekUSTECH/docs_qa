@@ -1,7 +1,6 @@
 from typing import AsyncIterator, Optional
 import json
 import logging
-import re
 
 from google.genai.client import AsyncClient
 from google.genai import types
@@ -108,44 +107,21 @@ class GeminiChatInteractor:
         file_search_store_name = store.name
         
         # Log documents in store for debugging
-        try:
-            pager = await self.client.file_search_stores.documents.list(parent=store.name)
-            doc_count = 0
-            async for doc in pager:
-                doc_count += 1
-                logger.info(f"Document in store: {doc.name}, display_name: {getattr(doc, 'display_name', None)}")
-            logger.info(f"Total documents in store: {doc_count}")
-        except Exception as e:
-            logger.warning(f"Could not list documents in store: {e}")
+        # try:
+        #     pager = await self.client.file_search_stores.documents.list(parent=store.name)
+        #     doc_count = 0
+        #     async for doc in pager:
+        #         doc_count += 1
+        #         logger.info(f"Document in store: {doc.name}, display_name: {getattr(doc, 'display_name', None)}")
+        #     logger.info(f"Total documents in store: {doc_count}")
+        # except Exception as e:
+        #     logger.warning(f"Could not list documents in store: {e}")
         
-        # Build contents from chat history if provided
-        contents = []
-        if hasattr(request, 'history') and request.history:
-            # Convert history to Gemini Content format
-            for msg in request.history:
-                role = msg.get('role', 'user')
-                content_text = msg.get('content', '')
-                # Strip HTML tags from assistant messages for API
-                if role == 'assistant' and content_text:
-                    # Remove HTML tags but keep text
-                    content_text = re.sub(r'<[^>]+>', '', content_text)
-                    # Remove citations section if present
-                    content_text = re.sub(r'<div class="citations-section".*?</div>', '', content_text, flags=re.DOTALL)
-                    content_text = content_text.strip()
-                
-                if content_text:
-                    if role == 'user':
-                        contents.append(types.UserContent(parts=[types.Part.from_text(text=content_text)]))
-                    elif role == 'assistant':
-                        contents.append(types.ModelContent(parts=[types.Part.from_text(text=content_text)]))
-        
-        # Add current prompt
-        if not contents:
-            # If no history, just use prompt as string (will be converted to UserContent automatically)
-            contents = request.prompt
-        else:
-            # Add current user message
-            contents.append(types.UserContent(parts=[types.Part.from_text(text=request.prompt)]))
+        # Build contents - File Search manages document context through the store
+        # According to documentation, File Search tool automatically searches the entire store
+        # We just pass the current prompt - File Search will find relevant chunks from all documents in store
+        # For dialog context, we can pass history, but File Search works independently for each query
+        contents = request.prompt
         
         # Configure File Search tool
         # Note: Gemini models that support File Search: gemini-2.5-pro, gemini-2.5-flash
@@ -180,15 +156,43 @@ class GeminiChatInteractor:
             async for chunk in response_stream:
                 all_chunks.append(chunk)  # Store chunk
                 
-                # Extract text from chunk
+                # Process all parts in the chunk to avoid warnings about non-text parts
+                # Handle both direct text attribute and parts list
+                chunk_text = ""
+                
+                # First, try to get text directly (for backward compatibility)
                 if hasattr(chunk, 'text') and chunk.text:
-                    full_text += chunk.text
-                    # Send text delta
+                    chunk_text = chunk.text
+                
+                # Then, process parts if available (handles executable_code, etc.)
+                # This handles cases where chunk has parts but no direct text attribute
+                # or when chunk has both text and parts (process parts to avoid warnings)
+                if hasattr(chunk, 'parts') and chunk.parts:
+                    for part in chunk.parts:
+                        # Handle text parts
+                        if hasattr(part, 'text') and part.text:
+                            # Only add if not already in chunk_text (avoid duplicates)
+                            if part.text not in chunk_text:
+                                chunk_text += part.text
+                        # Handle executable_code parts (convert to markdown code block)
+                        elif hasattr(part, 'executable_code'):
+                            code_obj = part.executable_code
+                            language = getattr(code_obj, 'language', 'python')
+                            code = getattr(code_obj, 'code', '')
+                            if code:
+                                chunk_text += f"\n```{language}\n{code}\n```\n"
+                        # Handle other part types if needed
+                        elif hasattr(part, 'type'):
+                            logger.debug(f"Unhandled part type in stream: {part.type}")
+                
+                # Send text delta if we have any text
+                if chunk_text:
+                    full_text += chunk_text
                     event_data = {
                         "type": "response.output_text.delta",
                         "data": {
                             "type": "response.output_text.delta",
-                            "delta": chunk.text
+                            "delta": chunk_text
                         }
                     }
                     yield f"data: {json.dumps(event_data)}\n\n".encode()
@@ -499,10 +503,42 @@ class GeminiChatInteractor:
             )
         )
         
-        # Extract text from response (response has .text attribute directly)
+        # Extract text from response, handling all part types properly
         result_text = ""
+        
+        # Try direct text attribute first (for backward compatibility)
         if hasattr(response, 'text') and response.text:
             result_text = response.text
+        # Process parts if available (handles executable_code, etc.)
+        elif hasattr(response, 'parts') and response.parts:
+            for part in response.parts:
+                # Handle text parts
+                if hasattr(part, 'text') and part.text:
+                    result_text += part.text
+                # Handle executable_code parts (convert to markdown code block)
+                elif hasattr(part, 'executable_code'):
+                    code_obj = part.executable_code
+                    language = getattr(code_obj, 'language', 'python')
+                    code = getattr(code_obj, 'code', '')
+                    if code:
+                        result_text += f"\n```{language}\n{code}\n```\n"
+                # Handle other part types if needed
+                elif hasattr(part, 'type'):
+                    logger.debug(f"Unhandled part type in generate: {part.type}")
+        
+        # Also check candidates for text (some SDK versions expose it differently)
+        if not result_text and hasattr(response, 'candidates') and response.candidates:
+            for candidate in response.candidates:
+                if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                    for part in candidate.content.parts:
+                        if hasattr(part, 'text') and part.text:
+                            result_text += part.text
+                        elif hasattr(part, 'executable_code'):
+                            code_obj = part.executable_code
+                            language = getattr(code_obj, 'language', 'python')
+                            code = getattr(code_obj, 'code', '')
+                            if code:
+                                result_text += f"\n```{language}\n{code}\n```\n"
         
         # Extract citations from grounding_metadata
         citations_list = []

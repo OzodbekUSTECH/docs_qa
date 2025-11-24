@@ -24,7 +24,14 @@ class DocumentType(str, Enum):
 class ExtractionFieldType(str, Enum):
     CLAUSE = "CLAUSE"      # clause-like text
     TEXT = "TEXT"          # generic text field
+    TABLE = "TABLE"        # table extraction
     NUMBER = "NUMBER"
     DATE = "DATE"
     BOOL = "BOOL"
     # extend later without versioning
+    
+class FieldOccurrence(str, Enum):
+    OPTIONAL_ONCE = "OPTIONAL_ONCE"
+    OPTIONAL_MULTIPLE = "OPTIONAL_MULTIPLE"
+    REQUIRED_ONCE = "REQUIRED_ONCE"
+    REQUIRED_MULTIPLE = "REQUIRED_MULTIPLE"

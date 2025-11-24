@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Interactive Document View</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        .interactive-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 10000;
+        }
+
+        .interactive-modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            display: flex;
+            width: 95%;
+            height: 90%;
+            margin: auto;
+            background: #1e293b;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .pdf-viewer {
+            flex: 1;
+            background: #0f172a;
+            position: relative;
+            overflow: auto;
+        }
+
+        #pdfCanvas {
+            display: block;
+            margin: 20px auto;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .fields-panel {
+            width: 400px;
+            background: #1e293b;
+            border-left: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            padding: 20px;
+            border-bottom: 1px solid #334155;
+        }
+
+        .panel-header h2 {
+            margin: 0 0 15px 0;
+            color: #e2e8f0;
+        }
+
+        .add-field-btn {
+            width: 100%;
+            padding: 10px;
+            background: #38bdf8;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .add-field-btn:hover {
+            background: #0ea5e9;
+        }
+
+        .fields-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .field-item {
+            background: #334155;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .field-name {
+            color: #38bdf8;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .field-value {
+            width: 100%;
+            padding: 8px;
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 4px;
+            color: #e2e8f0;
+            margin-bottom: 8px;
+        }
+
+        .field-status {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .field-status.processing {
+            color: #f59e0b;
+        }
+
+        .field-status.found {
+            color: #10b981;
+        }
+
+        .field-status.not-found {
+            color: #ef4444;
+        }
+
+        .field-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn-select {
+            background: #a855f7;
+            color: white;
+        }
+
+        .btn-remove {
+            background: #ef4444;
+            color: white;
+        }
+
+        .panel-footer {
+            padding: 20px;
+            border-top: 1px solid #334155;
+        }
+
+        .save-btn {
+            width: 100%;
+            padding: 12px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .save-btn:hover {
+            background: #059669;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            z-index: 100;
+        }
+
+        .bbox-overlay {
+            position: absolute;
+            border: 2px solid #38bdf8;
+            background: rgba(56, 189, 248, 0.2);
+            pointer-events: none;
+        }
+
+        .field-dropdown {
+            position: absolute;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .field-dropdown.active {
+            display: block;
+        }
+
+        .field-dropdown-item {
+            padding: 10px 15px;
+            color: #e2e8f0;
+            cursor: pointer;
+        }
+
+        .field-dropdown-item:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="interactiveModal" class="interactive-modal">
+        <button class="close-modal" onclick="closeInteractiveView()">✕ Close</button>
+        <div class="modal-content">
+            <div class="pdf-viewer">
+                <canvas id="pdfCanvas"></canvas>
+                <div id="bboxContainer"></div>
+            </div>
+            <div class="fields-panel">
+                <div class="panel-header">
+                    <h2>Extraction Fields</h2>
+                    <button class="add-field-btn" onclick="showFieldDropdown()">+ Add Field</button>
+                    <div id="fieldDropdown" class="field-dropdown"></div>
+                </div>
+                <div class="fields-list" id="fieldsList"></div>
+                <div class="panel-footer">
+                    <button class="save-btn" onclick="saveFieldValues()">💾 Save to Knowledge Base</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentDocument = null;
+        let pdfDoc = null;
+        let pageNum = 1;
+        let availableFields = [];
+        let extractedFields = [];
+        let isSelectingText = false;
+        let currentSelectingFieldId = null;
+
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        async function openInteractiveView(documentId) {
+            currentDocument = documentId;
+            document.getElementById('interactiveModal').classList.add('active');
+
+            // Load document
+            await loadDocument(documentId);
+
+            // Load available fields
+            await loadAvailableFields(documentId);
+
+            // Load existing field values
+            await loadExistingFields(documentId);
+        }
+
+        function closeInteractiveView() {
+            document.getElementById('interactiveModal').classList.remove('active');
+            currentDocument = null;
+            pdfDoc = null;
+            extractedFields = [];
+        }
+
+        async function loadDocument(documentId) {
+            try {
+                const response = await fetch(`/documents/${documentId}`);
+                const doc = await response.json();
+
+                // Load PDF
+                const pdfUrl = doc.file_path || `/uploads/${doc.id}.pdf`;
+                const loadingTask = pdfjsLib.getDocument(pdfUrl);
+                pdfDoc = await loadingTask.promise;
+
+                // Render first page
+                renderPage(1);
+            } catch (error) {
+                console.error('Error loading document:', error);
+                alert('Failed to load document');
+            }
+        }
+
+        async function renderPage(num) {
+            const page = await pdfDoc.getPage(num);
+            const canvas = document.getElementById('pdfCanvas');
+            const ctx = canvas.getContext('2d');
+
+            const viewport = page.getViewport({ scale: 1.5 });
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+
+            await page.render({
+                canvasContext: ctx,
+                viewport: viewport
+            }).promise;
+
+            // Render bounding boxes
+            renderBoundingBoxes();
+        }
+
+        async function loadAvailableFields(documentId) {
+            try {
+                const response = await fetch(`/documents/${documentId}/available-fields`);
+                availableFields = await response.json();
+            } catch (error) {
+                console.error('Error loading fields:', error);
+            }
+        }
+
+        async function loadExistingFields(documentId) {
+            // Load existing extracted fields from database
+            // For now, start with empty
+            extractedFields = [];
+            renderFieldsList();
+        }
+
+        function showFieldDropdown() {
+            const dropdown = document.getElementById('fieldDropdown');
+            dropdown.innerHTML = '';
+
+            availableFields.forEach(field => {
+                const item = document.createElement('div');
+                item.className = 'field-dropdown-item';
+                item.textContent = field.name;
+                item.onclick = () => addField(field);
+                dropdown.appendChild(item);
+            });
+
+            dropdown.classList.toggle('active');
+        }
+
+        async function addField(field) {
+            document.getElementById('fieldDropdown').classList.remove('active');
+
+            // Add to list with processing status
+            const fieldData = {
+                field_id: field.id,
+                field_name: field.name,
+                value: null,
+                confidence: 0,
+                bbox: null,
+                page_number: null,
+                status: 'processing'
+            };
+
+            extractedFields.push(fieldData);
+            renderFieldsList();
+
+            // Auto-extract
+            await extractField(field.id);
+        }
+
+        async function extractField(fieldId) {
+            try {
+                const formData = new FormData();
+                formData.append('field_id', fieldId);
+
+                const response = await fetch(`/documents/${currentDocument}/extract-field`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                // Update field data
+                const fieldIndex = extractedFields.findIndex(f => f.field_id === fieldId);
+                if (fieldIndex !== -1) {
+                    extractedFields[fieldIndex] = {
+                        ...extractedFields[fieldIndex],
+                        value: result.found ? result.value : null,
+                        confidence: result.confidence || 0,
+                        bbox: result.bbox,
+                        page_number: result.page_number,
+                        status: result.found ? 'found' : 'not-found'
+                    };
+
+                    renderFieldsList();
+                    renderBoundingBoxes();
+                }
+            } catch (error) {
+                console.error('Error extracting field:', error);
+                const fieldIndex = extractedFields.findIndex(f => f.field_id === fieldId);
+                if (fieldIndex !== -1) {
+                    extractedFields[fieldIndex].status = 'error';
+                    renderFieldsList();
+                }
+            }
+        }
+
+        function renderFieldsList() {
+            const container = document.getElementById('fieldsList');
+            container.innerHTML = '';
+
+            extractedFields.forEach((field, index) => {
+                const item = document.createElement('div');
+                item.className = 'field-item';
+
+                const displayValue = field.value || '----';
+                const statusClass = field.status;
+                const statusText = field.status === 'processing' ? 'Processing...' :
+                    field.status === 'found' ? `Found (${Math.round(field.confidence * 100)}%)` :
+                        'Not found';
+
+                item.innerHTML = `
+                    <div class="field-name">${field.field_name}</div>
+                    <input type="text" class="field-value" value="${displayValue}" 
+                           onchange="updateFieldValue(${index}, this.value)">
+                    <div class="field-status ${statusClass}">${statusText}</div>
+                    <div class="field-actions">
+                        <button class="btn-small btn-select" onclick="startTextSelection(${index})">
+                            Select from Document
+                        </button>
+                        <button class="btn-small btn-remove" onclick="removeField(${index})">
+                            Remove
+                        </button>
+                    </div>
+                `;
+
+                container.appendChild(item);
+            });
+        }
+
+        function updateFieldValue(index, value) {
+            extractedFields[index].value = value;
+        }
+
+        function removeField(index) {
+            extractedFields.splice(index, 1);
+            renderFieldsList();
+            renderBoundingBoxes();
+        }
+
+        function startTextSelection(index) {
+            isSelectingText = true;
+            currentSelectingFieldId = index;
+            alert('Select text from the document. Click and drag to select.');
+
+            const canvas = document.getElementById('pdfCanvas');
+            canvas.style.cursor = 'crosshair';
+
+            // Enable text selection on canvas
+            canvas.addEventListener('mouseup', handleTextSelection);
+        }
+
+        async function handleTextSelection(event) {
+            if (!isSelectingText) return;
+
+            // Get selected text from PDF
+            const selection = window.getSelection();
+            const selectedText = selection.toString().trim();
+
+            if (selectedText && currentSelectingFieldId !== null) {
+                extractedFields[currentSelectingFieldId].value = selectedText;
+                extractedFields[currentSelectingFieldId].status = 'manual';
+                renderFieldsList();
+            }
+
+            isSelectingText = false;
+            currentSelectingFieldId = null;
+            document.getElementById('pdfCanvas').style.cursor = 'default';
+        }
+
+        function renderBoundingBoxes() {
+            const container = document.getElementById('bboxContainer');
+            container.innerHTML = '';
+
+            extractedFields.forEach(field => {
+                if (field.bbox && field.page_number === pageNum) {
+                    const bbox = field.bbox;
+                    const canvas = document.getElementById('pdfCanvas');
+
+                    const box = document.createElement('div');
+                    box.className = 'bbox-overlay';
+                    box.style.left = `${bbox[0] * canvas.width}px`;
+                    box.style.top = `${bbox[1] * canvas.height}px`;
+                    box.style.width = `${(bbox[2] - bbox[0]) * canvas.width}px`;
+                    box.style.height = `${(bbox[3] - bbox[1]) * canvas.height}px`;
+
+                    container.appendChild(box);
+                }
+            });
+        }
+
+        async function saveFieldValues() {
+            try {
+                const fieldValues = extractedFields
+                    .filter(f => f.value && f.value !== '----')
+                    .map(f => ({
+                        field_id: f.field_id,
+                        value: f.value,
+                        confidence: f.confidence,
+                        bbox: f.bbox,
+                        page_number: f.page_number
+                    }));
+
+                const formData = new FormData();
+                formData.append('field_values', JSON.stringify(fieldValues));
+
+                const response = await fetch(`/documents/${currentDocument}/save-field-values`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ Saved successfully!');
+                    closeInteractiveView();
+                    location.reload();
+                } else {
+                    alert('❌ Failed to save');
+                }
+            } catch (error) {
+                console.error('Error saving:', error);
+                alert('❌ Error saving field values');
+            }
+        }
+    </script>
+</body>
+
+</html>

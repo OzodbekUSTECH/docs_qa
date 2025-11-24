@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from app.entities.extracion_fields import ExtractionField
-from app.utils.enums import ExtractionFieldType, DocumentType
+from app.utils.enums import ExtractionFieldType, DocumentType, FieldOccurrence
 from app.dto.common import BaseModelResponse, TimestampResponse
 from app.dto.pagination import PaginationRequest
 
@@ -14,9 +14,10 @@ class CreateExtractionFieldRequest(BaseModel):
     keywords: Optional[List[str]] = None
     prompt: Optional[str] = None
     examples: Optional[List[str]] = None
+    identifier: Optional[str] = None
+    occurrence: FieldOccurrence = FieldOccurrence.OPTIONAL_ONCE
     
 
-from pydantic import model_validator
 
 class UpdateExtractionFieldRequest(BaseModel):
     name: Optional[str] = None
@@ -27,7 +28,8 @@ class UpdateExtractionFieldRequest(BaseModel):
     keywords: Optional[List[str]] = None
     prompt: Optional[str] = None
     examples: Optional[List[str]] = None
-
+    identifier: Optional[str] = None
+    occurrence: Optional[FieldOccurrence] = None
     
 class ExtractionFieldListResponse(BaseModelResponse, TimestampResponse):
     name: str
@@ -35,18 +37,21 @@ class ExtractionFieldListResponse(BaseModelResponse, TimestampResponse):
     type: ExtractionFieldType
     document_types: List[DocumentType]
     use_ai: bool
+    occurrence: FieldOccurrence
+    identifier: Optional[str] = None
     
 class ExtractionFieldResponse(ExtractionFieldListResponse):
     keywords: List[str]
     prompt: Optional[str]
     examples: List[str]
     
-    
 class GetExtractionFieldsParams(PaginationRequest):
     name: Optional[str] = None
     type: Optional[ExtractionFieldType] = None
     document_types: Optional[List[DocumentType]] = None
     use_ai: Optional[bool] = None
+    identifier: Optional[str] = None
+    occurrence: Optional[FieldOccurrence] = None
     
     class Constants:
         filter_map = {
@@ -54,6 +59,7 @@ class GetExtractionFieldsParams(PaginationRequest):
             "type": lambda value: ExtractionField.type == value,
             "document_types": lambda value: ExtractionField.document_types.contains(value),
             "use_ai": lambda value: ExtractionField.use_ai == value,
+            "occurrence": lambda value: ExtractionField.occurrence == value,
         }
         searchable_fields = ["name"]
         orderable_fields = {

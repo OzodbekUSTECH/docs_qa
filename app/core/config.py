@@ -1,6 +1,13 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import logging
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.path.abspath(
+    os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+)
 
 
 class Settings(BaseSettings):
@@ -21,6 +28,10 @@ class Settings(BaseSettings):
     
     OPENAI_API_KEY: str
     GOOGLE_API_KEY: str
+    
+    DOC_AI_PROJECT_ID: str | None = "docsqa-478609"
+    DOC_AI_LOCATION: str | None = "us"
+    DOC_AI_PROCESSOR_ID: str | None = "c58c3016e8dd7dd0"
     
     @property
     def database_url(self):

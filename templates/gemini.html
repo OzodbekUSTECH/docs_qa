@@ -339,6 +339,76 @@
             color: var(--text);
             font-size: 0.9rem;
         }
+        
+        .chunk-settings {
+            margin-top: 16px;
+            padding: 16px;
+            border: 1px dashed var(--border);
+            border-radius: 10px;
+            background: rgba(56, 189, 248, 0.05);
+        }
+
+        .chunk-settings h3 {
+            margin: 0 0 12px 0;
+            font-size: 1rem;
+            color: var(--accent);
+        }
+
+        .chunk-mode-options {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .chunk-mode-options label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .chunk-custom-settings {
+            display: none;
+            gap: 16px;
+            margin-top: 12px;
+        }
+
+        .chunk-input-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .chunk-input-group label {
+            font-size: 0.85rem;
+            color: var(--subtle);
+        }
+
+        .chunk-input-group input {
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+        }
+
+        .helper-text {
+            font-size: 0.8rem;
+            color: var(--subtle);
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+
+        .assistant-content {
+            width: 100%;
+        }
+
+        .assistant-citations {
+            margin-top: 12px;
+        }
     </style>
 </head>
 <body>
@@ -390,6 +460,32 @@
                         <p style="font-size: 0.85rem; color: var(--subtle); margin-top: 8px;">
                             File will be indexed and available for RAG queries
                         </p>
+                    </div>
+                    <div class="chunk-settings">
+                        <h3>Chunking strategy</h3>
+                        <div class="chunk-mode-options">
+                            <label>
+                                <input type="radio" name="chunking-mode" value="auto" checked>
+                                Auto (Gemini default)
+                            </label>
+                            <label>
+                                <input type="radio" name="chunking-mode" value="custom">
+                                Custom (tune for multi-document chats)
+                            </label>
+                        </div>
+                        <div id="custom-chunk-settings" class="chunk-custom-settings">
+                            <div class="chunk-input-group">
+                                <label for="chunk-max-tokens">Tokens per chunk</label>
+                                <input type="number" id="chunk-max-tokens" min="100" max="2000" step="50" value="400">
+                            </div>
+                            <div class="chunk-input-group">
+                                <label for="chunk-max-overlap">Overlap tokens</label>
+                                <input type="number" id="chunk-max-overlap" min="0" max="400" step="10" value="40">
+                            </div>
+                        </div>
+                        <div class="helper-text">
+                            Use smaller chunks (200-500 tokens with 10-50 overlap) when you upload several large files so File Search can keep passages focused and citations stay precise.
+                        </div>
                     </div>
                     <input type="file" id="file-input" onchange="handleFileSelect(event)">
                     <div id="upload-status" style="margin-top: 12px;"></div>
@@ -551,14 +647,17 @@
             chat.messages.forEach(msg => {
                 const msgEl = document.createElement('div');
                 msgEl.className = `message ${msg.role}`;
-                if (msg.role === 'assistant') {
-                    // Check if content includes citations HTML
-                    if (msg.content && msg.content.includes('citations-section')) {
-                        msgEl.innerHTML = `<p>${msg.content}</p>`;
-                    } else {
-                        msgEl.innerHTML = `<p>${marked.parse(msg.content || '')}</p>`;
-                    }
+            if (msg.role === 'assistant') {
+                if (msg.content && (msg.content.includes('citations-section') || msg.content.includes('assistant-content') || msg.content.includes('<'))) {
+                    msgEl.innerHTML = msg.content;
                 } else {
+                    msgEl.innerHTML = `
+                        <div class="assistant-content markdown">
+                            ${marked.parse(msg.content || '')}
+                        </div>
+                    `;
+                }
+            } else {
                     msgEl.innerHTML = `<p>${escapeHtml(msg.content || '')}</p>`;
                 }
                 messagesEl.appendChild(msgEl);
@@ -675,9 +774,30 @@
                 }
             }
         }
+
+        function initChunkingControls() {
+            const customSettingsEl = document.getElementById('custom-chunk-settings');
+            const radioButtons = document.querySelectorAll('input[name="chunking-mode"]');
+            if (!customSettingsEl || radioButtons.length === 0) {
+                return;
+            }
+
+            const toggleVisibility = () => {
+                const selected = document.querySelector('input[name="chunking-mode"]:checked');
+                const isCustom = selected && selected.value === 'custom';
+                customSettingsEl.style.display = isCustom ? 'flex' : 'none';
+            };
+
+            radioButtons.forEach((radio) => {
+                radio.addEventListener('change', toggleVisibility);
+            });
+
+            toggleVisibility();
+        }
         
         document.addEventListener('DOMContentLoaded', () => {
             initChats();
+            initChunkingControls();
         });
 
         // Load current store info
@@ -725,6 +845,20 @@
             const formData = new FormData();
             formData.append('file', file);
             formData.append('display_name', file.name);
+            
+            const chunkModeInput = document.querySelector('input[name="chunking-mode"]:checked');
+            const chunkingMode = chunkModeInput ? chunkModeInput.value : 'auto';
+            formData.append('chunking_mode', chunkingMode);
+            if (chunkingMode === 'custom') {
+                const maxTokensValue = parseInt(document.getElementById('chunk-max-tokens')?.value ?? '0', 10);
+                const overlapValue = parseInt(document.getElementById('chunk-max-overlap')?.value ?? '0', 10);
+                if (!Number.isNaN(maxTokensValue)) {
+                    formData.append('max_tokens_per_chunk', maxTokensValue.toString());
+                }
+                if (!Number.isNaN(overlapValue)) {
+                    formData.append('max_overlap_tokens', overlapValue.toString());
+                }
+            }
 
             try {
                 const response = await fetch(`${API_BASE}/files/upload`, {
@@ -924,7 +1058,12 @@
             const assistantMsg = document.createElement('div');
             assistantMsg.className = 'message assistant';
             assistantMsg.id = 'current-assistant-msg';
-            assistantMsg.innerHTML = '<p></p>';
+            assistantMsg.innerHTML = `
+                <div class="assistant-content markdown"></div>
+                <div class="assistant-citations"></div>
+            `;
+            const assistantContentEl = assistantMsg.querySelector('.assistant-content');
+            const assistantCitationsEl = assistantMsg.querySelector('.assistant-citations');
             messagesEl.appendChild(assistantMsg);
 
             inputEl.value = '';
@@ -1002,7 +1141,9 @@
                                         // So we'll show them in the references section
                                     }
                                     assistantContent = fullText;
-                                    assistantMsg.querySelector('p').innerHTML = marked.parse(textWithCitations);
+                                    if (assistantContentEl) {
+                                        assistantContentEl.innerHTML = marked.parse(textWithCitations);
+                                    }
                                     messagesEl.scrollTop = messagesEl.scrollHeight;
                                 } else if (data.type === 'response.chunk_citations' && data.data && data.data.chunk_citations) {
                                     // Store chunk citations for potential in-text citation
@@ -1063,19 +1204,18 @@
                                     citationsHtml += '</div></div>';
                                     
                                     // Add references to message
-                                    if (!assistantMsg.querySelector('.citations-section')) {
-                                        assistantContent = fullText;
-                                        assistantMsg.querySelector('p').innerHTML = marked.parse(fullText) + citationsHtml;
-                                        
-                                        // Load chunk contents asynchronously
-                                        loadChunkContents(data.data.citations);
+                                    if (assistantCitationsEl) {
+                                        assistantCitationsEl.innerHTML = citationsHtml;
                                     }
+                                    
+                                    // Load chunk contents asynchronously
+                                    loadChunkContents(data.data.citations);
                                     messagesEl.scrollTop = messagesEl.scrollHeight;
                                 } else if (data.type === 'response.done') {
                                     assistantMsg.removeAttribute('id');
                                     // Save assistant message with full HTML (including citations)
                                     if (assistantContent) {
-                                        const fullHtml = assistantMsg.querySelector('p').innerHTML;
+                                        const fullHtml = assistantMsg.innerHTML;
                                         saveMessage('assistant', fullHtml);
                                     }
                                 } else if (data.type === 'error') {
@@ -1088,7 +1228,11 @@
                     }
                 }
             } catch (error) {
-                assistantMsg.querySelector('p').textContent = `Error: ${error.message}`;
+                if (assistantContentEl) {
+                    assistantContentEl.textContent = `Error: ${error.message}`;
+                } else {
+                    assistantMsg.textContent = `Error: ${error.message}`;
+                }
             } finally {
                 sendBtn.disabled = false;
                 sendBtn.textContent = 'Send';

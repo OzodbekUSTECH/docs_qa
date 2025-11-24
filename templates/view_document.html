@@ -1,0 +1,1939 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Document Field Mapper</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f172a;
+      --card: #1e293b;
+      --accent: #38bdf8;
+      --accent-muted: rgba(56, 189, 248, 0.15);
+      --purple: #a855f7;
+      --text: #e2e8f0;
+      --subtle: #94a3b8;
+      --border: rgba(148, 163, 184, 0.2);
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      letter-spacing: 0.03em;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .nav-button {
+      padding: 8px 16px;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 8px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-button:hover {
+      background: rgba(56, 189, 248, 0.25);
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+      gap: 24px;
+      padding: 24px;
+    }
+
+    /* ЛЕВАЯ ЧАСТЬ — PDF viewer */
+    #viewerPanel {
+      flex: 2;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      gap: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.35);
+    }
+
+    /* Toolbar над документом */
+    #pdfToolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    #pdfToolbar button {
+      cursor: pointer;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      font-size: 12px;
+      transition: all 0.2s ease;
+    }
+
+    #pdfToolbar button:hover {
+      background: rgba(56, 189, 248, 0.25);
+      border-color: var(--accent);
+    }
+
+    #pageInfo {
+      min-width: 80px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      color: var(--subtle);
+    }
+
+    #pageInfoInput {
+      width: 50px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 6px;
+      font-size: 13px;
+    }
+
+    #pageInfoInput:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    #pdfViewerWrapper {
+      position: relative;
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #1a1f2e;
+      overflow: auto;
+      padding: 10px;
+    }
+
+    #pdfViewerWrapper.global-dim {
+      filter: grayscale(0.4) brightness(0.8);
+      cursor: crosshair;
+    }
+
+    .pdf-placeholder {
+      color: var(--subtle);
+      font-size: 14px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .page {
+      position: relative;
+      margin: 0 auto;
+      background: white;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .page canvas {
+      display: block;
+    }
+
+    /* Оверлеи, которые затемняют всё вокруг окна */
+    .dim-overlay {
+      position: absolute;
+      background: rgba(0, 0, 0, 0.35);
+      pointer-events: none;
+      z-index: 4;
+    }
+
+    /* Прямоугольник выделения */
+    .selection-box {
+      position: absolute;
+      border: 2px solid #ff4b4b;
+      background: rgba(80, 160, 255, 0.25);
+      pointer-events: auto;
+      z-index: 5;
+    }
+
+    .selection-box.editing {
+      background: transparent;
+    }
+
+    .selection-box.active {
+      border-style: solid;
+    }
+
+    .selection-box.hover-highlight {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.35);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3);
+      z-index: 7;
+    }
+
+    tr.field-row.hover-highlight {
+      background: rgba(56, 189, 248, 0.25);
+      border-left: 3px solid var(--accent);
+    }
+
+    /* 4 хэндла по углам */
+    .selection-box .resize-handle {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: #ffffff;
+      border: 2px solid #ff4b4b;
+      border-radius: 50%;
+      pointer-events: auto;
+      z-index: 6;
+    }
+
+    .resize-nw {
+      left: -7px;
+      top: -7px;
+      cursor: nwse-resize;
+    }
+
+    .resize-ne {
+      right: -7px;
+      top: -7px;
+      cursor: nesw-resize;
+    }
+
+    .resize-sw {
+      left: -7px;
+      bottom: -7px;
+      cursor: nesw-resize;
+    }
+
+    .resize-se {
+      right: -7px;
+      bottom: -7px;
+      cursor: nwse-resize;
+    }
+
+    .selection-box.handles-hidden .resize-handle {
+      display: none;
+    }
+
+    .selection-box.hidden {
+      display: none;
+    }
+
+    /* ПРАВАЯ ЧАСТЬ — поля */
+    #fieldsPanel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 0;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.35);
+    }
+
+    #fieldsPanel h2 {
+      font-size: 1.1rem;
+      margin: 0 0 12px;
+    }
+
+    button {
+      cursor: pointer;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      font-size: 13px;
+      transition: all 0.2s ease;
+    }
+
+    button:hover:not(:disabled) {
+      background: rgba(56, 189, 248, 0.25);
+      border-color: var(--accent);
+    }
+
+    button.primary {
+      background: linear-gradient(135deg, var(--success), #059669);
+      color: white;
+      border-color: var(--success);
+    }
+
+    button.primary:hover {
+      background: linear-gradient(135deg, #059669, #047857);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      vertical-align: top;
+    }
+
+    th {
+      background: rgba(56, 189, 248, 0.1);
+      text-align: left;
+      color: var(--accent);
+    }
+
+    tr.field-row {
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    tr.field-row:hover {
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    tr.field-row.active {
+      background: rgba(56, 189, 248, 0.2);
+    }
+
+    .small {
+      font-size: 12px;
+      color: var(--subtle);
+    }
+
+    .field-value-input {
+      width: 100%;
+      min-height: 80px;
+      max-height: 400px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      line-height: 1.6;
+      resize: vertical;
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      transition: all 0.2s ease;
+    }
+
+    .field-value-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: rgba(15, 23, 42, 0.8);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+    }
+
+    .field-value-input:hover {
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .field-value-container {
+      position: relative;
+      width: 100%;
+    }
+
+    .field-value-table {
+      overflow-x: auto;
+      margin: 8px 0;
+    }
+
+    .field-value-table table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .field-value-table th {
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 2px solid var(--border);
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .field-value-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .field-value-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .field-value-table.editable-mode {
+      padding: 12px;
+      background: rgba(15, 23, 42, 0.3);
+      border-radius: 8px;
+      margin: 12px 0;
+    }
+
+    .field-value-table.editable-mode table {
+      border-spacing: 4px;
+    }
+
+    .field-value-table.editable-mode th,
+    .field-value-table.editable-mode td {
+      padding: 12px 16px;
+      min-width: 120px;
+    }
+
+    .field-value-table.editable-mode input {
+      min-height: 36px;
+      font-size: 13px;
+      padding: 8px 10px;
+    }
+
+    .field-value-table.editable-mode input:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .panel-header h2 {
+      margin: 0;
+      flex: 1;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="/" class="nav-button">← Back</a>
+      <h1>Document Field Mapper</h1>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center;">
+      <span id="documentName" class="small"></span>
+      <button id="saveBtn" class="primary">Save</button>
+      <button id="closeBtn">Close</button>
+    </div>
+  </header>
+  <main>
+    <!-- ЛЕВАЯ ПАНЕЛЬ -->
+    <section id="viewerPanel">
+      <div id="pdfToolbar">
+        <button id="prevPageBtn">‹</button>
+        <span id="pageInfo">
+          <input type="number" id="pageInfoInput" min="1" value="0" style="display: none;">
+          <span id="pageInfoText">0 / 0</span>
+        </span>
+        <button id="nextPageBtn">›</button>
+        <span style="margin-left: 12px; color: var(--subtle);">Zoom:</span>
+        <button id="zoomOutBtn">-</button>
+        <button id="zoomInBtn">+</button>
+      </div>
+      <div id="pdfViewerWrapper">
+        <div class="pdf-placeholder">
+          Loading document...
+        </div>
+      </div>
+    </section>
+    <!-- ПРАВАЯ ПАНЕЛЬ -->
+    <section id="fieldsPanel">
+      <div class="panel-header">
+        <h2>Fields</h2>
+        <button id="addFieldBtn">Add field</button>
+        <label class="checkbox-label small">
+          <input type="checkbox" id="viewAllFields" />
+          View all pages
+        </label>
+      </div>
+      <span class="small">
+        • Click "Add field" to create a new field.<br />
+        • Click on a field row to select/edit its region.<br />
+        • Fields without regions are always visible.<br />
+        • When "View all pages" is unchecked, only fields for current page are shown.
+      </span>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 25%;">Field</th>
+            <th>Value / Coords</th>
+            <th style="width: 80px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="fieldsTableBody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <!-- pdf.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script>
+    // pdf.js worker
+    window.pdfjsLib = window["pdfjsLib"];
+    if (window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+    }
+
+    // Get document ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const documentId = urlParams.get('id');
+    if (!documentId) {
+      document.getElementById('pdfViewerWrapper').innerHTML = '<div class="pdf-placeholder">Error: No document ID provided</div>';
+    }
+
+    const pdfViewerWrapper = document.getElementById("pdfViewerWrapper");
+    const addFieldBtn = document.getElementById("addFieldBtn");
+    const fieldsTableBody = document.getElementById("fieldsTableBody");
+    const prevPageBtn = document.getElementById("prevPageBtn");
+    const nextPageBtn = document.getElementById("nextPageBtn");
+    const zoomInBtn = document.getElementById("zoomInBtn");
+    const zoomOutBtn = document.getElementById("zoomOutBtn");
+    const pageInfo = document.getElementById("pageInfo");
+    const pageInfoInput = document.getElementById("pageInfoInput");
+    const pageInfoText = document.getElementById("pageInfoText");
+    const viewAllFieldsCheckbox = document.getElementById("viewAllFields");
+    const saveBtn = document.getElementById("saveBtn");
+    const closeBtn = document.getElementById("closeBtn");
+    const documentNameEl = document.getElementById("documentName");
+
+    // поле: { id?, field_id?, custom_field_name?, name, value, region?: { page, x1, y1, x2, y2 } }
+    let fields = [];
+    let activeFieldIndex = null;
+    let selectionMode = false;
+    let createMode = false;
+    let editMode = false;
+    let isDragging = false;
+    let dragType = null;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let startLeft = 0;
+    let startTop = 0;
+    let startWidth = 0;
+    let startHeight = 0;
+    let currentPageDiv = null;
+    let currentPageCanvas = null;
+    let currentPageIndex = null;
+    let currentSelectionBox = null;
+    let pdfDoc = null;
+    let currentPageNum = 1;
+    let totalPages = 0;
+    let scale = 1.3;
+    let documentData = null;
+
+    // Normalize file URL (same as in index.html)
+    function normalizeFileUrl(filePath) {
+      if (!filePath) return null;
+      let url = filePath.replace(/\\/g, '/').trim();
+
+      // Remove 'storage/' prefix if present (Windows paths)
+      if (url.startsWith('storage/')) {
+        url = url.substring(8);
+      }
+
+      // If already starts with /storage/, use as is
+      if (url.startsWith('/storage/')) {
+        return url;
+      }
+
+      // If starts with http, use as is
+      if (url.startsWith('http')) {
+        return url;
+      }
+
+      // If starts with /, add /storage prefix
+      if (url.startsWith('/')) {
+        return `/storage${url}`;
+      }
+
+      // Otherwise, add /storage/ prefix
+      return `/storage/${url}`;
+    }
+
+    // Load document and fields
+    async function loadDocument() {
+      try {
+        const response = await fetch(`/documents/${documentId}`);
+        documentData = await response.json();
+        documentNameEl.textContent = documentData.filename || `Document #${documentId}`;
+
+        // Load PDF with normalized URL
+        const pdfUrl = normalizeFileUrl(documentData.file_path);
+        if (!pdfUrl) {
+          throw new Error('Invalid file path');
+        }
+
+        pdfDoc = await window.pdfjsLib.getDocument(pdfUrl).promise;
+        totalPages = pdfDoc.numPages;
+        updatePageInfo();
+
+        // Load fields
+        await loadFields();
+
+        // Check if page parameter is provided in URL
+        const initialPage = urlParams.get('page');
+        const pageNum = initialPage ? parseInt(initialPage) : 1;
+
+        // Render specified page or first page
+        await renderPage(Math.min(Math.max(pageNum, 1), totalPages));
+      } catch (error) {
+        console.error('Error loading document:', error);
+        pdfViewerWrapper.innerHTML = '<div class="pdf-placeholder">Error loading document: ' + error.message + '</div>';
+      }
+    }
+
+    async function loadFields() {
+      try {
+        const response = await fetch(`/documents/${documentId}/fields`);
+        const fieldsData = await response.json();
+
+        fields = fieldsData.map(f => ({
+          id: f.id,
+          field_id: f.field_id,
+          custom_field_name: f.custom_field_name,
+          name: f.field_name,
+          value: f.value || null, // Keep null for empty values
+          region: f.bbox && f.page_number ? {
+            page: f.page_number,
+            x1: f.bbox[0],
+            y1: f.bbox[1],
+            x2: f.bbox[2],
+            y2: f.bbox[3]
+          } : null
+        }));
+
+        renderFields();
+      } catch (error) {
+        console.error('Error loading fields:', error);
+      }
+    }
+
+    function updatePageInfo() {
+      const displayText = `${totalPages ? currentPageNum : 0} / ${totalPages}`;
+      pageInfoText.textContent = displayText;
+      if (pageInfoInput) {
+        pageInfoInput.value = currentPageNum || 1;
+        pageInfoInput.max = totalPages || 1;
+      }
+    }
+
+    // Make page info editable
+    pageInfoText.addEventListener("click", () => {
+      if (!pdfDoc || !totalPages) return;
+      pageInfoText.style.display = "none";
+      pageInfoInput.style.display = "inline-block";
+      pageInfoInput.value = currentPageNum;
+      pageInfoInput.focus();
+      pageInfoInput.select();
+    });
+
+    pageInfoInput.addEventListener("blur", () => {
+      const pageNum = parseInt(pageInfoInput.value);
+      if (pageNum >= 1 && pageNum <= totalPages) {
+        renderPage(pageNum);
+      } else {
+        updatePageInfo();
+      }
+      pageInfoInput.style.display = "none";
+      pageInfoText.style.display = "inline";
+    });
+
+    pageInfoInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        pageInfoInput.blur();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        updatePageInfo();
+        pageInfoInput.style.display = "none";
+        pageInfoText.style.display = "inline";
+      }
+    });
+
+    async function renderPage(pageNum) {
+      if (!pdfDoc) return;
+      resetSelectionState(false);
+      clearAllOverlays();
+      pdfViewerWrapper.classList.remove("global-dim");
+      pdfViewerWrapper.innerHTML = "";
+      currentPageNum = pageNum;
+
+      const page = await pdfDoc.getPage(pageNum);
+      const viewport = page.getViewport({ scale });
+      const pageDiv = document.createElement("div");
+      pageDiv.className = "page";
+      pageDiv.dataset.pageIndex = String(pageNum);
+      pageDiv.style.width = viewport.width + "px";
+      pageDiv.style.height = viewport.height + "px";
+
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      pageDiv.appendChild(canvas);
+      pdfViewerWrapper.appendChild(pageDiv);
+
+      await page.render({ canvasContext: context, viewport }).promise;
+      currentPageDiv = pageDiv;
+      currentPageCanvas = canvas;
+      currentPageIndex = pageNum;
+      setupPageSelection(pageDiv);
+
+      // Render all boxes for fields on this page
+      fields.forEach((field, idx) => {
+        if (field.region && field.region.page === pageNum) {
+          const r = field.region;
+          const left = r.x1 * canvas.width;
+          const top = r.y1 * canvas.height;
+          const width = (r.x2 - r.x1) * canvas.width;
+          const height = (r.y2 - r.y1) * canvas.height;
+          const box = createSelectionBox(left, top, width, height, idx, pageNum);
+          pageDiv.appendChild(box);
+        }
+      });
+
+      updatePageInfo();
+      activeFieldIndex = null;
+      renderFields();
+    }
+
+    // Event handlers
+    prevPageBtn.addEventListener("click", () => {
+      if (!pdfDoc) return;
+      if (currentPageNum > 1) {
+        renderPage(currentPageNum - 1);
+      }
+    });
+
+    nextPageBtn.addEventListener("click", () => {
+      if (!pdfDoc) return;
+      if (currentPageNum < totalPages) {
+        renderPage(currentPageNum + 1);
+      }
+    });
+
+    zoomInBtn.addEventListener("click", () => {
+      if (!pdfDoc) return;
+      scale = Math.min(scale * 1.2, 3.0);
+      renderPage(currentPageNum);
+    });
+
+    zoomOutBtn.addEventListener("click", () => {
+      if (!pdfDoc) return;
+      scale = Math.max(scale / 1.2, 0.5);
+      renderPage(currentPageNum);
+    });
+
+    viewAllFieldsCheckbox.addEventListener("change", () => {
+      renderFields();
+    });
+
+    // Modal for adding field
+    const addFieldModal = document.createElement("div");
+    addFieldModal.id = "addFieldModal";
+    addFieldModal.style.cssText = `
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+    `;
+    addFieldModal.innerHTML = `
+      <div style="background: var(--card); padding: 24px; border-radius: 12px; max-width: 500px; width: 90%; border: 1px solid var(--border);">
+        <h3 style="margin: 0 0 20px; font-size: 1.2rem;">Add Custom Field</h3>
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div>
+            <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary);">Field Name</label>
+            <input type="text" id="fieldNameInput" placeholder="e.g., AKH ref" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 14px;">
+            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">Identifier: <span id="fieldIdentifierPreview" style="color: var(--accent);"></span></div>
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary);">Description</label>
+            <textarea id="fieldDescriptionInput" placeholder="Describe what to extract" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 14px; min-height: 60px; resize: vertical;"></textarea>
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary);">Occurrence</label>
+            <select id="fieldOccurrenceInput" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 14px;">
+              <option value="OPTIONAL_ONCE">Optional Once</option>
+              <option value="REQUIRED_ONCE">Required Once</option>
+              <option value="OPTIONAL_MULTIPLE">Optional Multiple</option>
+              <option value="REQUIRED_MULTIPLE">Required Multiple</option>
+            </select>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+            <input type="checkbox" id="useAiCheckbox" checked style="cursor: pointer; width: 16px; height: 16px;">
+            <label for="useAiCheckbox" style="font-size: 13px; color: var(--text); cursor: pointer; user-select: none;">Use AI (Custom Extractor)</label>
+          </div>
+          <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
+            <button id="cancelAddFieldBtn" style="padding: 8px 16px; background: transparent; border: 1px solid var(--border); color: var(--text);">Cancel</button>
+            <button id="confirmAddFieldBtn" style="padding: 8px 16px; background: var(--accent); color: white; border: none;">Add Field</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(addFieldModal);
+
+    // Convert name to identifier (AKH ref -> akh_ref)
+    function nameToIdentifier(name) {
+      return name
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+    }
+
+    const fieldNameInput = document.getElementById("fieldNameInput");
+    const fieldIdentifierPreview = document.getElementById("fieldIdentifierPreview");
+    const fieldDescriptionInput = document.getElementById("fieldDescriptionInput");
+    const fieldOccurrenceInput = document.getElementById("fieldOccurrenceInput");
+    const useAiCheckbox = document.getElementById("useAiCheckbox");
+    const cancelAddFieldBtn = document.getElementById("cancelAddFieldBtn");
+    const confirmAddFieldBtn = document.getElementById("confirmAddFieldBtn");
+
+    fieldNameInput.addEventListener("input", () => {
+      const identifier = nameToIdentifier(fieldNameInput.value);
+      fieldIdentifierPreview.textContent = identifier || "(will be generated)";
+    });
+
+    cancelAddFieldBtn.addEventListener("click", () => {
+      addFieldModal.style.display = "none";
+      fieldNameInput.value = "";
+      fieldDescriptionInput.value = "";
+      fieldOccurrenceInput.value = "OPTIONAL_ONCE";
+      useAiCheckbox.checked = true;
+    });
+
+    addFieldBtn.addEventListener("click", () => {
+      addFieldModal.style.display = "flex";
+      fieldNameInput.focus();
+      fieldIdentifierPreview.textContent = "";
+    });
+
+    confirmAddFieldBtn.addEventListener("click", async () => {
+      const name = fieldNameInput.value.trim();
+      if (!name) {
+        alert("Please enter a field name");
+        return;
+      }
+
+      const identifier = nameToIdentifier(name);
+      const description = fieldDescriptionInput.value.trim() || `Extract ${name} from document`;
+      const occurrence = fieldOccurrenceInput.value;
+      const useAi = useAiCheckbox.checked;
+
+      // Close modal
+      addFieldModal.style.display = "none";
+
+      // Add field
+      const fieldIndex = fields.length;
+      fields.push({
+        name: name,
+        custom_field_name: identifier,
+        value: null, // Empty initially
+        region: null
+      });
+      renderFields();
+
+      if (useAi) {
+        // Use AI extraction
+        fields[fieldIndex]._processing = true;
+        fields[fieldIndex].value = "processing";
+        renderFields();
+
+        try {
+          // Call extractor
+          const formData = new FormData();
+          formData.append('custom_field_name', identifier);
+          formData.append('description', description);
+          formData.append('occurrence', occurrence);
+          formData.append('page_number', currentPageNum);
+
+          const response = await fetch(`/documents/${documentId}/extract-field`, {
+            method: 'POST',
+            body: formData
+          });
+
+          const result = await response.json();
+
+          // Update field with result
+          const field = fields[fieldIndex];
+          field._processing = false;
+
+          if (result.found && result.value) {
+            field.value = result.value;
+            field.confidence = result.confidence || 1.0;
+
+            // Set region if bbox exists
+            if (result.bbox && result.page_number) {
+              const bbox = result.bbox;
+              field.region = {
+                page: result.page_number,
+                x1: bbox[0] || bbox.x1 || 0,
+                y1: bbox[1] || bbox.y1 || 0,
+                x2: bbox[2] || bbox.x2 || 1,
+                y2: bbox[3] || bbox.y2 || 1
+              };
+            }
+          } else {
+            field.value = null; // Will show as "----"
+          }
+
+          renderFields();
+          await renderPage(currentPageNum); // Re-render to show bbox if exists
+        } catch (error) {
+          console.error('Error extracting field:', error);
+          const field = fields[fieldIndex];
+          field._processing = false;
+          field.value = null; // Will show as "----"
+          renderFields();
+        }
+      } else {
+        // Manual mode - field is ready for manual selection
+        // User can click on the field to start selection
+        renderFields();
+      }
+
+      // Clear form
+      fieldNameInput.value = "";
+      fieldDescriptionInput.value = "";
+      fieldOccurrenceInput.value = "OPTIONAL_ONCE";
+      useAiCheckbox.checked = true;
+    });
+
+    saveBtn.addEventListener("click", async () => {
+      try {
+        const fieldValues = fields
+          .filter(f => {
+            // Skip processing fields and empty/null values
+            if (f._processing) return false;
+            const val = f.value;
+            return val && val !== "----" && val !== null && val.trim() && f.region;
+          })
+          .map(f => ({
+            id: f.id || null, // Include id if exists - for updating existing records
+            field_id: f.field_id || null,
+            custom_field_name: f.custom_field_name || (f.field_id ? null : f.name),
+            value: f.value,
+            confidence: 1.0,
+            bbox: f.region ? [f.region.x1, f.region.y1, f.region.x2, f.region.y2] : null,
+            page_number: f.region ? f.region.page : null
+          }));
+
+        const formData = new FormData();
+        formData.append('field_values', JSON.stringify(fieldValues));
+
+        const response = await fetch(`/documents/${documentId}/save-field-values`, {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          alert('Saved successfully!');
+          await loadFields();
+        } else {
+          alert('Error saving: ' + (result.error || 'Unknown error'));
+        }
+      } catch (error) {
+        alert('Error saving: ' + error.message);
+      }
+    });
+
+    closeBtn.addEventListener("click", () => {
+      window.location.href = '/';
+    });
+
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Convert markdown table to editable HTML table
+    function convertMarkdownTableToEditableHTML(markdown, fieldIndex) {
+      const lines = markdown.trim().split('\n');
+      if (lines.length === 0) {
+        return '<div class="field-value-text">Empty table</div>';
+      }
+
+      const tableData = [];
+      let headerRow = null;
+      let headerProcessed = false;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+
+        // Skip empty lines
+        if (!line) {
+          continue;
+        }
+
+        // Skip code block markers
+        if (line.startsWith('```')) {
+          continue;
+        }
+
+        // Check if this is a separator line
+        const isSeparator = line.match(/^\|[\s\-:|]+\|$/);
+
+        if (isSeparator) {
+          if (!headerProcessed && i > 0) {
+            const prevLine = lines[i - 1].trim();
+            if (prevLine.startsWith('|') && prevLine.endsWith('|')) {
+              headerRow = prevLine.slice(1, -1).split('|').map(cell => cell.trim());
+              headerProcessed = true;
+            }
+          }
+          continue;
+        }
+
+        // Parse table row
+        if (line.startsWith('|') && line.endsWith('|')) {
+          const cells = line.slice(1, -1).split('|').map(cell => cell.trim());
+
+          if (!headerProcessed) {
+            headerRow = cells;
+            headerProcessed = true;
+          } else {
+            tableData.push(cells);
+          }
+        }
+      }
+
+      if (!headerRow) {
+        return '<div class="field-value-text">Invalid table</div>';
+      }
+
+      // Build editable HTML table with more spacious design
+      let html = '<div class="field-value-table editable-mode" style="overflow-x: auto; margin: 12px 0; padding: 8px; background: rgba(15, 23, 42, 0.3); border-radius: 8px;"><table class="editable-table" style="width: 100%; border-collapse: separate; border-spacing: 4px; background: rgba(15, 23, 42, 0.5); border-radius: 8px; overflow: hidden; border: 1px solid var(--border);">';
+
+      // Header row
+      html += '<thead><tr>';
+      headerRow.forEach((cell, colIdx) => {
+        html += `<th style="padding: 12px 16px; text-align: left; border-bottom: 2px solid var(--border); background: rgba(56, 189, 248, 0.15); color: var(--accent); font-weight: 600; min-width: 120px;">`;
+        html += `<input type="text" value="${escapeHtml(cell)}" data-row="-1" data-col="${colIdx}" style="width: 100%; min-width: 100px; background: rgba(56, 189, 248, 0.1); border: 1px solid var(--accent); border-radius: 4px; color: var(--text); font-weight: 600; padding: 8px 10px; font-size: 13px; box-sizing: border-box;" readonly>`;
+        html += '</th>';
+      });
+      html += '</tr></thead><tbody>';
+
+      // Data rows
+      tableData.forEach((row, rowIdx) => {
+        html += '<tr>';
+        row.forEach((cell, colIdx) => {
+          html += `<td style="padding: 12px 16px; border-bottom: 1px solid var(--border); min-width: 120px;">`;
+          html += `<input type="text" value="${escapeHtml(cell)}" data-row="${rowIdx}" data-col="${colIdx}" style="width: 100%; min-width: 100px; background: rgba(56, 189, 248, 0.05); border: 1px solid var(--border); border-radius: 4px; color: var(--text); padding: 8px 10px; font-size: 13px; box-sizing: border-box;" readonly>`;
+          html += '</td>';
+        });
+        html += '</tr>';
+      });
+
+      html += '</tbody></table></div>';
+      return html;
+    }
+
+    // Save table changes and convert back to markdown
+    function saveTableChanges(fieldIndex) {
+      const container = document.querySelector(`.field-value-container[data-field-index="${fieldIndex}"]`);
+      if (!container) return;
+
+      const table = container.querySelector('table.editable-table');
+      if (!table) return;
+
+      const headerRow = [];
+      const headerInputs = table.querySelectorAll('thead input');
+      headerInputs.forEach(input => {
+        headerRow.push(input.value.trim());
+      });
+
+      const rows = [];
+      const rowInputs = table.querySelectorAll('tbody tr');
+      rowInputs.forEach(row => {
+        const cells = [];
+        const cellInputs = row.querySelectorAll('td input');
+        cellInputs.forEach(input => {
+          cells.push(input.value.trim());
+        });
+        if (cells.length > 0) {
+          rows.push(cells);
+        }
+      });
+
+      // Convert back to markdown
+      let markdown = '| ' + headerRow.join(' | ') + ' |\n';
+      markdown += '| ' + headerRow.map(() => '---').join(' | ') + ' |\n';
+      rows.forEach(row => {
+        markdown += '| ' + row.join(' | ') + ' |\n';
+      });
+
+      fields[fieldIndex].value = markdown.trim();
+    }
+
+    // Convert markdown table to HTML (read-only view)
+    function convertMarkdownTableToHTML(markdown) {
+      const lines = markdown.trim().split('\n');
+      if (lines.length === 0) {
+        return '<div class="field-value-text">Empty table</div>';
+      }
+
+      let html = '<div class="field-value-table" style="overflow-x: auto; margin: 8px 0;"><table style="width: 100%; border-collapse: collapse; background: rgba(15, 23, 42, 0.5); border-radius: 8px; overflow: hidden; border: 1px solid var(--border);">';
+      let headerProcessed = false;
+      let tbodyOpened = false;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+
+        // Skip empty lines
+        if (!line) {
+          continue;
+        }
+
+        // Skip code block markers
+        if (line.startsWith('```')) {
+          continue;
+        }
+
+        // Check if this is a separator line (|---|, |-|-|-|, etc.)
+        const isSeparator = line.match(/^\|[\s\-:|]+\|$/);
+
+        if (isSeparator) {
+          // If we haven't processed header yet, the previous line was header
+          if (!headerProcessed && i > 0) {
+            const prevLine = lines[i - 1].trim();
+            if (prevLine.startsWith('|') && prevLine.endsWith('|')) {
+              const cells = prevLine.slice(1, -1).split('|').map(cell => cell.trim());
+              html += '<thead><tr>';
+              cells.forEach(cell => {
+                html += `<th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid var(--border); background: rgba(56, 189, 248, 0.1); color: var(--accent); font-weight: 600;">${escapeHtml(cell)}</th>`;
+              });
+              html += '</tr></thead><tbody>';
+              tbodyOpened = true;
+              headerProcessed = true;
+            }
+          }
+          continue;
+        }
+
+        // Parse table row
+        if (line.startsWith('|') && line.endsWith('|')) {
+          const cells = line.slice(1, -1).split('|').map(cell => cell.trim());
+
+          // If header not processed and this is first data row
+          if (!headerProcessed) {
+            // First row is header
+            html += '<thead><tr>';
+            cells.forEach(cell => {
+              html += `<th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid var(--border); background: rgba(56, 189, 248, 0.1); color: var(--accent); font-weight: 600;">${escapeHtml(cell)}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            tbodyOpened = true;
+            headerProcessed = true;
+          } else {
+            if (!tbodyOpened) {
+              html += '<tbody>';
+              tbodyOpened = true;
+            }
+            html += '<tr>';
+            cells.forEach(cell => {
+              html += `<td style="padding: 8px 12px; border-bottom: 1px solid var(--border);">${escapeHtml(cell)}</td>`;
+            });
+            html += '</tr>';
+          }
+        }
+      }
+
+      if (!tbodyOpened) {
+        html += '<tbody>';
+      }
+      html += '</tbody></table></div>';
+      return html;
+    }
+
+    function renderFields() {
+      fieldsTableBody.innerHTML = "";
+      const viewAll = viewAllFieldsCheckbox.checked;
+
+      const visibleIndices = fields
+        .map((_, idx) => idx)
+        .filter((idx) => {
+          const f = fields[idx];
+          if (!viewAll) {
+            if (!f.region) return true;
+            return f.region.page === currentPageNum;
+          }
+          return true;
+        });
+
+      visibleIndices.forEach((index) => {
+        const field = fields[index];
+        const tr = document.createElement("tr");
+        tr.className = "field-row" + (index === activeFieldIndex ? " active" : "");
+        tr.dataset.fieldIndex = index;
+
+        const tdName = document.createElement("td");
+        const tdValue = document.createElement("td");
+
+        tdName.textContent = field.name;
+
+        // Add hover effects to link field row with selection box
+        tr.addEventListener("mouseenter", () => {
+          if (field.region) {
+            tr.classList.add("hover-highlight");
+            // Highlight corresponding box on document
+            const boxes = document.querySelectorAll(`.selection-box[data-field-index="${index}"]`);
+            boxes.forEach(box => {
+              box.classList.add("hover-highlight");
+            });
+          }
+        });
+
+        tr.addEventListener("mouseleave", () => {
+          tr.classList.remove("hover-highlight");
+          // Remove highlight from boxes
+          const boxes = document.querySelectorAll(`.selection-box[data-field-index="${index}"]`);
+          boxes.forEach(box => {
+            box.classList.remove("hover-highlight");
+          });
+        });
+
+        // Check if value is a markdown table
+        const fieldValue = field.value || "";
+        const isMarkdownTable = fieldValue.trim().startsWith('|') &&
+          (fieldValue.includes('---') || fieldValue.includes('|-')) &&
+          fieldValue.split('\n').filter(l => l.trim().startsWith('|')).length >= 2;
+
+        if (isMarkdownTable && !field._processing) {
+          // Display as editable HTML table
+          const tableContainer = document.createElement("div");
+          tableContainer.className = "field-value-container";
+          tableContainer.setAttribute("data-field-index", index);
+          tableContainer.style.position = "relative";
+
+          // Store editing state
+          let isEditing = false;
+
+          function renderTable() {
+            const tableHtml = isEditing
+              ? convertMarkdownTableToEditableHTML(fieldValue, index)
+              : convertMarkdownTableToHTML(fieldValue);
+            tableContainer.innerHTML = tableHtml;
+
+            // Add edit/view toggle button
+            const toggleBtn = document.createElement("button");
+            toggleBtn.textContent = isEditing ? "Save" : "Edit";
+            toggleBtn.style.cssText = "position: absolute; top: 8px; right: 8px; padding: 4px 8px; font-size: 11px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; z-index: 10;";
+            toggleBtn.onclick = () => {
+              if (isEditing) {
+                // Save changes and switch to view mode
+                saveTableChanges(index);
+                isEditing = false;
+                fieldValue = fields[index].value;
+                renderTable();
+              } else {
+                // Switch to edit mode
+                isEditing = true;
+                renderTable();
+              }
+            };
+            tableContainer.appendChild(toggleBtn);
+
+            // If in edit mode, make inputs editable with better styling
+            if (isEditing) {
+              const inputs = tableContainer.querySelectorAll('input[type="text"]');
+              inputs.forEach(input => {
+                input.removeAttribute('readonly');
+                input.style.cursor = 'text';
+                input.style.transition = 'all 0.2s ease';
+
+                // Add focus styles
+                input.addEventListener('focus', function () {
+                  this.style.background = 'rgba(56, 189, 248, 0.2)';
+                  this.style.borderColor = 'var(--accent)';
+                  this.style.boxShadow = '0 0 0 2px rgba(56, 189, 248, 0.2)';
+                });
+
+                input.addEventListener('blur', function () {
+                  this.style.background = this.dataset.row === '-1'
+                    ? 'rgba(56, 189, 248, 0.1)'
+                    : 'rgba(56, 189, 248, 0.05)';
+                  this.style.borderColor = this.dataset.row === '-1'
+                    ? 'var(--accent)'
+                    : 'var(--border)';
+                  this.style.boxShadow = 'none';
+                });
+              });
+            }
+          }
+
+          renderTable();
+          tdValue.appendChild(tableContainer);
+        } else {
+          // Display as textarea
+          const valueInput = document.createElement("textarea");
+          valueInput.className = "field-value-input";
+          // Show "----" for empty/null values, "processing..." for processing state
+          if (field._processing) {
+            valueInput.value = "processing...";
+            valueInput.disabled = true;
+            valueInput.style.opacity = "0.6";
+            valueInput.style.fontStyle = "italic";
+          } else if (!field.value || field.value === null) {
+            valueInput.value = "----";
+            valueInput.style.color = "var(--text-secondary)";
+          } else {
+            valueInput.value = field.value;
+          }
+
+          // Prevent textarea events from triggering document selection
+          valueInput.addEventListener("mousedown", (e) => {
+            e.stopPropagation();
+          });
+          valueInput.addEventListener("mouseup", (e) => {
+            e.stopPropagation();
+          });
+          valueInput.addEventListener("mousemove", (e) => {
+            e.stopPropagation();
+          });
+          valueInput.addEventListener("click", (e) => {
+            e.stopPropagation();
+          });
+
+          valueInput.onchange = (e) => {
+            const val = e.target.value;
+            fields[index].value = val === "----" ? null : val;
+          };
+          valueInput.oninput = (e) => {
+            const val = e.target.value;
+            fields[index].value = val === "----" ? null : val;
+            if (val !== "----") {
+              valueInput.style.color = "var(--text)";
+              valueInput.style.opacity = "1";
+              valueInput.style.fontStyle = "normal";
+            }
+          };
+          tdValue.appendChild(valueInput);
+        }
+
+        let coordsText = "";
+        if (field.region) {
+          const r = field.region;
+          coordsText = `\n\n(page=${r.page}, x1=${r.x1.toFixed(3)}, y1=${r.y1.toFixed(3)}, x2=${r.x2.toFixed(3)}, y2=${r.y2.toFixed(3)})`;
+        }
+        if (coordsText) {
+          const coordsDiv = document.createElement("div");
+          coordsDiv.className = "small";
+          coordsDiv.textContent = coordsText.trim();
+          tdValue.appendChild(coordsDiv);
+        }
+
+        // Add delete button
+        const tdActions = document.createElement("td");
+        tdActions.style.width = "80px";
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "Delete";
+        deleteBtn.style.padding = "4px 8px";
+        deleteBtn.style.fontSize = "11px";
+        deleteBtn.style.background = "var(--error)";
+        deleteBtn.style.color = "white";
+        deleteBtn.style.border = "none";
+        deleteBtn.style.borderRadius = "4px";
+        deleteBtn.style.cursor = "pointer";
+        deleteBtn.onclick = async (e) => {
+          e.stopPropagation();
+          if (!confirm(`Delete field "${field.name}"?`)) return;
+
+          if (field.id) {
+            try {
+              const response = await fetch(`/documents/field-values/${field.id}`, {
+                method: 'DELETE'
+              });
+              const result = await response.json();
+              if (result.success) {
+                // Remove from local array
+                fields = fields.filter((_, i) => i !== index);
+                await loadFields(); // Reload to sync with server
+                await renderPage(currentPageNum); // Re-render current page
+              } else {
+                alert('Error deleting field');
+              }
+            } catch (error) {
+              console.error('Error deleting field:', error);
+              alert('Error deleting field: ' + error.message);
+            }
+          } else {
+            // Just remove from local array if no id (not saved yet)
+            fields = fields.filter((_, i) => i !== index);
+            renderFields();
+            await renderPage(currentPageNum);
+          }
+        };
+        tdActions.appendChild(deleteBtn);
+
+        tr.appendChild(tdName);
+        tr.appendChild(tdValue);
+        tr.appendChild(tdActions);
+        fieldsTableBody.appendChild(tr);
+
+        tr.addEventListener("click", (e) => {
+          // Don't trigger selection if clicking on interactive elements
+          if (e.target.tagName === 'TEXTAREA' ||
+            e.target.tagName === 'BUTTON' ||
+            e.target.tagName === 'INPUT' ||
+            e.target.closest('.field-value-container') ||
+            e.target.closest('.field-value-table')) {
+            return;
+          }
+          startSelectionForField(index);
+        });
+      });
+
+      // Update box visibility
+      const anyActive = activeFieldIndex !== null;
+      document.querySelectorAll(".selection-box").forEach((box) => {
+        const fi = Number(box.dataset.fieldIndex);
+        const isActive = fi === activeFieldIndex;
+        box.classList.toggle("active", isActive);
+        if (anyActive) {
+          if (isActive) {
+            box.classList.remove("hidden");
+          } else {
+            box.classList.add("hidden");
+          }
+        } else {
+          box.classList.remove("hidden");
+        }
+        if (!anyActive || !isActive) {
+          box.classList.add("handles-hidden");
+        } else {
+          box.classList.remove("handles-hidden");
+        }
+      });
+    }
+
+    async function startSelectionForField(index) {
+      if (!pdfDoc) {
+        alert("PDF not loaded.");
+        return;
+      }
+      activeFieldIndex = index;
+      const field = fields[index];
+      selectionMode = true;
+      clearAllOverlays();
+      pdfViewerWrapper.classList.remove("global-dim");
+      document.querySelectorAll(".selection-box").forEach((b) =>
+        b.classList.remove("editing")
+      );
+
+      if (field.region) {
+        createMode = false;
+        editMode = true;
+        const r = field.region;
+        if (currentPageNum !== r.page) {
+          await renderPage(r.page);
+        }
+        const pageDiv = currentPageDiv;
+        const canvas = currentPageCanvas;
+        if (!pageDiv || !canvas) return;
+        currentPageIndex = r.page;
+
+        let box = pdfViewerWrapper.querySelector(
+          `.selection-box[data-field-index="${index}"]`
+        );
+        if (!box) {
+          const left = r.x1 * canvas.width;
+          const top = r.y1 * canvas.height;
+          const width = (r.x2 - r.x1) * canvas.width;
+          const height = (r.y2 - r.y1) * canvas.height;
+          box = createSelectionBox(left, top, width, height, index, r.page);
+          pageDiv.appendChild(box);
+        }
+        box.classList.add("active", "editing");
+        box.classList.remove("handles-hidden", "hidden");
+        currentSelectionBox = box;
+        updateOverlays(pageDiv, box);
+      } else {
+        createMode = true;
+        editMode = false;
+        currentPageDiv = currentPageDiv || pdfViewerWrapper.querySelector(".page");
+        currentPageCanvas = currentPageDiv
+          ? currentPageDiv.querySelector("canvas")
+          : null;
+        currentPageIndex = currentPageNum;
+        currentSelectionBox = null;
+        pdfViewerWrapper.classList.add("global-dim");
+      }
+      renderFields();
+    }
+
+    function setupPageSelection(pageDiv) {
+      pageDiv.addEventListener("mousedown", (e) => {
+        if (!selectionMode || !createMode) return;
+        if (activeFieldIndex === null) return;
+        e.preventDefault();
+        isDragging = true;
+        dragType = "create";
+        currentPageDiv = pageDiv;
+        currentPageCanvas = pageDiv.querySelector("canvas");
+        currentPageIndex = currentPageNum;
+        const rect = pageDiv.getBoundingClientRect();
+        dragStartX = e.clientX - rect.left;
+        dragStartY = e.clientY - rect.top;
+        pdfViewerWrapper.classList.remove("global-dim");
+        currentSelectionBox = createSelectionBox(
+          dragStartX,
+          dragStartY,
+          0,
+          0,
+          activeFieldIndex,
+          currentPageIndex
+        );
+        currentSelectionBox.classList.add("editing");
+        currentSelectionBox.classList.remove("handles-hidden");
+        pageDiv.appendChild(currentSelectionBox);
+        clearAllOverlays();
+        updateOverlays(pageDiv, currentSelectionBox);
+      });
+    }
+
+    function createSelectionBox(left, top, width, height, fieldIndex, pageIndex) {
+      const box = document.createElement("div");
+      box.className = "selection-box";
+      box.style.left = left + "px";
+      box.style.top = top + "px";
+      box.style.width = width + "px";
+      box.style.height = height + "px";
+      box.dataset.fieldIndex = String(fieldIndex);
+      box.dataset.pageIndex = String(pageIndex);
+
+      const hNW = document.createElement("div");
+      hNW.className = "resize-handle resize-nw";
+      const hNE = document.createElement("div");
+      hNE.className = "resize-handle resize-ne";
+      const hSW = document.createElement("div");
+      hSW.className = "resize-handle resize-sw";
+      const hSE = document.createElement("div");
+      hSE.className = "resize-handle resize-se";
+
+      box.appendChild(hNW);
+      box.appendChild(hNE);
+      box.appendChild(hSW);
+      box.appendChild(hSE);
+
+      if (activeFieldIndex === null || activeFieldIndex !== fieldIndex) {
+        box.classList.add("handles-hidden");
+      }
+
+      attachBoxInteractions(box);
+      return box;
+    }
+
+    // Drag/resize handlers
+    window.addEventListener("mousemove", (e) => {
+      if (!isDragging || !selectionMode || !currentPageDiv || !currentSelectionBox) return;
+      const rect = currentPageDiv.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      if (dragType === "create") {
+        const left = Math.min(dragStartX, x);
+        const top = Math.min(dragStartY, y);
+        const width = Math.abs(x - dragStartX);
+        const height = Math.abs(y - dragStartY);
+        currentSelectionBox.style.left = left + "px";
+        currentSelectionBox.style.top = top + "px";
+        currentSelectionBox.style.width = width + "px";
+        currentSelectionBox.style.height = height + "px";
+        updateOverlays(currentPageDiv, currentSelectionBox);
+      } else if (dragType === "move") {
+        const dx = e.clientX - dragStartX;
+        const dy = e.clientY - dragStartY;
+        let newLeft = startLeft + dx;
+        let newTop = startTop + dy;
+        newLeft = Math.max(0, Math.min(newLeft, rect.width - startWidth));
+        newTop = Math.max(0, Math.min(newTop, rect.height - startHeight));
+        currentSelectionBox.style.left = newLeft + "px";
+        currentSelectionBox.style.top = newTop + "px";
+        updateOverlays(currentPageDiv, currentSelectionBox);
+      } else if (dragType && dragType.startsWith("resize-")) {
+        const dx = e.clientX - dragStartX;
+        const dy = e.clientY - dragStartY;
+        let newLeft = startLeft;
+        let newTop = startTop;
+        let newWidth = startWidth;
+        let newHeight = startHeight;
+
+        if (dragType === "resize-se") {
+          newWidth = startWidth + dx;
+          newHeight = startHeight + dy;
+        } else if (dragType === "resize-sw") {
+          newWidth = startWidth - dx;
+          newHeight = startHeight + dy;
+          newLeft = startLeft + dx;
+        } else if (dragType === "resize-ne") {
+          newWidth = startWidth + dx;
+          newHeight = startHeight - dy;
+          newTop = startTop + dy;
+        } else if (dragType === "resize-nw") {
+          newWidth = startWidth - dx;
+          newHeight = startHeight - dy;
+          newLeft = startLeft + dx;
+          newTop = startTop + dy;
+        }
+
+        newWidth = Math.max(5, newWidth);
+        newHeight = Math.max(5, newHeight);
+        if (newLeft < 0) { newWidth += newLeft; newLeft = 0; }
+        if (newTop < 0) { newHeight += newTop; newTop = 0; }
+        if (newLeft + newWidth > rect.width) { newWidth = rect.width - newLeft; }
+        if (newTop + newHeight > rect.height) { newHeight = rect.height - newTop; }
+
+        currentSelectionBox.style.left = newLeft + "px";
+        currentSelectionBox.style.top = newTop + "px";
+        currentSelectionBox.style.width = newWidth + "px";
+        currentSelectionBox.style.height = newHeight + "px";
+        updateOverlays(currentPageDiv, currentSelectionBox);
+      }
+    });
+
+    window.addEventListener("mouseup", async (e) => {
+      // Don't process if clicking on textarea or its resize handle
+      if (e.target.tagName === 'TEXTAREA' || e.target.closest('textarea')) {
+        return;
+      }
+      if (!isDragging || !selectionMode || !currentPageDiv || !currentSelectionBox) return;
+      isDragging = false;
+      const rect = currentPageDiv.getBoundingClientRect();
+      const boxRect = currentSelectionBox.getBoundingClientRect();
+      const left = boxRect.left - rect.left;
+      const top = boxRect.top - rect.top;
+      const width = boxRect.width;
+      const height = boxRect.height;
+
+      if (width < 5 || height < 5 || activeFieldIndex === null) {
+        if (dragType === "create" && currentSelectionBox.parentNode) {
+          currentSelectionBox.parentNode.removeChild(currentSelectionBox);
+        }
+        resetSelectionState(true);
+        return;
+      }
+
+      const cw = currentPageCanvas.width;
+      const ch = currentPageCanvas.height;
+      const x1Norm = left / cw;
+      const y1Norm = top / ch;
+      const x2Norm = (left + width) / cw;
+      const y2Norm = (top + height) / ch;
+
+      currentSelectionBox.classList.add("editing");
+
+      // Show processing message
+      const fieldIndex = activeFieldIndex;
+      const fld = fields[fieldIndex];
+
+      try {
+        // Extract selected region from canvas as image
+        const cropCanvas = document.createElement("canvas");
+        cropCanvas.width = width;
+        cropCanvas.height = height;
+        const cropCtx = cropCanvas.getContext("2d");
+
+        // Draw the selected region to crop canvas
+        cropCtx.drawImage(currentPageCanvas, left, top, width, height, 0, 0, width, height);
+
+        // Convert to blob (PNG image)
+        const blob = await new Promise((resolve) => {
+          cropCanvas.toBlob(resolve, "image/png");
+        });
+
+        if (!blob) {
+          throw new Error("Failed to create image blob");
+        }
+
+        // Send crop image to backend for processing
+        const formData = new FormData();
+        formData.append("image", blob, "region.png");
+        formData.append("document_id", documentId);
+        formData.append("page_number", currentPageIndex.toString());
+
+        console.log("Sending region image for processing...");
+        const response = await fetch("/document-ai/extract-region", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+
+        const result = await response.json();
+        console.log("Extraction result:", result);
+
+        // Use markdown if available (includes tables), otherwise use plain text
+        const extractedText = result.markdown || result.text || "";
+
+        console.log("Extracted text:", extractedText);
+        console.log("Text length:", extractedText.length);
+
+        if (!extractedText) {
+          console.warn("No text extracted from region");
+          console.warn("Result object:", JSON.stringify(result, null, 2));
+        }
+
+        // If tables were found, we can display them nicely
+        if (result.tables && result.tables.length > 0) {
+          console.log(`Found ${result.tables.length} table(s) in selected region`);
+        }
+
+        fld.value = extractedText || "";
+        console.log("Field value set to:", fld.value);
+        fld.region = {
+          page: currentPageIndex,
+          x1: x1Norm,
+          y1: y1Norm,
+          x2: x2Norm,
+          y2: y2Norm,
+        };
+
+        activeFieldIndex = null;
+        renderFields();
+        resetSelectionState(false);
+      } catch (err) {
+        console.error("Error extracting text from region:", err);
+        alert("Ошибка при извлечении текста: " + (err.message || "Неизвестная ошибка"));
+        if (dragType === "create" && currentSelectionBox.parentNode) {
+          currentSelectionBox.parentNode.removeChild(currentSelectionBox);
+        }
+        resetSelectionState(true);
+      }
+    });
+
+    function resetSelectionState(removeBox) {
+      selectionMode = false;
+      createMode = false;
+      editMode = false;
+      dragType = null;
+      clearAllOverlays();
+      pdfViewerWrapper.classList.remove("global-dim");
+      document.querySelectorAll(".selection-box").forEach((b) =>
+        b.classList.remove("editing")
+      );
+      if (removeBox && currentSelectionBox && currentSelectionBox.parentNode) {
+        currentSelectionBox.parentNode.removeChild(currentSelectionBox);
+      }
+      currentSelectionBox = null;
+      isDragging = false;
+    }
+
+    function attachBoxInteractions(box) {
+      const fieldIndex = Number(box.dataset.fieldIndex);
+      const pageIndex = Number(box.dataset.pageIndex);
+      const handles = {
+        "resize-nw": box.querySelector(".resize-nw"),
+        "resize-ne": box.querySelector(".resize-ne"),
+        "resize-sw": box.querySelector(".resize-sw"),
+        "resize-se": box.querySelector(".resize-se"),
+      };
+
+      box.addEventListener("click", (e) => {
+        if (isDragging) return;
+        e.stopPropagation();
+        startSelectionForField(fieldIndex);
+      });
+
+      // Add hover effects to link box with field row
+      box.addEventListener("mouseenter", () => {
+        if (!selectionMode || !isDragging) {
+          box.classList.add("hover-highlight");
+          // Highlight corresponding field row
+          const fieldRow = document.querySelector(`tr.field-row[data-field-index="${fieldIndex}"]`);
+          if (fieldRow) {
+            fieldRow.classList.add("hover-highlight");
+          }
+        }
+      });
+
+      box.addEventListener("mouseleave", () => {
+        box.classList.remove("hover-highlight");
+        // Remove highlight from field row
+        const fieldRow = document.querySelector(`tr.field-row[data-field-index="${fieldIndex}"]`);
+        if (fieldRow) {
+          fieldRow.classList.remove("hover-highlight");
+        }
+      });
+
+      box.addEventListener("mousedown", (e) => {
+        if (!selectionMode || !editMode) return;
+        if (Object.values(handles).includes(e.target)) return;
+        if (activeFieldIndex !== fieldIndex) return;
+        e.stopPropagation();
+        isDragging = true;
+        dragType = "move";
+        const rect = box.getBoundingClientRect();
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        startLeft = parseFloat(box.style.left);
+        startTop = parseFloat(box.style.top);
+        startWidth = rect.width;
+        startHeight = rect.height;
+        currentSelectionBox = box;
+        currentPageDiv = box.parentElement;
+        currentPageCanvas = currentPageDiv.querySelector("canvas");
+        currentPageIndex = pageIndex;
+        clearAllOverlays();
+        updateOverlays(currentPageDiv, currentSelectionBox);
+      });
+
+      Object.entries(handles).forEach(([type, handle]) => {
+        if (!handle) return;
+        handle.addEventListener("mousedown", (e) => {
+          if (!selectionMode || !editMode) return;
+          if (activeFieldIndex !== fieldIndex) return;
+          e.stopPropagation();
+          isDragging = true;
+          dragType = type;
+          const rect = box.getBoundingClientRect();
+          dragStartX = e.clientX;
+          dragStartY = e.clientY;
+          startLeft = parseFloat(box.style.left);
+          startTop = parseFloat(box.style.top);
+          startWidth = rect.width;
+          startHeight = rect.height;
+          currentSelectionBox = box;
+          currentPageDiv = box.parentElement;
+          currentPageCanvas = currentPageDiv.querySelector("canvas");
+          currentPageIndex = pageIndex;
+          clearAllOverlays();
+          updateOverlays(currentPageDiv, currentSelectionBox);
+        });
+      });
+    }
+
+    function clearAllOverlays() {
+      document.querySelectorAll(".dim-overlay").forEach((o) => o.remove());
+    }
+
+    function updateOverlays(pageDiv, box) {
+      if (!pageDiv || !box) return;
+      const pageWidth = pageDiv.clientWidth;
+      const pageHeight = pageDiv.clientHeight;
+      const left = parseFloat(box.style.left) || 0;
+      const top = parseFloat(box.style.top) || 0;
+      const width = parseFloat(box.style.width) || 0;
+      const height = parseFloat(box.style.height) || 0;
+      if (width <= 0 || height <= 0) return;
+
+      let overlays = pageDiv.querySelectorAll(".dim-overlay");
+      if (overlays.length < 4) {
+        const need = 4 - overlays.length;
+        for (let i = 0; i < need; i++) {
+          const ov = document.createElement("div");
+          ov.className = "dim-overlay";
+          pageDiv.appendChild(ov);
+        }
+        overlays = pageDiv.querySelectorAll(".dim-overlay");
+      }
+
+      const [topOv, leftOv, rightOv, bottomOv] = overlays;
+      topOv.style.left = "0px";
+      topOv.style.top = "0px";
+      topOv.style.width = pageWidth + "px";
+      topOv.style.height = Math.max(0, top) + "px";
+      leftOv.style.left = "0px";
+      leftOv.style.top = top + "px";
+      leftOv.style.width = Math.max(0, left) + "px";
+      leftOv.style.height = Math.max(0, height) + "px";
+      const rightWidth = Math.max(0, pageWidth - (left + width));
+      rightOv.style.left = (left + width) + "px";
+      rightOv.style.top = top + "px";
+      rightOv.style.width = rightWidth + "px";
+      rightOv.style.height = Math.max(0, height) + "px";
+      const bottomHeight = Math.max(0, pageHeight - (top + height));
+      bottomOv.style.left = "0px";
+      bottomOv.style.top = (top + height) + "px";
+      bottomOv.style.width = pageWidth + "px";
+      bottomOv.style.height = bottomHeight + "px";
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" || e.key === "Esc") {
+        if (selectionMode || activeFieldIndex !== null) {
+          e.preventDefault();
+          activeFieldIndex = null;
+          resetSelectionState(false);
+          renderFields();
+        }
+      }
+    });
+
+    // Initialize
+    if (documentId) {
+      loadDocument();
+    }
+  </script>
+</body>
+
+</html>

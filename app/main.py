@@ -60,6 +60,12 @@ def create_app():
     async def index():
         template_path = os.path.join("templates", "index.html")
         return FileResponse(template_path)
+    
+    # Роутер для страницы просмотра документа
+    @app.get("/view", include_in_schema=False)
+    async def view_document_page():
+        template_path = os.path.join("templates", "view_document.html")
+        return FileResponse(template_path)
    
     return app
 

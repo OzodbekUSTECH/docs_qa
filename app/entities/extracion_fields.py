@@ -4,7 +4,7 @@ from app.entities.base import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.entities.mixins.timestamp_mixin import TimestampMixin
 from app.entities.mixins.id_mixin import IdMixin
-from app.utils.enums import DocumentType, ExtractionFieldType
+from app.utils.enums import DocumentType, ExtractionFieldType, FieldOccurrence
 from typing import Optional
 
 
@@ -12,6 +12,12 @@ class ExtractionField(Base,IdMixin, TimestampMixin):
     __tablename__ = "extraction_fields"
 
     name: Mapped[str]
+    identifier: Mapped[Optional[str]] 
+    occurrence: Mapped[FieldOccurrence] = mapped_column(
+        SAEnum(FieldOccurrence, name="fieldoccurrence"),
+        default=FieldOccurrence.OPTIONAL_ONCE,
+        server_default=text("'OPTIONAL_ONCE'::fieldoccurrence")
+    )
     
     short_description: Mapped[Optional[str]]
     type: Mapped[ExtractionFieldType]

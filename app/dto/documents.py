@@ -51,9 +51,10 @@ class ExtractionFieldResponse(BaseModelResponse):
 class DocumentFieldValueResponse(BaseModelResponse):
     value_text: str
     confidence: Optional[float] = None
-    page_num: Optional[int] = None
-    bbox: Optional[list[float]] = None
-    field: ExtractionFieldResponse
+    page_num: Optional[str] = None  # "2" or "2,3" or "2-3" for multi-page
+    bbox: Optional[dict] = None  # JSONB: {"2": [x1, y1, x2, y2], "3": [x1, y1, x2, y2]} or {"combined": [x1, y1, x2, y2]}
+    field: Optional[ExtractionFieldResponse] = None  # None for custom fields
+    custom_field_name: Optional[str] = None  # For custom fields without field_id
 
 class DocumentResponse(BaseDocumentResponse):
     field_values: list[DocumentFieldValueResponse]
