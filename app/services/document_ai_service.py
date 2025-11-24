@@ -683,7 +683,29 @@ class DocumentAIService:
                     # Page is 0-indexed in response, convert to 1-indexed
                     page_number = int(page_ref.get("page", 0)) + 1
                     bounding_poly = page_ref.get("boundingPoly", {}) or page_ref.get("bounding_poly", {})
-                    bounding_box = DocumentAIService._extract_bounding_box(bounding_poly)
+                    if bounding_poly:
+                        bounding_box = DocumentAIService._extract_bounding_box(bounding_poly)
+                        if not bounding_box:
+                            logger.debug(
+                                "DocumentAIService: failed to extract bounding_box from bounding_poly for entity '%s', "
+                                "bounding_poly keys: %s",
+                                entity_type, list(bounding_poly.keys()) if isinstance(bounding_poly, dict) else "not a dict"
+                            )
+                    else:
+                        logger.debug(
+                            "DocumentAIService: no boundingPoly in page_ref for entity '%s'",
+                            entity_type
+                        )
+                else:
+                    logger.debug(
+                        "DocumentAIService: no pageRefs in page_anchor for entity '%s', page_anchor keys: %s",
+                        entity_type, list(page_anchor.keys()) if isinstance(page_anchor, dict) else "not a dict"
+                    )
+            else:
+                logger.debug(
+                    "DocumentAIService: no pageAnchor/page_anchor in entity '%s', entity keys: %s",
+                    entity_type, list(entity.keys())[:10]  # Log first 10 keys
+                )
             
             entities.append({
                 "type": entity_type,

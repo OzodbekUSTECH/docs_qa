@@ -824,7 +824,7 @@
             </select>
           </div>
           <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
-            <input type="checkbox" id="useAiCheckbox" checked style="cursor: pointer; width: 16px; height: 16px;">
+            <input type="checkbox" id="useAiCheckbox" style="cursor: pointer; width: 16px; height: 16px;">
             <label for="useAiCheckbox" style="font-size: 13px; color: var(--text); cursor: pointer; user-select: none;">Use AI (Custom Extractor)</label>
           </div>
           <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
@@ -863,7 +863,7 @@
       fieldNameInput.value = "";
       fieldDescriptionInput.value = "";
       fieldOccurrenceInput.value = "OPTIONAL_ONCE";
-      useAiCheckbox.checked = true;
+      useAiCheckbox.checked = false;
     });
 
     addFieldBtn.addEventListener("click", () => {
@@ -960,7 +960,7 @@
       fieldNameInput.value = "";
       fieldDescriptionInput.value = "";
       fieldOccurrenceInput.value = "OPTIONAL_ONCE";
-      useAiCheckbox.checked = true;
+      useAiCheckbox.checked = false;
     });
 
     saveBtn.addEventListener("click", async () => {

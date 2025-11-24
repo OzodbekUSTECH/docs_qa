@@ -151,9 +151,47 @@ class ExtractDocumentFieldValuesService:
                             continue
                         
                         # Get page and bbox
-                        page_num_str, bbox_entries = self._page_anchor_to_bbox_entries(
-                            entity.get("page_anchor")
-                        )
+                        page_anchor = entity.get("page_anchor")
+                        page_num_str, bbox_entries = self._page_anchor_to_bbox_entries(page_anchor)
+                        
+                        # Fallback: use page_number and bounding_box directly from entity if page_anchor didn't work
+                        if not page_num_str and entity.get("page_number"):
+                            page_num_str = str(entity.get("page_number"))
+                            logger.debug(
+                                "ExtractDocumentFieldValuesService: using fallback page_number=%s for entity '%s'",
+                                page_num_str, field_name
+                            )
+                        
+                        if not bbox_entries and entity.get("bounding_box"):
+                            bbox = entity.get("bounding_box")
+                            if isinstance(bbox, dict) and all(k in bbox for k in ["x1", "y1", "x2", "y2"]):
+                                # Convert dict format {x1, y1, x2, y2} to list format [x1, y1, x2, y2]
+                                bbox_list = [bbox["x1"], bbox["y1"], bbox["x2"], bbox["y2"]]
+                                bbox_entries = [BoundingBoxEntry(page=page_num_str or "1", coords=bbox_list)]
+                                logger.debug(
+                                    "ExtractDocumentFieldValuesService: using fallback bounding_box=%s for entity '%s'",
+                                    bbox_list, field_name
+                                )
+                            elif isinstance(bbox, list) and len(bbox) >= 4:
+                                bbox_entries = [BoundingBoxEntry(page=page_num_str or "1", coords=bbox[:4])]
+                                logger.debug(
+                                    "ExtractDocumentFieldValuesService: using fallback bounding_box=%s for entity '%s'",
+                                    bbox[:4], field_name
+                                )
+                        
+                        # Log if still missing coordinates
+                        if not page_num_str or not bbox_entries:
+                            logger.warning(
+                                "ExtractDocumentFieldValuesService: entity '%s' (field_id=%d) missing coordinates - "
+                                "page_anchor=%s, page_num_str=%s, bbox_entries=%s, "
+                                "entity_page_number=%s, entity_bounding_box=%s",
+                                field_name, field_def.id,
+                                "yes" if page_anchor else "no",
+                                page_num_str,
+                                "yes" if bbox_entries else "no",
+                                entity.get("page_number"),
+                                entity.get("bounding_box")
+                            )
                         
                         all_values.append(ExtractedFieldValue(
                             field_id=field_def.id,
@@ -793,28 +831,55 @@ Return the extracted values in the requested format."""
         page_anchor: Optional[Dict[str, Any]],
     ) -> Tuple[Optional[str], Optional[List[BoundingBoxEntry]]]:
         if not page_anchor:
+            logger.debug("ExtractDocumentFieldValuesService._page_anchor_to_bbox_entries: page_anchor is None or empty")
             return None, None
 
         page_refs = page_anchor.get("pageRefs") or page_anchor.get("page_refs") or []
         if not page_refs:
+            logger.debug(
+                "ExtractDocumentFieldValuesService._page_anchor_to_bbox_entries: no pageRefs found, "
+                "page_anchor keys: %s",
+                list(page_anchor.keys()) if isinstance(page_anchor, dict) else "not a dict"
+            )
             return None, None
 
         page_numbers: List[int] = []
         bbox_map: Dict[str, List[float]] = {}
 
-        for ref in page_refs:
+        for ref_idx, ref in enumerate(page_refs):
             page_index = ref.get("page")
             if page_index is None:
+                logger.debug(
+                    "ExtractDocumentFieldValuesService._page_anchor_to_bbox_entries: page_ref[%d] has no 'page' field, "
+                    "ref keys: %s",
+                    ref_idx, list(ref.keys()) if isinstance(ref, dict) else "not a dict"
+                )
                 continue
             try:
                 page_int = int(page_index) + 1
-            except (TypeError, ValueError):
+            except (TypeError, ValueError) as e:
+                logger.debug(
+                    "ExtractDocumentFieldValuesService._page_anchor_to_bbox_entries: invalid page_index '%s': %s",
+                    page_index, e
+                )
                 continue
             page_numbers.append(page_int)
             page_key = str(page_int)
             bounding_poly = ref.get("boundingPoly") or ref.get("bounding_poly") or {}
+            if not bounding_poly:
+                logger.debug(
+                    "ExtractDocumentFieldValuesService._page_anchor_to_bbox_entries: page_ref[%d] (page=%d) has no boundingPoly, "
+                    "ref keys: %s",
+                    ref_idx, page_int, list(ref.keys()) if isinstance(ref, dict) else "not a dict"
+                )
+                continue
             bbox = self._extract_bbox_from_poly(bounding_poly)
             if not bbox:
+                logger.debug(
+                    "ExtractDocumentFieldValuesService._page_anchor_to_bbox_entries: failed to extract bbox from bounding_poly "
+                    "for page_ref[%d] (page=%d), bounding_poly keys: %s",
+                    ref_idx, page_int, list(bounding_poly.keys()) if isinstance(bounding_poly, dict) else "not a dict"
+                )
                 continue
             if page_key in bbox_map:
                 combined = self._combine_bboxes([bbox_map[page_key], bbox])
@@ -833,6 +898,12 @@ Return the extracted values in the requested format."""
             BoundingBoxEntry(page=page, coords=coords) for page, coords in bbox_map.items()
         ]
         page_num_str = self._format_page_numbers(sorted(set(page_numbers)))
+
+        logger.debug(
+            "ExtractDocumentFieldValuesService._page_anchor_to_bbox_entries: extracted page_num_str=%s, "
+            "bbox_entries count=%d",
+            page_num_str, len(bbox_entries)
+        )
 
         return page_num_str, bbox_entries or None
 
