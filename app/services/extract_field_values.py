@@ -280,7 +280,13 @@ class ExtractDocumentFieldValuesService:
                 name: str = Field(..., description="Field name exactly as requested")
                 type: str = Field(..., description="Type: text, table, clause, paragraph, address, etc.")
                 value: str = Field(
-                    ..., description="The ACTUAL extracted content in markdown format. Never use placeholders like '___' or '...' - extract real text!"
+                    ..., description="""MARKDOWN formatted content. Use proper markdown syntax:
+- Tables: | Header | Header |\\n|---|---|\\n| Cell | Cell |
+- Lists: - item or 1. item
+- Bold: **text**
+- Line breaks: two spaces + newline or blank line
+- Headers: # or ## for sections
+Never use placeholders like '___' - extract real text!"""
                 )
                 bbox_anchor: BboxAnchor = Field(
                     ..., description="Unique word anchors to locate this content"
@@ -315,13 +321,30 @@ Use your OCR capabilities carefully to read ALL text accurately, including:
 
 ## CRITICAL EXTRACTION RULES:
 
-### 1. VALUE EXTRACTION (ALWAYS MARKDOWN):
-- **ALL values must be in MARKDOWN format**
+### 1. VALUE EXTRACTION (ALWAYS MARKDOWN FORMAT):
+- **ALL values MUST be properly formatted MARKDOWN**
 - Extract the ACTUAL content, never placeholders like "___", "...", or blank lines
+
+**MARKDOWN FORMAT EXAMPLES:**
+- Tables: `| Column1 | Column2 |` with `|---|---|` separator row
+- Lists: `- item` or `1. item`  
+- Bold: `**important**`
+- Headers in text: `## Section`
+- Line breaks: blank line between paragraphs
+
+**Invoice/Document Example:**
+```
+**Invoice No:** FJK-IV531  
+**Date:** 08-Jun-2023  
+
+| Description | Value |
+|---|---|
+| Total Net Weight | 5,099.600 MT |
+| Unit Price | USD 295.00/DMT |
+```
+
 - For CLAUSE/paragraph: extract the BODY text, NOT the heading/title
 - For TEXT: extract only the value part, not the label
-- For TABLE: use markdown table format with | separators
-- Preserve formatting: bold, lists, line breaks as markdown
 
 ### 2. PAGE BOUNDARIES & CONTINUATIONS - ABSOLUTELY CRITICAL:
 ⚠️ **NEVER combine text from different pages into one entry!**
