@@ -313,13 +313,24 @@ class ExtractDocumentFieldValuesService:
 - For CLAUSE/paragraph: extract the BODY text, NOT the heading/title
 - For TEXT: extract only the value part, not the label
 
-### 2. PAGE BOUNDARIES - ABSOLUTELY CRITICAL:
+### 2. PAGE BOUNDARIES & CONTINUATIONS - ABSOLUTELY CRITICAL:
 ⚠️ **NEVER combine text from different pages into one entry!**
-- If a paragraph STARTS on page 2 and CONTINUES on page 3, you MUST create TWO separate entries:
-  - Entry 1: page=2, value=text that is ON page 2 only
-  - Entry 2: page=3, value=text that is ON page 3 only
+⚠️ **ALWAYS check if content continues on the NEXT page!**
+
+For EVERY field you extract:
+1. Extract the content from the current page
+2. CHECK: Does this content continue on the next page?
+3. If YES → create ANOTHER entry with same field name for the next page
+
+Example for "quality" clause that spans pages 2-3:
+```json
+{"name": "quality", "page": 2, "value": "Text from page 2 only...", "bbox_anchor": {...}},
+{"name": "quality", "page": 3, "value": "...continuation text from page 3", "bbox_anchor": {...}}
+```
+
 - Each entry's value must contain ONLY text from that ONE page
-- Check where each sentence physically appears in the PDF
+- Same field name can appear multiple times (once per page)
+- Check where each sentence PHYSICALLY appears in the PDF
 
 ### 3. BBOX_ANCHOR RULES (CRITICAL - NO LINE BREAKS):
 - start_words and end_words MUST be from a SINGLE LINE of text
