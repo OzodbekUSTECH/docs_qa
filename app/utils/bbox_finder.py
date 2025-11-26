@@ -83,7 +83,11 @@ def find_bbox_by_anchors(
     """
     Finds bbox coordinates by start_words and end_words in OCR data.
     Returns bbox coordinates as list [x1, y1, x2, y2] or None.
-    Matches prototype logic from gemini_test.py (no continuation flag).
+    
+    Improved logic:
+    - Finds ALL occurrences of start_words and picks the best match
+    - Uses both start AND end anchors together for disambiguation
+    - Handles cases where anchors appear multiple times on page
     """
     if not ocr_data or not start_words or not end_words:
         logger.debug("Missing ocr_data or start/end words for find_bbox_by_anchors")
@@ -97,44 +101,73 @@ def find_bbox_by_anchors(
         logger.debug(f"No text found on page {page_num}")
         return None
 
-    # Find start index - matches prototype logic
-    start_idx = None
+    # Find ALL potential start positions
+    start_candidates = []
+    
+    # Method 1: Direct match in single line
     for i, item in enumerate(page_items):
         txt = normalize_text(item.get('text', ''))
-        if start_norm in txt or fuzzy_contains(txt, start_norm, 0.7):
-            start_idx = i
-            break
-    if start_idx is None:
-        # Accumulate text
+        if start_norm in txt or fuzzy_contains(txt, start_norm, 0.75):
+            start_candidates.append(i)
+    
+    # Method 2: Accumulated text match (for multi-line anchors)
+    if not start_candidates:
         acc = ""
         for i, item in enumerate(page_items):
             acc += " " + normalize_text(item.get('text', ''))
             if start_norm in acc or fuzzy_contains(acc, start_norm, 0.8):
-                start_idx = i - min(3, i)
+                # Go back a few lines to capture the start
+                start_candidates.append(max(0, i - min(3, i)))
                 break
-    if start_idx is None:
-        logger.debug(f"Start phrase not found: '{start_words[:60]}'")
+    
+    if not start_candidates:
+        logger.debug(f"Start phrase not found on page {page_num}: '{start_words[:80]}'")
         return None
 
-    # Find end index - matches prototype logic
-    end_idx = None
-    for i in range(start_idx, len(page_items)):
-        txt = normalize_text(page_items[i].get('text', ''))
-        if end_norm in txt or fuzzy_contains(txt, end_norm, 0.7):
-            end_idx = i
-            break
-    if end_idx is None:
-        # Accumulate text
-        acc = ""
+    # For each start candidate, find matching end and score the pair
+    best_match = None
+    best_score = -1
+    
+    for start_idx in start_candidates:
+        # Find end index from this start position
+        end_idx = None
+        
+        # Method 1: Direct match
         for i in range(start_idx, len(page_items)):
-            acc += " " + normalize_text(page_items[i].get('text', ''))
-            if end_norm in acc or fuzzy_contains(acc, end_norm, 0.8):
+            txt = normalize_text(page_items[i].get('text', ''))
+            if end_norm in txt or fuzzy_contains(txt, end_norm, 0.75):
                 end_idx = i
                 break
-    if end_idx is None:
-        logger.debug(f"End phrase not found: '{end_words[:60]}'")
-        # Use reasonable fallback (like prototype)
-        end_idx = min(start_idx + 20, len(page_items) - 1)
+        
+        # Method 2: Accumulated text
+        if end_idx is None:
+            acc = ""
+            for i in range(start_idx, len(page_items)):
+                acc += " " + normalize_text(page_items[i].get('text', ''))
+                if end_norm in acc or fuzzy_contains(acc, end_norm, 0.8):
+                    end_idx = i
+                    break
+        
+        if end_idx is None:
+            # Fallback: use reasonable range
+            end_idx = min(start_idx + 15, len(page_items) - 1)
+            score = 0.3  # Lower score for fallback
+        else:
+            # Score based on how well anchors match and span size
+            # Prefer smaller, more precise spans
+            span_size = end_idx - start_idx + 1
+            score = 1.0 / (1.0 + span_size * 0.1)  # Penalize large spans
+        
+        if score > best_score:
+            best_score = score
+            best_match = (start_idx, end_idx)
+    
+    if not best_match:
+        logger.debug(f"No valid start-end pair found for: '{start_words[:60]}' ... '{end_words[:60]}'")
+        return None
+    
+    start_idx, end_idx = best_match
+    logger.debug(f"Best match: start_idx={start_idx}, end_idx={end_idx}, score={best_score:.3f}")
 
     # Collect bboxes
     bboxes = []

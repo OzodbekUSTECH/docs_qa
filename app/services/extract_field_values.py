@@ -259,95 +259,92 @@ class ExtractDocumentFieldValuesService:
     async def _extract_with_gemini(
         self, document: Document, fields: List[ExtractionField]
     ) -> List[ExtractedFieldValue]:
-        """Extract fields using Gemini 2.0 Flash Exp with structured output and bbox finding."""
+        """Extract fields using Gemini 2.5 Flash with structured output and bbox finding."""
         if not fields:
             return []
 
         try:
-            # 1. Build Pydantic models exactly like prototype (gemini_test.py)
+            # 1. Build Pydantic models for structured extraction
             class BboxAnchor(BaseModel):
                 start_words: str = Field(
                     ...,
-                    description="First 3-5 words of the text to locate",
+                    description="First 5-10 UNIQUE consecutive words from the BEGINNING of extracted content. Must be verbatim quote that appears ONLY ONCE on this page.",
                 )
                 end_words: str = Field(
                     ...,
-                    description="Last 3-5 words of the text to locate",
-                )
-                page: Optional[int] = Field(
-                    None,
-                    description="Page number for this anchor (if different from main page)",
-                    ge=1,
+                    description="Last 5-10 UNIQUE consecutive words from the END of extracted content. Must be verbatim quote that appears ONLY ONCE on this page.",
                 )
 
             class ExtractedField(BaseModel):
-                """Single extracted field with metadata - matches prototype."""
-                name: str = Field(..., description="Field name")
-                type: str = Field(..., description="Type of field (text, table, clause, etc.)")
+                """Single extracted field occurrence."""
+                name: str = Field(..., description="Field name exactly as requested")
+                type: str = Field(..., description="Type: text, table, clause, paragraph, address, etc.")
                 value: str = Field(
-                    ..., description="Extracted value strictly as markdown especially for tables"
+                    ..., description="The ACTUAL extracted content in markdown format. Never use placeholders like '___' or '...' - extract real text!"
                 )
                 bbox_anchor: BboxAnchor = Field(
-                    ..., description="Word anchors to find bbox in document"
+                    ..., description="Unique word anchors to locate this content"
                 )
-                page: int = Field(..., description="Primary page number where found", ge=1)
-                confidence: str = Field(..., description="Extraction confidence (high/medium/low)")
-                additional_anchors: Optional[List[BboxAnchor]] = Field(
-                    None,
-                    description="Additional bbox anchors for multi-page or multi-region content",
-                )
+                page: int = Field(..., description="Page number where this content is located", ge=1)
+                confidence: str = Field(..., description="high/medium/low")
 
             class DocumentExtraction(BaseModel):
-                """Complete document extraction result - matches prototype."""
-                fields: List[ExtractedField] = Field(..., description="Extracted fields")
+                """Complete extraction result."""
+                fields: List[ExtractedField] = Field(..., description="All extracted field occurrences")
                 total_pages: Optional[int] = Field(None, description="Total pages in document")
 
             ExtractionSchema = DocumentExtraction
 
-            # 2. Build Prompt exactly matching prototype (gemini_test.py)
-            prompt_lines = [
-                "Extract the following information from this document.",
-                "",
-                "For each field provide:",
-                "1. **value**: The extracted information in markdown format only (no HTML, no other formats)",
-                "2. **bbox_anchor**: Unique text phrases to locate this content in the document",
-                "   - **start_words**: A unique phrase from the BEGINNING of your extracted content (3-7 words)",
-                "   - **end_words**: A unique phrase from the END of your extracted content (3-7 words)",
-                "   - These MUST be actual consecutive words from the document, not random words",
-                "   - These MUST be unique on the page to avoid confusion",
-                "3. **page**: Page number where found",
-                "4. **confidence**: high/medium/low",
-                "",
-                "⚠️ IMPORTANT RULE:",
-                "- If the content of a field continues on the next page, but the text does not explicitly repeat the field title again, you MUST create a **new entry for the same field name**.",
-                "- Each continuation must include its own `value`, `bbox_anchor`, `page`, and `confidence`.",
-                "- For continuations on new pages: **start_words** MUST be from the FIRST line of content on the NEW page, NOT from the last line of the previous page!",
-                "",
-                "CRITICAL RULES FOR bbox_anchor:",
-                "- start_words = first 3-7 consecutive words from the BEGINNING of extracted text",
-                "- end_words = last 3-7 consecutive words from the END of extracted text",
-                "- Both must be EXACT quotes from the document (not paraphrased)",
-                "- Both must be UNIQUE on the page (no duplicates)",
-                "- If extracting full page, end_words should be from the LAST line of that page",
-                "",
-                "Fields to extract:",
-            ]
+            # 2. Build improved prompt with clear rules
+            prompt = f"""You are a precise document extraction assistant. Extract the requested fields from this document.
+
+## CRITICAL EXTRACTION RULES:
+
+### 1. VALUE EXTRACTION:
+- Extract the ACTUAL content, never placeholders like "___", "...", or blank lines
+- If a field label exists but content is on the next page, extract content from that page
+- For paragraphs/clauses: extract the BODY text, not just the heading
+- Use markdown format for tables and structured content
+
+### 2. MULTI-PAGE CONTENT:
+- If field content spans multiple pages, create SEPARATE entries for each page
+- Each entry must have its own value, bbox_anchor, and page number
+- Example: "6. QUALITY" heading on page 1, but quality specs on page 10 → extract from page 10
+
+### 3. BBOX_ANCHOR - UNIQUENESS IS CRITICAL:
+- start_words: First 5-10 consecutive words from YOUR extracted value
+- end_words: Last 5-10 consecutive words from YOUR extracted value  
+- BOTH must be EXACT verbatim quotes from the document
+- BOTH must appear ONLY ONCE on that page (to avoid bbox confusion)
+- For addresses/companies: include the FULL company name + first line of address as start_words
+- For paragraphs: include section number + first words as start_words
+
+### 4. AVOIDING DUPLICATE ANCHORS:
+- DON'T use generic phrases that repeat (like just "UNITED KINGDOM" or just company name)
+- DO include context: "GLENCORE ENERGY UK LTD 50, BERKELEY STREET" instead of just "GLENCORE ENERGY UK LTD"
+- For similar sections (buyer/seller), use DIFFERENT unique identifiers
+
+## FIELDS TO EXTRACT:
+"""
             for i, field in enumerate(fields, 1):
                 name = field.identifier or field.name
                 field_type = field.type.value if hasattr(field.type, 'value') else str(field.type)
-                field_prompt = field.prompt or f'Extract {name}'
-                prompt_lines.append(f"{i}. **{name}** ({field_type}): {field_prompt}")
+                field_prompt = field.prompt or f'Extract the {name}'
+                prompt += f"\n{i}. **{name}** ({field_type}): {field_prompt}"
 
-            prompt = "\n".join(prompt_lines)
+            prompt += """
 
-            # 3. Call Gemini
-            # Upload file
+## RESPONSE FORMAT:
+Return a JSON with "fields" array. Each field occurrence is a separate entry.
+If content continues on multiple pages, create multiple entries with same name but different pages."""
+
+            # 3. Call Gemini 2.5 Flash
             uploaded_file = await self.gemini_client.files.upload(
                 file=document.file_path
             )
 
             response = await self.gemini_client.models.generate_content(
-                model="gemini-2.0-flash-exp",
+                model="gemini-2.5-flash",
                 contents=[uploaded_file, prompt],
                 config=types.GenerateContentConfig(
                     temperature=0.0,
@@ -387,13 +384,19 @@ class ExtractDocumentFieldValuesService:
             field_map = {field.identifier or field.name: field for field in fields}
 
             results = []
-            # Process each extracted field (matches prototype - each field is separate object)
+            # Process each extracted field
             for extracted_field in extraction.fields:
                 field_name = extracted_field.name
                 field_def = field_map.get(field_name)
                 
                 if not field_def:
                     logger.warning(f"[Gemini AI] Extracted field '{field_name}' not in requested fields, skipping")
+                    continue
+
+                # Filter out placeholder/empty values
+                value = extracted_field.value.strip() if extracted_field.value else ""
+                if not value or self._is_placeholder_value(value):
+                    logger.warning(f"[Gemini AI] Field '{field_name}' has placeholder/empty value, skipping: '{value[:50]}'")
                     continue
 
                 logger.info(f"[Gemini AI] Processing field '{field_name}' on page {extracted_field.page}")
@@ -423,7 +426,7 @@ class ExtractDocumentFieldValuesService:
                 
                 bbox = None
                 if anchor and ocr_data:
-                    # Use find_bbox_by_anchors directly (matches prototype logic)
+                    # Use find_bbox_by_anchors directly
                     bbox_coords = find_bbox_by_anchors(
                         ocr_data=ocr_data,
                         start_words=clean_start,
@@ -440,14 +443,14 @@ class ExtractDocumentFieldValuesService:
 
                 extracted_value = ExtractedFieldValue(
                     field_id=field_def.id,
-                    value=extracted_field.value,
-                    confidence=1.0,  # Gemini uses string confidence
+                    value=value,
+                    confidence=1.0 if extracted_field.confidence == "high" else (0.7 if extracted_field.confidence == "medium" else 0.5),
                     page_num=str(extracted_field.page),
                     bbox=bbox,
                 )
                 results.append(extracted_value)
                 logger.info(
-                    f"[Gemini AI] Added field '{field_name}': page={extracted_field.page}, value_length={len(extracted_field.value)}, bbox={'found' if bbox else 'not found'}"
+                    f"[Gemini AI] Added field '{field_name}': page={extracted_field.page}, value_length={len(value)}, bbox={'found' if bbox else 'not found'}"
                 )
 
             logger.info(f"[Gemini AI] Total results extracted: {len(results)} field entries")
@@ -1588,6 +1591,35 @@ Return the extracted values in the requested format."""
             len(keyword_fields),
         )
         return ai_fields, keyword_fields
+
+    def _is_placeholder_value(self, value: str) -> bool:
+        """Check if value is a placeholder (underscores, dots, empty, etc.)"""
+        if not value:
+            return True
+        # Remove whitespace and check
+        cleaned = value.strip()
+        if not cleaned:
+            return True
+        # Check for placeholder patterns
+        placeholder_patterns = [
+            r'^[_\-\.]+$',  # Only underscores, dashes, or dots
+            r'^_{2,}$',     # Multiple underscores
+            r'^\.*$',       # Only dots
+            r'^\-+$',       # Only dashes
+            r'^N/A$',       # N/A
+            r'^n/a$',       # n/a
+            r'^None$',      # None
+            r'^null$',      # null
+            r'^\[.*\]$',    # Just brackets with placeholder
+        ]
+        import re
+        for pattern in placeholder_patterns:
+            if re.match(pattern, cleaned, re.IGNORECASE):
+                return True
+        # Too short values are likely placeholders
+        if len(cleaned) < 3 and not cleaned.isalnum():
+            return True
+        return False
 
     def _empty_value(self, field: ExtractionField) -> ExtractedFieldValue:
         return ExtractedFieldValue(
