@@ -2095,7 +2095,7 @@
                                 <div class="field-value-header">
                                     <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
                                         <span class="field-value-toggle">▶</span>
-                                        <div class="field-value-name">${escapeHtml(fv.field.name)}</div>
+                                        <div class="field-value-name">${escapeHtml(fv.field?.name || fv.custom_field_name || 'Unknown')}</div>
                                     </div>
                                     ${fv.confidence !== null ? `<div class="field-value-confidence">${Math.round(fv.confidence * 100)}%</div>` : ''}
                                 </div>
@@ -2641,9 +2641,11 @@
                 const document = await docResponse.json();
                 currentRerunDocumentType = document.type;
 
-                // Get existing field IDs from document
+                // Get existing field IDs from document (filter out custom fields without field reference)
                 const existingFieldIds = document.field_values
-                    ? document.field_values.map(fv => fv.field.id)
+                    ? document.field_values
+                        .filter(fv => fv.field && fv.field.id)
+                        .map(fv => fv.field.id)
                     : [];
 
                 // Load available extraction fields for this document type
@@ -2873,9 +2875,11 @@
                 }
                 const doc = await docResponse.json();
 
-                // Get field IDs from existing field values
+                // Get field IDs from existing field values (filter out custom fields without field reference)
                 const fieldIds = doc.field_values
-                    ? doc.field_values.map(fv => fv.field.id)
+                    ? doc.field_values
+                        .filter(fv => fv.field && fv.field.id)
+                        .map(fv => fv.field.id)
                     : [];
 
                 if (fieldIds.length === 0) {
