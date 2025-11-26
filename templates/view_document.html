@@ -847,8 +847,8 @@
           }
           
           // Add this occurrence (one per page)
-          // Only add if it has valid data (value or region)
-          if (f.value || (f.bbox && f.page_number)) {
+          // Add if it has value OR page_number - bbox is optional (may not be found)
+          if (f.value || f.page_number) {
             fieldsMap.get(key).occurrences.push({
               id: f.id,
               value: f.value || null,
@@ -859,7 +859,7 @@
                 x2: f.bbox[2],
                 y2: f.bbox[3]
               } : null,
-              page_number: f.page_number
+              page_number: f.page_number // Keep page_number even if bbox is null
             });
           }
         });
@@ -1333,18 +1333,25 @@
         let isProcessingOccurrence = false;
         
         if (field._occurrences && field._occurrences.length > 0) {
-          // Find occurrence for current page
-          const currentPageOccurrence = field._occurrences.find(occ => 
+          // First try: find occurrence for current page by region.page
+          let currentPageOccurrence = field._occurrences.find(occ => 
             occ.region && occ.region.page === currentPageNum
           );
           
+          // Second try: find by page_number if region is missing (bbox not found but value exists)
+          if (!currentPageOccurrence) {
+            currentPageOccurrence = field._occurrences.find(occ => 
+              occ.page_number === currentPageNum
+            );
+          }
+          
           if (currentPageOccurrence) {
             fieldValueToShow = currentPageOccurrence.value;
-            fieldRegionToShow = currentPageOccurrence.region;
+            fieldRegionToShow = currentPageOccurrence.region; // May be null if bbox not found
             isProcessingOccurrence = currentPageOccurrence._processing === true;
-            shouldShowValue = true;
+            shouldShowValue = true; // Show value even without bbox!
           } else {
-            // Should not happen as we filtered above, but just in case
+            // No occurrence on this page
             shouldShowValue = false;
           }
         } else {
@@ -1352,7 +1359,8 @@
           fieldValueToShow = field.value;
           fieldRegionToShow = field.region;
           isProcessingOccurrence = field._processing === true;
-          shouldShowValue = !field.region || field.region.page === currentPageNum;
+          // Show value if we have one, even without region
+          shouldShowValue = fieldValueToShow != null || (!field.region || field.region.page === currentPageNum);
         }
 
         // Add hover effects to link field row with selection box

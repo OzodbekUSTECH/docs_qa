@@ -321,16 +321,20 @@ class ExtractDocumentFieldValuesService:
 - Each entry's value must contain ONLY text from that ONE page
 - Check where each sentence physically appears in the PDF
 
-### 3. BBOX_ANCHOR RULES:
-- start_words: First 5-10 consecutive words from the VALUE on THIS page
-- end_words: Last 5-10 consecutive words from the VALUE on THIS page
-- NO newlines or special characters - use only plain text words
-- MUST be unique on that specific page
-- For CLAUSE: include section number like "9. PAYMENT IN US DOLLARS"
+### 3. BBOX_ANCHOR RULES (CRITICAL - NO LINE BREAKS):
+- start_words and end_words MUST be from a SINGLE LINE of text
+- ⚠️ NEVER mix title/heading with body text - they are on different lines!
+- ⚠️ NEVER include text that spans across a line break
+- Pick words that appear together on ONE visual line in the document
+- Good: "Glencore Energy UK Ltd" (one line)
+- Good: "50 Berkeley Street London" (one line)  
+- BAD: "9. QUALITY At the loading" (title + body = different lines!)
+- BAD: "Registration Number: 12345678 Buyer:" (spans two lines)
 
 ### 4. UNIQUENESS:
-- Include enough context to be unique: "GLENCORE ENERGY UK LTD 50, BERKELEY STREET"
-- For similar sections, use different identifying words
+- Use distinctive phrases from within the same paragraph/line
+- Company names, addresses, specific numbers are good anchors
+- For clauses: use text FROM the body, not the heading
 
 ## FIELDS TO EXTRACT:
 """

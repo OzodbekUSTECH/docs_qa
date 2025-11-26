@@ -17,6 +17,7 @@ def normalize_text(text: str) -> str:
 
 def extract_pdf_text_with_bbox(pdf_path: str) -> List[Dict[str, Any]]:
     """Extract text with bounding boxes from a PDF using PyMuPDF.
+    Falls back to Tesseract OCR for scanned/image PDFs.
 
     Args:
         pdf_path: Path to the PDF file.
@@ -68,9 +69,106 @@ def extract_pdf_text_with_bbox(pdf_path: str) -> List[Dict[str, Any]]:
                                 "bbox": normalized_bbox,
                             })
         doc.close()
+        
+        # If no text found, try OCR fallback for scanned PDFs
+        if not ocr_data:
+            logger.info("No text found with PyMuPDF, trying Tesseract OCR fallback...")
+            ocr_data = _extract_with_tesseract_ocr(pdf_path)
+        
         return ocr_data
     except Exception as e:
         logger.error(f"Error extracting PDF text with PyMuPDF: {e}", exc_info=True)
+        return []
+
+
+def _extract_with_tesseract_ocr(pdf_path: str) -> List[Dict[str, Any]]:
+    """Fallback OCR using Tesseract for scanned PDFs."""
+    ocr_data: List[Dict[str, Any]] = []
+    
+    try:
+        import fitz
+        from PIL import Image
+        import pytesseract
+        import io
+    except ImportError as e:
+        logger.warning(f"Tesseract OCR dependencies not available: {e}")
+        return []
+    
+    try:
+        doc = fitz.open(pdf_path)
+        
+        for page_num in range(len(doc)):
+            page = doc[page_num]
+            
+            # Render page to image at 300 DPI for better OCR
+            mat = fitz.Matrix(300/72, 300/72)  # 300 DPI
+            pix = page.get_pixmap(matrix=mat)
+            img_data = pix.tobytes("png")
+            img = Image.open(io.BytesIO(img_data))
+            
+            # Get OCR data with bounding boxes
+            ocr_result = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT)
+            
+            # Image dimensions (at 300 DPI)
+            img_width, img_height = img.size
+            
+            # Group words into lines based on line_num
+            lines_dict = {}
+            for i in range(len(ocr_result['text'])):
+                text = ocr_result['text'][i].strip()
+                if not text:
+                    continue
+                    
+                conf = int(ocr_result['conf'][i])
+                if conf < 30:  # Skip low confidence
+                    continue
+                
+                line_num = ocr_result['line_num'][i]
+                block_num = ocr_result['block_num'][i]
+                key = (block_num, line_num)
+                
+                x = ocr_result['left'][i]
+                y = ocr_result['top'][i]
+                w = ocr_result['width'][i]
+                h = ocr_result['height'][i]
+                
+                if key not in lines_dict:
+                    lines_dict[key] = {
+                        'texts': [],
+                        'bbox': [x, y, x + w, y + h]
+                    }
+                else:
+                    # Expand bbox
+                    lines_dict[key]['bbox'][0] = min(lines_dict[key]['bbox'][0], x)
+                    lines_dict[key]['bbox'][1] = min(lines_dict[key]['bbox'][1], y)
+                    lines_dict[key]['bbox'][2] = max(lines_dict[key]['bbox'][2], x + w)
+                    lines_dict[key]['bbox'][3] = max(lines_dict[key]['bbox'][3], y + h)
+                
+                lines_dict[key]['texts'].append(text)
+            
+            # Convert to output format
+            for key, line_data in lines_dict.items():
+                line_text = " ".join(line_data['texts'])
+                if line_text.strip():
+                    bbox = line_data['bbox']
+                    normalized_bbox = [
+                        bbox[0] / img_width,
+                        bbox[1] / img_height,
+                        bbox[2] / img_width,
+                        bbox[3] / img_height,
+                    ]
+                    ocr_data.append({
+                        "text": line_text.strip(),
+                        "page": page_num + 1,
+                        "bbox": normalized_bbox,
+                    })
+        
+        doc.close()
+        logger.info(f"Tesseract OCR extracted {len(ocr_data)} text blocks")
+        return ocr_data
+        
+    except Exception as e:
+        logger.error(f"Error in Tesseract OCR fallback: {e}", exc_info=True)
         return []
 
 
