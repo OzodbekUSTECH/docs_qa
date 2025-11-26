@@ -298,6 +298,13 @@ class ExtractDocumentFieldValuesService:
             # 2. Build improved prompt with clear rules
             prompt = f"""You are a precise document extraction assistant. Extract the requested fields from this document.
 
+⚠️ IMPORTANT: This document may be a SCANNED image (not digital text). 
+Use your OCR capabilities carefully to read ALL text accurately, including:
+- Handwritten text, stamps, signatures
+- Faded or low-quality text
+- Text in tables and forms
+- Small print and footnotes
+
 ## FIELD TYPE DEFINITIONS:
 - **CLAUSE / paragraph**: Extract the BODY text of a numbered section/paragraph (e.g., "9. PAYMENT" → extract the payment terms text, NOT the heading)
 - **TEXT**: Extract a simple value from a key-value pair (e.g., "Contract No: 12345" → extract "12345")
@@ -323,10 +330,8 @@ For EVERY field you extract:
 3. If YES → create ANOTHER entry with same field name for the next page
 
 Example for "quality" clause that spans pages 2-3:
-```json
-{"name": "quality", "page": 2, "value": "Text from page 2 only...", "bbox_anchor": {...}},
-{"name": "quality", "page": 3, "value": "...continuation text from page 3", "bbox_anchor": {...}}
-```
+- Entry 1: name="quality", page=2, value="Text from page 2 only..."
+- Entry 2: name="quality", page=3, value="...continuation text from page 3"
 
 - Each entry's value must contain ONLY text from that ONE page
 - Same field name can appear multiple times (once per page)
