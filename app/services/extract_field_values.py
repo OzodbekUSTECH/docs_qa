@@ -315,10 +315,13 @@ Use your OCR capabilities carefully to read ALL text accurately, including:
 
 ## CRITICAL EXTRACTION RULES:
 
-### 1. VALUE EXTRACTION:
+### 1. VALUE EXTRACTION (ALWAYS MARKDOWN):
+- **ALL values must be in MARKDOWN format**
 - Extract the ACTUAL content, never placeholders like "___", "...", or blank lines
 - For CLAUSE/paragraph: extract the BODY text, NOT the heading/title
 - For TEXT: extract only the value part, not the label
+- For TABLE: use markdown table format with | separators
+- Preserve formatting: bold, lists, line breaks as markdown
 
 ### 2. PAGE BOUNDARIES & CONTINUATIONS - ABSOLUTELY CRITICAL:
 ⚠️ **NEVER combine text from different pages into one entry!**
