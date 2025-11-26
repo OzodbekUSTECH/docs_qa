@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -180,7 +181,8 @@
             border-collapse: collapse;
         }
 
-        th, td {
+        th,
+        td {
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid var(--border);
@@ -674,6 +676,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="header">
         <div class="header-left">
@@ -732,6 +735,7 @@
                             <th>Name</th>
                             <th>Description</th>
                             <th>Type</th>
+                            <th>Extraction By</th>
                             <th>Document Types</th>
                             <th>Created At</th>
                             <th>Actions</th>
@@ -811,6 +815,20 @@
 
                     <div class="form-group">
                         <label>
+                            🤖 Extraction By <span class="required">*</span>
+                        </label>
+                        <select id="fieldExtractionBy" required>
+                            <option value="DOCUMENT_AI">Document AI (Custom Extractor)</option>
+                            <option value="GEMINI_AI" selected>Gemini AI (Generative)</option>
+                        </select>
+                        <div class="form-group-description">
+                            Choose extraction strategy: Document AI for structured extraction or Gemini AI for flexible
+                            generative extraction.
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
                             <span>📄</span> Document Types <span class="required">*</span>
                         </label>
                         <div class="document-types-multiselect">
@@ -820,15 +838,18 @@
                             </div>
                             <div class="document-types-dropdown" id="documentTypesDropdown">
                                 <div class="document-type-option">
-                                    <input type="checkbox" id="doc-financial" value="FINANCIAL" onchange="updateDocumentTypes()">
+                                    <input type="checkbox" id="doc-financial" value="FINANCIAL"
+                                        onchange="updateDocumentTypes()">
                                     <label for="doc-financial" style="margin: 0; cursor: pointer;">FINANCIAL</label>
                                 </div>
                                 <div class="document-type-option">
-                                    <input type="checkbox" id="doc-invoice" value="INVOICE" onchange="updateDocumentTypes()">
+                                    <input type="checkbox" id="doc-invoice" value="INVOICE"
+                                        onchange="updateDocumentTypes()">
                                     <label for="doc-invoice" style="margin: 0; cursor: pointer;">INVOICE</label>
                                 </div>
                                 <div class="document-type-option">
-                                    <input type="checkbox" id="doc-contract" value="CONTRACT" onchange="updateDocumentTypes()">
+                                    <input type="checkbox" id="doc-contract" value="CONTRACT"
+                                        onchange="updateDocumentTypes()">
                                     <label for="doc-contract" style="margin: 0; cursor: pointer;">CONTRACT</label>
                                 </div>
                                 <div class="document-type-option">
@@ -856,7 +877,8 @@
                                     <label for="doc-lc" style="margin: 0; cursor: pointer;">LC</label>
                                 </div>
                                 <div class="document-type-option">
-                                    <input type="checkbox" id="doc-other" value="OTHER" onchange="updateDocumentTypes()">
+                                    <input type="checkbox" id="doc-other" value="OTHER"
+                                        onchange="updateDocumentTypes()">
                                     <label for="doc-other" style="margin: 0; cursor: pointer;">OTHER</label>
                                 </div>
                             </div>
@@ -868,7 +890,8 @@
                         <label>
                             Prompt <span class="required">*</span>
                         </label>
-                        <textarea id="fieldPrompt" placeholder="Enter prompt to extract field value..." maxlength="2000" required></textarea>
+                        <textarea id="fieldPrompt" placeholder="Enter prompt to extract field value..." maxlength="2000"
+                            required></textarea>
                         <div class="char-counter">
                             <span id="charCount">0</span>/2000 characters
                         </div>
@@ -911,7 +934,7 @@
         function setupFormListeners() {
             const fieldName = document.getElementById('fieldName');
             const fieldPrompt = document.getElementById('fieldPrompt');
-            
+
             fieldName.addEventListener('input', updateIdentifier);
             fieldPrompt.addEventListener('input', updateCharCount);
         }
@@ -1001,27 +1024,27 @@
                 }
 
                 const response = await fetch(`${API_BASE}/?${params}`);
-                
+
                 if (!response.ok) {
                     const errorMessage = await parseErrorResponse(response);
                     throw new Error(errorMessage);
                 }
 
                 const data = await response.json();
-                
+
                 currentPage = data.page;
                 totalPages = data.pages;
-                
+
                 renderFields(data.items);
                 renderPagination();
-                
+
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('fieldsTable').style.display = 'table';
             } catch (error) {
                 showMessage('Error loading fields: ' + error.message, 'error');
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('fieldsTable').style.display = 'table';
-                document.getElementById('fieldsTableBody').innerHTML = 
+                document.getElementById('fieldsTableBody').innerHTML =
                     '<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--subtle);">Failed to load fields</td></tr>';
             }
         }
@@ -1038,7 +1061,7 @@
             fields.forEach(field => {
                 const row = document.createElement('tr');
                 const createdAt = new Date(field.created_at).toLocaleString('en-US');
-                const documentTypes = field.document_types.map(dt => 
+                const documentTypes = field.document_types.map(dt =>
                     `<span class="field-badge">${dt}</span>`
                 ).join('');
 
@@ -1047,6 +1070,7 @@
                     <td><strong>${escapeHtml(field.name)}</strong></td>
                     <td class="description-cell" title="${escapeHtml(field.short_description || '')}">${escapeHtml(field.short_description || '-')}</td>
                     <td><span class="field-badge type">${field.type}</span></td>
+                    <td><span class="field-badge" style="background: ${field.extraction_by === 'GEMINI_AI' ? 'rgba(168, 85, 247, 0.15)' : 'rgba(56, 189, 248, 0.15)'}; color: ${field.extraction_by === 'GEMINI_AI' ? 'var(--purple)' : 'var(--accent)'}">${field.extraction_by || 'DOCUMENT_AI'}</span></td>
                     <td>${documentTypes || '-'}</td>
                     <td>${createdAt}</td>
                     <td>
@@ -1149,6 +1173,7 @@
             document.getElementById('identifierDisplay').textContent = '-';
             document.getElementById('charCount').textContent = '0';
             document.getElementById('fieldOccurrence').value = 'OPTIONAL_ONCE';
+            document.getElementById('fieldExtractionBy').value = 'GEMINI_AI'; // Set default to Gemini AI
             selectedDocumentTypes = [];
             allDocumentTypes.forEach(type => {
                 const checkbox = document.getElementById(`doc-${type.toLowerCase()}`);
@@ -1166,40 +1191,33 @@
         async function editField(id) {
             try {
                 const response = await fetch(`${API_BASE}/${id}`);
-                
+
                 if (!response.ok) {
                     const errorMessage = await parseErrorResponse(response);
                     throw new Error(errorMessage);
                 }
 
                 const field = await response.json();
-                
-                // Store original field for comparison
-                originalField = JSON.parse(JSON.stringify(field));
-                
+                originalField = field;
                 editingFieldId = id;
                 document.getElementById('modalTitle').textContent = 'Edit field';
-                document.getElementById('fieldName').value = field.name;
+                document.getElementById('fieldName').value = field.name || '';
                 document.getElementById('fieldDescription').value = field.short_description || '';
-                document.getElementById('fieldType').value = field.type;
-                updateIdentifier();
-                document.getElementById('fieldOccurrence').value = field.occurrence || 'OPTIONAL_ONCE';
-                
-                // Set prompt
+                document.getElementById('fieldIdentifier').value = field.identifier || '';
+                document.getElementById('identifierDisplay').textContent = field.identifier || '-';
+                document.getElementById('charCount').textContent = field.prompt ? field.prompt.length : '0';
                 document.getElementById('fieldPrompt').value = field.prompt || '';
-                
-                updateIdentifier();
-                updateCharCount();
-                
+                document.getElementById('fieldType').value = field.type || '';
+                document.getElementById('fieldOccurrence').value = field.occurrence || 'OPTIONAL_ONCE';
+                // ВАЖНО: установить extraction_by в select
+                document.getElementById('fieldExtractionBy').value = field.extraction_by || 'DOCUMENT_AI';
+
+                // Документ-типы: сбросить все, потом отметить те что есть
                 selectedDocumentTypes = field.document_types || [];
-                
                 allDocumentTypes.forEach(type => {
                     const checkbox = document.getElementById(`doc-${type.toLowerCase()}`);
-                    if (checkbox) {
-                        checkbox.checked = selectedDocumentTypes.includes(type);
-                    }
+                    if (checkbox) checkbox.checked = selectedDocumentTypes.includes(type);
                 });
-                
                 renderDocumentTypes();
                 updateDocumentTypesTrigger();
                 const submitBtn = document.getElementById('createBtn');
@@ -1225,7 +1243,7 @@
             const name = document.getElementById('fieldName').value.trim();
             const identifierValue = document.getElementById('fieldIdentifier').value.trim();
             const occurrenceValue = document.getElementById('fieldOccurrence').value;
-            
+
             if (!identifierValue) {
                 showMessage('Identifier is required', 'error');
                 return;
@@ -1244,20 +1262,20 @@
 
             const btn = document.getElementById('createBtn');
             const isUpdate = Boolean(editingFieldId);
-            
+
             let data;
-            
+
             if (isUpdate) {
                 // Partial update - only send changed fields
                 data = {};
-                
+
                 const currentName = name;
                 const currentDescription = document.getElementById('fieldDescription').value.trim() || null;
                 const currentIdentifier = identifierValue;
                 const currentOccurrence = occurrenceValue;
                 const currentType = document.getElementById('fieldType').value;
                 const currentPrompt = prompt;
-                
+
                 // Compare and send only changed fields
                 if (currentName !== originalField.name) {
                     data.name = currentName;
@@ -1280,6 +1298,10 @@
                 if (currentPrompt !== (originalField.prompt || '')) {
                     data.prompt = currentPrompt;
                 }
+                const currentExtractionBy = document.getElementById('fieldExtractionBy').value;
+                if (currentExtractionBy !== (originalField.extraction_by || 'DOCUMENT_AI')) {
+                    data.extraction_by = currentExtractionBy;
+                }
                 // Always set use_ai to true
                 if (!originalField.use_ai) {
                     data.use_ai = true;
@@ -1295,6 +1317,7 @@
                     identifier: identifierValue,
                     occurrence: occurrenceValue,
                     prompt: prompt,
+                    extraction_by: document.getElementById('fieldExtractionBy').value,
                 };
             }
 
@@ -1360,7 +1383,7 @@
             }
         }
 
-        window.onclick = function(event) {
+        window.onclick = function (event) {
             const modal = document.getElementById('fieldModal');
             if (event.target === modal) {
                 closeModal();
@@ -1406,4 +1429,5 @@
         }
     </script>
 </body>
+
 </html>

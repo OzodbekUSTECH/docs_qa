@@ -206,12 +206,18 @@ async def hybrid_search(
                 logger.info("hybrid_search: no hits found, returning empty documents")
                 return {"documents": []}
 
+            # Используем все результаты без жесткой фильтрации
+            # Сортируем по hybrid_score для правильного ранжирования
+            filtered_hits = sorted(hits, key=lambda h: h.hybrid_score, reverse=True)
+            
+            logger.info("hybrid_search: returning all %d hits sorted by score", len(filtered_hits))
+
             # Группируем результаты по документам
             documents_map = {}  # document_id -> {matched_fields: [], max_score: float, seen_field_ids: set}
             matched_field_value_ids = set()
 
             # Собираем все field_value_ids для загрузки field'ов
-            field_value_ids = [hit.field_value.id for hit in hits]
+            field_value_ids = [hit.field_value.id for hit in filtered_hits]
             
             # Загружаем все field values с их fields одним запросом
             from sqlalchemy import select
@@ -224,7 +230,7 @@ async def hybrid_search(
             result = await field_values_repo.session.execute(stmt)
             field_values_with_fields = {fv.id: fv for fv in result.scalars().unique().all()}
 
-            for hit in hits:
+            for hit in filtered_hits:
                 doc_id = hit.field_value.document_id
                 if doc_id not in documents_map:
                     documents_map[doc_id] = {
@@ -262,6 +268,10 @@ async def hybrid_search(
                 key=lambda d_id: documents_map[d_id]["max_score"],
                 reverse=True
             )[:limit]
+            
+            if not sorted_doc_ids:
+                logger.info("hybrid_search: no documents found")
+                return {"documents": []}
 
             # Загружаем полную информацию о документах и всех их полях
             from sqlalchemy import select

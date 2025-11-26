@@ -4,7 +4,7 @@ from app.entities.base import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.entities.mixins.timestamp_mixin import TimestampMixin
 from app.entities.mixins.id_mixin import IdMixin
-from app.utils.enums import DocumentType, ExtractionFieldType, FieldOccurrence
+from app.utils.enums import DocumentType, ExtractionFieldType, FieldOccurrence, ExtractionBy
 from typing import Optional
 
 
@@ -28,6 +28,7 @@ class ExtractionField(Base,IdMixin, TimestampMixin):
     
     # for ai
     use_ai: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    extraction_by: Mapped[ExtractionBy] = mapped_column(SAEnum(ExtractionBy, name="extractionby"), default=ExtractionBy.GEMINI_AI, server_default=text("'DOCUMENT_AI'::extractionby"))
     prompt: Mapped[Optional[str]]
     
     examples: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list, server_default=text("'{}'::text[]"))

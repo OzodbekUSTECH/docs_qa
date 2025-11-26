@@ -113,11 +113,17 @@ class GeminiAgentInteractor:
         max_steps = 10
         current_step = 0
         
-        yield self._format_event("thinking", {"step": "init", "thought": "Starting agent..."})
-        yield self._format_event("thinking", {"step": "init", "thought": "Analyzing request..."})
-
         final_answer_text = ""
         search_results_map = {}  # Track search results: title -> {document_id, filename, page, bbox}
+        all_search_results_data = []  # Track all search results for saving to DB
+        thinking_process_data = []  # Track thinking process for saving to DB
+        
+        init_thought_1 = {"step": "init", "thought": "Starting agent..."}
+        init_thought_2 = {"step": "init", "thought": "Analyzing request..."}
+        thinking_process_data.append(init_thought_1)
+        thinking_process_data.append(init_thought_2)
+        yield self._format_event("thinking", init_thought_1)
+        yield self._format_event("thinking", init_thought_2)
 
         # Tool Definition
         tools_config = [
@@ -194,11 +200,20 @@ class GeminiAgentInteractor:
                     for tool_call in tool_calls:
                         parts.append(types.Part(function_call=tool_call))
                         
+                        # Create thinking step for tool call
+                        thinking_data = {
+                            "step": current_step,
+                            "thought": accumulated_text if accumulated_text else f"Calling {tool_call.name}..."
+                        }
+                        thinking_process_data.append(thinking_data)
+                        
                         # Notify frontend of tool call
-                        yield self._format_event("tool_call", {
+                        tool_call_data = {
                             "name": tool_call.name,
                             "args": tool_call.args
-                        })
+                        }
+                        thinking_data["tool_call"] = tool_call_data
+                        yield self._format_event("tool_call", tool_call_data)
 
                     contents.append(types.Content(role="model", parts=parts))
 
@@ -261,11 +276,23 @@ class GeminiAgentInteractor:
                                             }
                                             logger.info(f"Citation created: {doc_title} -> page {page_num}, bbox: {bbox}")
                                 
-                                # Notify frontend of result
-                                yield self._format_event("tool_result", {
+                                # Store search results for DB
+                                if function_name == "hybrid_search" and result:
+                                    all_search_results_data.append(result)
+                                
+                                # Add tool result to thinking process
+                                tool_result_data = {
                                     "name": function_name,
                                     "result": result
-                                })
+                                }
+                                # Find the last thinking step and add tool result to it
+                                if thinking_process_data:
+                                    last_step = thinking_process_data[-1]
+                                    if "tool_call" in last_step and last_step["tool_call"]["name"] == function_name:
+                                        last_step["tool_result"] = tool_result_data
+                                
+                                # Notify frontend of result
+                                yield self._format_event("tool_result", tool_result_data)
                                 
                                 contents.append(types.Content(
                                     role="tool",
@@ -297,19 +324,43 @@ class GeminiAgentInteractor:
                     logger.info("Final answer generated.")
                     final_answer_text = accumulated_text
                     
-                    # Emit citations before done event
-                    if search_results_map:
-                        yield self._format_event("citations", search_results_map)
+                    # Filter citations: only include citation keys that actually appear in the response text
+                    actual_citations_map = {}
+                    if search_results_map and final_answer_text:
+                        for citation_key, citation_data in search_results_map.items():
+                            # Check if citation key appears in the response text
+                            # Citation format: [DocumentName, p.10] or [DocumentName, p.5]
+                            citation_pattern = f"[{citation_key}]"
+                            if citation_pattern in final_answer_text:
+                                actual_citations_map[citation_key] = citation_data
+                                logger.info(f"Citation '{citation_key}' found in response text")
+                            else:
+                                logger.info(f"Citation '{citation_key}' NOT found in response text, excluding from citations")
+                    
+                    # Emit only actual citations before done event
+                    if actual_citations_map:
+                        yield self._format_event("citations", actual_citations_map)
                     
                     yield self._format_event("done", {})
                     
                     # Save model response to DB
                     if final_answer_text:
+                        # Combine all search results into a single structure
+                        combined_search_results = None
+                        if all_search_results_data:
+                            combined_search_results = {
+                                "results": all_search_results_data,
+                                "citations_map": actual_citations_map if actual_citations_map else {}
+                            }
+                        
+                        # Use actual_citations_map instead of search_results_map
                         await self.chat_repository.add_message(
                             session_id=UUID(session_id),
                             role="model",
                             content=final_answer_text,
-                            citations=search_results_map if search_results_map else None
+                            citations=actual_citations_map if actual_citations_map else None,
+                            search_results=combined_search_results,
+                            thinking_process={"steps": thinking_process_data} if thinking_process_data else None
                         )
                     break
 

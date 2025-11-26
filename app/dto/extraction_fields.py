@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from app.entities.extracion_fields import ExtractionField
-from app.utils.enums import ExtractionFieldType, DocumentType, FieldOccurrence
+from app.utils.enums import ExtractionFieldType, DocumentType, FieldOccurrence, ExtractionBy
 from app.dto.common import BaseModelResponse, TimestampResponse
 from app.dto.pagination import PaginationRequest
 
@@ -16,6 +16,7 @@ class CreateExtractionFieldRequest(BaseModel):
     examples: Optional[List[str]] = None
     identifier: Optional[str] = None
     occurrence: FieldOccurrence = FieldOccurrence.OPTIONAL_ONCE
+    extraction_by: ExtractionBy = ExtractionBy.DOCUMENT_AI
     
 
 
@@ -30,6 +31,7 @@ class UpdateExtractionFieldRequest(BaseModel):
     examples: Optional[List[str]] = None
     identifier: Optional[str] = None
     occurrence: Optional[FieldOccurrence] = None
+    extraction_by: Optional[ExtractionBy] = None
     
 class ExtractionFieldListResponse(BaseModelResponse, TimestampResponse):
     name: str
@@ -39,6 +41,7 @@ class ExtractionFieldListResponse(BaseModelResponse, TimestampResponse):
     use_ai: bool
     occurrence: FieldOccurrence
     identifier: Optional[str] = None
+    extraction_by: ExtractionBy
     
 class ExtractionFieldResponse(ExtractionFieldListResponse):
     keywords: List[str]

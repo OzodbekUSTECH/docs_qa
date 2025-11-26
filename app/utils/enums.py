@@ -35,3 +35,8 @@ class FieldOccurrence(str, Enum):
     OPTIONAL_MULTIPLE = "OPTIONAL_MULTIPLE"
     REQUIRED_ONCE = "REQUIRED_ONCE"
     REQUIRED_MULTIPLE = "REQUIRED_MULTIPLE"
+
+
+class ExtractionBy(str, Enum):
+    DOCUMENT_AI = "DOCUMENT_AI"
+    GEMINI_AI = "GEMINI_AI"

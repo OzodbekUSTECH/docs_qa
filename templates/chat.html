@@ -657,6 +657,187 @@
             pointer-events: none;
             z-index: 10;
         }
+
+        /* Sources Button and Modal */
+        .sources-btn {
+            margin-top: 12px;
+            padding: 8px 16px;
+            background: rgba(68, 147, 248, 0.15);
+            border: 1px solid rgba(68, 147, 248, 0.3);
+            color: var(--accent-color);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sources-btn:hover {
+            background: rgba(68, 147, 248, 0.25);
+            border-color: var(--accent-color);
+        }
+
+        .sources-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .sources-modal.open {
+            display: flex;
+        }
+
+        .sources-modal-content {
+            background: var(--card-bg);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .sources-modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sources-modal-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .sources-modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .sources-section {
+            margin-bottom: 32px;
+        }
+
+        .sources-section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sources-section-title.used {
+            color: var(--success-color);
+        }
+
+        .sources-section-title.unused {
+            color: var(--text-secondary);
+        }
+
+        .source-item {
+            padding: 12px 16px;
+            background: rgba(15, 17, 21, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .source-item:hover {
+            background: rgba(15, 17, 21, 0.7);
+            border-color: var(--accent-color);
+        }
+
+        .source-item.used {
+            border-left: 3px solid var(--success-color);
+        }
+
+        .source-item.unused {
+            border-left: 3px solid var(--border-color);
+            opacity: 0.7;
+        }
+
+        .source-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .source-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+        }
+
+        .source-badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .source-badge.used {
+            background: rgba(35, 134, 54, 0.15);
+            color: var(--success-color);
+            border: 1px solid rgba(35, 134, 54, 0.3);
+        }
+
+        .source-badge.unused {
+            background: rgba(139, 148, 158, 0.15);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .source-info {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .source-preview {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            margin-top: 8px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        .close-sources-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .close-sources-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+        }
     </style>
 </head>
 
@@ -845,22 +1026,59 @@
         }
 
         async function loadSession(sessionId) {
-            if (currentSessionId === sessionId) return;
+            console.log('🔵 loadSession CALLED with sessionId:', sessionId);
+            console.log('🔵 currentSessionId:', currentSessionId);
+            
+            if (currentSessionId === sessionId) {
+                console.log('🔵 Already loaded, returning');
+                return;
+            }
             currentSessionId = sessionId;
 
             // Refresh list to update active state
             loadSessions();
 
             try {
+                console.log('🔵 Fetching messages from:', `/chat/sessions/${sessionId}/messages`);
                 const response = await fetch(`/chat/sessions/${sessionId}/messages`);
                 const messages = await response.json();
+                console.log('🔵 Messages received:', messages);
+                console.log('🔵 Messages count:', messages.length);
 
                 chatContainer.innerHTML = '';
-                messages.forEach(msg => {
-                    appendMessage(msg.role === 'model' ? 'ai' : 'user', msg.content, new Date(msg.created_at).toLocaleTimeString());
+                allSearchResults = []; // Clear search results when switching sessions
+                
+                console.log('🔵 Processing', messages.length, 'messages');
+                
+                messages.forEach((msg, index) => {
+                    console.log(`\n🔵 ========== Processing message ${index} ==========`);
+                    console.log('🔵 Message role:', msg.role);
+                    console.log('🔵 Has citations:', !!msg.citations);
+                    console.log('🔵 Has search_results:', !!msg.search_results);
+                    console.log('🔵 Has thinking_process:', !!msg.thinking_process);
+                    console.log('🔵 Full message:', JSON.stringify(msg, null, 2));
+                    
+                    if (msg.role === 'model') {
+                        console.log(`\n🟢 CALLING appendMessageWithData for message ${index}`);
+                        try {
+                            // For model messages, restore thinking process and sources
+                            appendMessageWithData(msg);
+                            console.log(`🟢 appendMessageWithData COMPLETED for message ${index}`);
+                        } catch (error) {
+                            console.error(`🔴 ERROR in appendMessageWithData for message ${index}:`, error);
+                            console.error('🔴 Error stack:', error.stack);
+                        }
+                    } else {
+                        console.log(`🔵 Calling appendMessage for user message ${index}`);
+                        appendMessage('user', msg.content, new Date(msg.created_at).toLocaleTimeString());
+                    }
+                    console.log(`🔵 ========== Finished processing message ${index} ==========\n`);
                 });
+                
+                console.log('🔵 ========== All messages processed ==========');
             } catch (error) {
-                console.error('Failed to load messages:', error);
+                console.error('🔴 Failed to load messages:', error);
+                console.error('🔴 Error stack:', error.stack);
             }
         }
 
@@ -919,6 +1137,7 @@
 
             let currentMarkdown = '';
             let citationsMap = {}; // Store citation metadata
+            let allSearchResults = []; // Store all search results from hybrid_search tool
 
             // Scroll to bottom
             chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -965,8 +1184,13 @@
                                 citationsMap = data.data;
                                 applyCitations(textContentDiv, citationsMap);
                             }
+                            else if (data.type === 'done') {
+                                // Add sources button after AI response is complete
+                                addSourcesButton(contentDiv, citationsMap, allSearchResults);
+                                // Store data for saving (will be saved by backend)
+                            }
                             else {
-                                handleEvent(data, thinkingBody, textContentDiv);
+                                handleEvent(data, thinkingBody, textContentDiv, allSearchResults);
                             }
                         }
                     }
@@ -977,7 +1201,7 @@
             }
         }
 
-        function handleEvent(event, thinkingBody, textContentDiv) {
+        function handleEvent(event, thinkingBody, textContentDiv, allSearchResults) {
             const { type, data } = event;
 
             if (type === 'thinking') {
@@ -1016,6 +1240,43 @@
                     lastStep.appendChild(resultDiv);
                     lastStep.classList.remove('active'); // Mark step as done
                 }
+                
+                // Track search results from hybrid_search tool
+                if (data.name === 'hybrid_search' && data.result && data.result.documents) {
+                    // Extract ALL search results - don't filter, show everything
+                    data.result.documents.forEach(doc => {
+                        if (doc.matched_fields && doc.matched_fields.length > 0) {
+                            // Add ALL matched fields, not just the best per page
+                            doc.matched_fields.forEach(field => {
+                                const pageNum = field.page_num || 1;
+                                const pageNumInt = parseInt(pageNum);
+                                const citationKey = `${doc.filename}, p.${pageNumInt}`;
+                                
+                                // Extract bbox correctly
+                                let bbox = null;
+                                if (field.bbox) {
+                                    if (Array.isArray(field.bbox)) {
+                                        bbox = field.bbox;
+                                    } else if (typeof field.bbox === 'object') {
+                                        bbox = field.bbox[pageNum] || field.bbox[String(pageNumInt)];
+                                    }
+                                }
+                                
+                                allSearchResults.push({
+                                    citationKey: citationKey,
+                                    document_id: doc.document_id,
+                                    filename: doc.filename,
+                                    page_num: pageNumInt,
+                                    bbox: bbox,
+                                    field_name: field.field_name,
+                                    value_text: field.value_text,
+                                    hybrid_score: field.hybrid_score
+                                });
+                            });
+                        }
+                    });
+                    console.log('All search results collected:', allSearchResults.length);
+                }
             }
 
             // Auto-scroll chat
@@ -1027,6 +1288,289 @@
             div.querySelector('.text-content').innerHTML = marked.parse(text);
             chatContainer.appendChild(div);
             chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function appendMessageWithData(msg) {
+            console.log('\n🟢🟢🟢 appendMessageWithData CALLED 🟢🟢🟢');
+            console.log('🟢 Message role:', msg.role);
+            console.log('🟢 Has citations:', !!msg.citations);
+            console.log('🟢 Has search_results:', !!msg.search_results);
+            console.log('🟢 Has thinking_process:', !!msg.thinking_process);
+            console.log('🟢 Full msg object:', msg);
+            
+            try {
+            
+            const div = createMessageElement('ai', new Date(msg.created_at).toLocaleTimeString());
+            const contentDiv = div.querySelector('.message-content');
+            const textContentDiv = contentDiv.querySelector('.text-content');
+            
+            console.log('DOM elements created:', {
+                div: !!div,
+                contentDiv: !!contentDiv,
+                textContentDiv: !!textContentDiv
+            });
+            
+            // Set content
+            textContentDiv.innerHTML = marked.parse(msg.content);
+            
+            // Parse JSONB fields if they come as strings
+            let citations = msg.citations;
+            let searchResults = msg.search_results;
+            let thinkingProcess = msg.thinking_process;
+            
+            // If data comes as strings, parse them
+            if (typeof citations === 'string') {
+                try {
+                    citations = JSON.parse(citations);
+                } catch (e) {
+                    console.warn('Failed to parse citations:', e);
+                    citations = null;
+                }
+            }
+            
+            if (typeof searchResults === 'string') {
+                try {
+                    searchResults = JSON.parse(searchResults);
+                } catch (e) {
+                    console.warn('Failed to parse search_results:', e);
+                    searchResults = null;
+                }
+            }
+            
+            if (typeof thinkingProcess === 'string') {
+                try {
+                    thinkingProcess = JSON.parse(thinkingProcess);
+                } catch (e) {
+                    console.warn('Failed to parse thinking_process:', e);
+                    thinkingProcess = null;
+                }
+            }
+            
+            console.log('\n>>> PARSED DATA <<<');
+            console.log('citations:', citations);
+            console.log('searchResults:', searchResults);
+            console.log('thinkingProcess:', thinkingProcess);
+            console.log('has_search_results_results:', !!(searchResults && searchResults.results));
+            console.log('has_thinking_process_steps:', !!(thinkingProcess && thinkingProcess.steps));
+            console.log('searchResultsType:', typeof searchResults);
+            console.log('thinkingProcessType:', typeof thinkingProcess);
+            console.log('searchResultsKeys:', searchResults ? Object.keys(searchResults) : []);
+            console.log('thinkingProcessKeys:', thinkingProcess ? Object.keys(thinkingProcess) : []);
+            console.log('searchResults.results:', searchResults ? searchResults.results : null);
+            console.log('thinkingProcess.steps:', thinkingProcess ? thinkingProcess.steps : null);
+            console.log('>>> END PARSED DATA <<<\n');
+            
+            // Restore citations if available
+            console.log('=== STEP 1: Checking citations ===', { citations, hasCitations: !!citations, citationsType: typeof citations });
+            if (citations) {
+                console.log('=== STEP 1.1: Applying citations ===');
+                applyCitations(textContentDiv, citations);
+                console.log('=== STEP 1.2: Citations applied ===');
+            } else {
+                console.log('=== STEP 1.3: No citations to apply ===');
+            }
+            
+            console.log('=== STEP 2: About to check thinking process ===');
+            
+            // Restore thinking process if available
+            console.log('=== STEP 2.1: Checking thinking process ===', {
+                hasThinkingProcess: !!thinkingProcess,
+                thinkingProcessValue: thinkingProcess,
+                hasSteps: !!(thinkingProcess && thinkingProcess.steps),
+                stepsIsArray: !!(thinkingProcess && thinkingProcess.steps && Array.isArray(thinkingProcess.steps)),
+                stepsLength: thinkingProcess && thinkingProcess.steps ? thinkingProcess.steps.length : 0,
+                stepsValue: thinkingProcess ? thinkingProcess.steps : null
+            });
+            
+            console.log('=== STEP 2.2: Evaluating thinking process condition ===');
+            const thinkingProcessCondition = thinkingProcess && thinkingProcess.steps && Array.isArray(thinkingProcess.steps) && thinkingProcess.steps.length > 0;
+            console.log('=== STEP 2.3: Thinking process condition result ===', thinkingProcessCondition);
+            
+            if (thinkingProcessCondition) {
+                console.log('=== STEP 2.4: Creating thinking process div ===');
+                const thinkingDiv = document.createElement('div');
+                thinkingDiv.className = 'thinking-process';
+                thinkingDiv.innerHTML = `
+                    <div class="thinking-header" onclick="this.parentElement.classList.toggle('expanded')">
+                        <div class="thinking-title">
+                            <i data-lucide="brain-circuit"></i>
+                            <span>Thinking Process</span>
+                        </div>
+                        <i data-lucide="chevron-down" size="16"></i>
+                    </div>
+                    <div class="thinking-body"></div>
+                `;
+                const thinkingBody = thinkingDiv.querySelector('.thinking-body');
+                
+                console.log('Restoring thinking steps, count:', thinkingProcess.steps.length);
+                
+                // Restore thinking steps
+                thinkingProcess.steps.forEach((stepData, index) => {
+                    console.log(`Processing step ${index}:`, stepData);
+                    const step = document.createElement('div');
+                    step.className = 'step-item';
+                    if (!stepData.tool_result) {
+                        step.classList.add('active');
+                    }
+                    step.innerHTML = `<div class="step-thought">${escapeHtml(stepData.thought || '')}</div>`;
+                    
+                    if (stepData.tool_call) {
+                        const toolDiv = document.createElement('div');
+                        toolDiv.className = 'tool-call';
+                        toolDiv.innerHTML = `
+                            <div class="tool-name">
+                                <i data-lucide="terminal" size="14"></i>
+                                ${escapeHtml(stepData.tool_call.name)}
+                            </div>
+                            <div class="tool-args">${escapeHtml(JSON.stringify(stepData.tool_call.args, null, 2))}</div>
+                        `;
+                        step.appendChild(toolDiv);
+                    }
+                    
+                    if (stepData.tool_result) {
+                        const resultDiv = document.createElement('div');
+                        resultDiv.className = 'tool-result';
+                        const resultStr = JSON.stringify(stepData.tool_result.result, null, 2);
+                        resultDiv.textContent = resultStr.length > 500 ? resultStr.slice(0, 500) + '...' : resultStr;
+                        step.appendChild(resultDiv);
+                    }
+                    
+                    thinkingBody.appendChild(step);
+                });
+                
+                console.log('Inserting thinking div into contentDiv');
+                contentDiv.insertBefore(thinkingDiv, textContentDiv);
+                console.log('Thinking div inserted successfully');
+            } else {
+                console.log('Thinking process NOT added - conditions not met');
+            }
+            
+            // Restore sources button if available
+            console.log('Checking search results:', {
+                hasSearchResults: !!searchResults,
+                searchResultsValue: searchResults,
+                hasResults: !!(searchResults && searchResults.results),
+                resultsValue: searchResults ? searchResults.results : null,
+                resultsIsArray: !!(searchResults && searchResults.results && Array.isArray(searchResults.results)),
+                resultsLength: searchResults && searchResults.results ? searchResults.results.length : 0
+            });
+            
+            // Try to add sources button if we have citations OR search results
+            let restoredSearchResults = [];
+            
+            if (searchResults && searchResults.results && Array.isArray(searchResults.results) && searchResults.results.length > 0) {
+                console.log('Restoring sources from search_results:', searchResults);
+                // Extract ALL search results from stored data - don't filter
+                searchResults.results.forEach((searchResult, index) => {
+                    console.log(`Processing search result ${index}:`, searchResult);
+                    if (searchResult && searchResult.documents) {
+                        searchResult.documents.forEach(doc => {
+                            if (doc.matched_fields && doc.matched_fields.length > 0) {
+                                // Add ALL matched fields, not just the best per page
+                                doc.matched_fields.forEach(field => {
+                                    const pageNum = field.page_num || 1;
+                                    const pageNumInt = parseInt(pageNum);
+                                    const citationKey = `${doc.filename}, p.${pageNumInt}`;
+                                    
+                                    let bbox = null;
+                                    if (field.bbox) {
+                                        if (Array.isArray(field.bbox)) {
+                                            bbox = field.bbox;
+                                        } else if (typeof field.bbox === 'object') {
+                                            bbox = field.bbox[pageNum] || field.bbox[String(pageNumInt)];
+                                        }
+                                    }
+                                    
+                                    restoredSearchResults.push({
+                                        citationKey: citationKey,
+                                        document_id: doc.document_id,
+                                        filename: doc.filename,
+                                        page_num: pageNumInt,
+                                        bbox: bbox,
+                                        field_name: field.field_name,
+                                        value_text: field.value_text,
+                                        hybrid_score: field.hybrid_score
+                                    });
+                                });
+                            }
+                        });
+                    }
+                });
+                console.log('Restored search results count:', restoredSearchResults.length);
+                
+                console.log('Calling addSourcesButton with:', {
+                    citationsCount: Object.keys(citations || {}).length,
+                    searchResultsCount: restoredSearchResults.length,
+                    contentDivExists: !!contentDiv
+                });
+                addSourcesButton(contentDiv, citations || {}, restoredSearchResults);
+                console.log('addSourcesButton called');
+            } else if (citations && Object.keys(citations).length > 0) {
+                // If only citations available, show sources button with empty search results
+                console.log('Calling addSourcesButton with citations only, citations:', citations);
+                shouldAddSources = true;
+                addSourcesButton(contentDiv, citations, []);
+                console.log('addSourcesButton called (citations only)');
+            } else {
+                console.log('No sources to restore - citations:', !!citations, 'searchResults:', !!searchResults);
+            }
+            
+            // Debug: Check if elements were actually added BEFORE appending to container
+            const thinkingDivsBefore = contentDiv.querySelectorAll('.thinking-process');
+            const sourcesBtnsBefore = contentDiv.querySelectorAll('.sources-btn');
+            console.log('Elements check BEFORE appending to chatContainer:', {
+                thinkingDivsCount: thinkingDivsBefore.length,
+                sourcesBtnsCount: sourcesBtnsBefore.length,
+                contentDivChildren: contentDiv.children.length,
+                contentDivHTML: contentDiv.innerHTML.substring(0, 1000)
+            });
+            
+            chatContainer.appendChild(div);
+            console.log('=== Div appended to chatContainer ===');
+            
+            // Debug: Check if elements are visible AFTER appending
+            setTimeout(() => {
+                const thinkingDivsAfter = contentDiv.querySelectorAll('.thinking-process');
+                const sourcesBtnsAfter = contentDiv.querySelectorAll('.sources-btn');
+                console.log('=== Elements check AFTER appending to chatContainer ===', {
+                    thinkingDivsCount: thinkingDivsAfter.length,
+                    sourcesBtnsCount: sourcesBtnsAfter.length,
+                    thinkingDivsVisible: Array.from(thinkingDivsAfter).map(d => {
+                        const style = window.getComputedStyle(d);
+                        return {
+                            display: style.display,
+                            visibility: style.visibility,
+                            opacity: style.opacity,
+                            height: style.height
+                        };
+                    }),
+                    sourcesBtnsVisible: Array.from(sourcesBtnsAfter).map(b => {
+                        const style = window.getComputedStyle(b);
+                        return {
+                            display: style.display,
+                            visibility: style.visibility,
+                            opacity: style.opacity
+                        };
+                    })
+                });
+            }, 200);
+            
+            // Initialize Lucide icons after all content is added (including sources button)
+            lucide.createIcons({ root: div });
+            
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            console.log('=== appendMessageWithData completed successfully ===');
+            } catch (error) {
+                console.error('=== ERROR in appendMessageWithData ===', error);
+                console.error('Error stack:', error.stack);
+                throw error;
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         function createMessageElement(role, timestamp = null) {
@@ -1089,6 +1633,189 @@
             });
 
             lucide.createIcons({ root: textContentDiv });
+        }
+
+        function addSourcesButton(messageContentDiv, citationsMap, allSearchResults) {
+            console.log('addSourcesButton called with:', {
+                messageContentDiv: !!messageContentDiv,
+                citationsCount: citationsMap ? Object.keys(citationsMap).length : 0,
+                searchResultsCount: allSearchResults ? allSearchResults.length : 0
+            });
+            
+            // Check if we have any search results or citations
+            if ((!citationsMap || Object.keys(citationsMap).length === 0) && 
+                (!allSearchResults || allSearchResults.length === 0)) {
+                console.log('addSourcesButton: No sources to show, returning early');
+                return; // No sources to show
+            }
+
+            console.log('addSourcesButton: Creating sources button');
+            
+            // Create sources button
+            const sourcesBtn = document.createElement('button');
+            sourcesBtn.className = 'sources-btn';
+            sourcesBtn.innerHTML = `
+                <i data-lucide="book-open" size="16"></i>
+                Sources
+            `;
+            sourcesBtn.onclick = () => showSourcesModal(citationsMap, allSearchResults);
+            
+            console.log('addSourcesButton: Appending button to messageContentDiv');
+            messageContentDiv.appendChild(sourcesBtn);
+            console.log('addSourcesButton: Button appended, initializing icons');
+            lucide.createIcons({ root: sourcesBtn });
+            console.log('addSourcesButton: Icons initialized, button should be visible');
+        }
+
+        function showSourcesModal(citationsMap, allSearchResults) {
+            // Remove existing modal if any
+            const existingModal = document.getElementById('sourcesModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+
+            // Create modal
+            const modal = document.createElement('div');
+            modal.id = 'sourcesModal';
+            modal.className = 'sources-modal open';
+
+            const modalContent = document.createElement('div');
+            modalContent.className = 'sources-modal-content';
+
+            const header = document.createElement('div');
+            header.className = 'sources-modal-header';
+            header.innerHTML = `
+                <h3>Sources</h3>
+                <button class="close-sources-btn" onclick="document.getElementById('sourcesModal').remove()">
+                    <i data-lucide="x" size="20"></i>
+                </button>
+            `;
+
+            const body = document.createElement('div');
+            body.className = 'sources-modal-body';
+
+            // Create a set of used citation keys (exact match from citationsMap keys)
+            // citationsMap keys are the exact citation keys used in the response text
+            const usedCitationKeys = new Set(Object.keys(citationsMap || {}));
+
+            // Separate used and unused sources
+            const usedSources = [];
+            const unusedSources = [];
+
+            // Process all search results
+            const processedKeys = new Set();
+            allSearchResults.forEach(source => {
+                const citationKey = source.citationKey;
+                
+                // Skip if we already processed this citationKey
+                if (processedKeys.has(citationKey)) return;
+                processedKeys.add(citationKey);
+
+                // Check if this citationKey was actually used in the response
+                if (usedCitationKeys.has(citationKey)) {
+                    usedSources.push(source);
+                } else {
+                    unusedSources.push(source);
+                }
+            });
+
+            // Add used sources section
+            if (usedSources.length > 0) {
+                const usedSection = document.createElement('div');
+                usedSection.className = 'sources-section';
+                usedSection.innerHTML = `
+                    <div class="sources-section-title used">
+                        <i data-lucide="check-circle" size="18"></i>
+                        Used Sources (${usedSources.length})
+                    </div>
+                `;
+
+                usedSources.forEach(source => {
+                    const sourceItem = createSourceItem(source, true);
+                    usedSection.appendChild(sourceItem);
+                });
+
+                body.appendChild(usedSection);
+            }
+
+            // Add unused sources section
+            if (unusedSources.length > 0) {
+                const unusedSection = document.createElement('div');
+                unusedSection.className = 'sources-section';
+                unusedSection.innerHTML = `
+                    <div class="sources-section-title unused">
+                        <i data-lucide="circle" size="18"></i>
+                        Unused Sources (${unusedSources.length})
+                    </div>
+                `;
+
+                unusedSources.forEach(source => {
+                    const sourceItem = createSourceItem(source, false);
+                    unusedSection.appendChild(sourceItem);
+                });
+
+                body.appendChild(unusedSection);
+            }
+
+            // If no sources at all
+            if (usedSources.length === 0 && unusedSources.length === 0) {
+                body.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                        No sources found
+                    </div>
+                `;
+            }
+
+            modalContent.appendChild(header);
+            modalContent.appendChild(body);
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+
+            lucide.createIcons({ root: modal });
+
+            // Close on background click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+
+        function createSourceItem(source, isUsed) {
+            const item = document.createElement('div');
+            item.className = `source-item ${isUsed ? 'used' : 'unused'}`;
+            
+            const valuePreview = source.value_text 
+                ? (source.value_text.length > 150 ? source.value_text.substring(0, 150) + '...' : source.value_text)
+                : 'No value';
+
+            item.innerHTML = `
+                <div class="source-header">
+                    <div class="source-title">${escapeHtml(source.filename || 'Unknown')}</div>
+                    <span class="source-badge ${isUsed ? 'used' : 'unused'}">
+                        ${isUsed ? 'Used' : 'Not Used'}
+                    </span>
+                </div>
+                <div class="source-info">
+                    Page ${source.page_num || 1} • Field: ${escapeHtml(source.field_name || 'Unknown')}
+                    ${source.hybrid_score ? ` • Score: ${source.hybrid_score.toFixed(3)}` : ''}
+                </div>
+                <div class="source-preview">${escapeHtml(valuePreview)}</div>
+            `;
+
+            // Add click handler to open document
+            item.addEventListener('click', () => {
+                openDocument(source.document_id, source.page_num, source.bbox);
+                document.getElementById('sourcesModal')?.remove();
+            });
+
+            return item;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // PDF Viewer State
@@ -1200,99 +1927,26 @@
             document.getElementById('documentViewerSidebar').classList.remove('open');
         }
 
-        // Session Management
-        async function loadSessions() {
-            try {
-                const response = await fetch('/chat/sessions');
-                const sessions = await response.json();
-                renderChatList(sessions);
-            } catch (error) {
-                console.error('Error loading sessions:', error);
-            }
-        }
+        // Session Management - duplicate functions removed, using the ones defined above
 
-        function renderChatList(sessions) {
-            const chatList = document.getElementById('chatList');
-            if (!sessions || sessions.length === 0) {
-                chatList.innerHTML = '\u003cdiv style="color: var(--text-secondary); padding: 12px; text-align: center; font-size: 0.9rem;"\u003eNo chats yet\u003c/div\u003e';
-                return;
-            }
-
-            chatList.innerHTML = sessions.map(session => `
-                \u003cdiv class="chat-item ${session.id === currentSessionId ? 'active' : ''}" 
-                     onclick="loadSession('${session.id}')"\u003e
-                    \u003cspan\u003e${session.title || 'New Chat'}\u003c/span\u003e
-                    \u003cbutton onclick="deleteSession(event, '${session.id}')" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px;"\u003e
-                        \u003ci data-lucide="trash-2" size="14"\u003e\u003c/i\u003e
-                    \u003c/button\u003e
-                \u003c/div\u003e
-            `).join('');
-
-            lucide.createIcons({ root: chatList });
-        }
-
-        async function createNewSession() {
-            currentSessionId = 'new';
-            chatContainer.innerHTML = '';
-            // Add welcome message
-            const welcomeMsg = createMessageElement('ai');
-            chatContainer.appendChild(welcomeMsg);
-            const welcomeDiv = welcomeMsg.querySelector('.text-content');
-            welcomeDiv.innerHTML = '\u003cp\u003eHello! I\'m your advanced document assistant. I can search through your documents using a hybrid approach (vector + keywords) and reason about the results.\u003c/p\u003e\u003cp\u003eHow can I help you today?\u003c/p\u003e';
-            lucide.createIcons();
-        }
-
-        async function loadSession(sessionId) {
-            currentSessionId = sessionId;
-            chatContainer.innerHTML = '';
-
-            try {
-                const response = await fetch(`/chat/sessions/${sessionId}/messages`);
-                const messages = await response.json();
-
-                for (const msg of messages) {
-                    appendMessage(msg.role === 'user' ? 'user' : 'ai', msg.content, msg.citations);
-                }
-
-                // Mark session as active
-                document.querySelectorAll('.chat-item').forEach(item => {
-                    item.classList.remove('active');
-                });
-                document.querySelector(`.chat-item[onclick*="'${sessionId}'"]`)?.classList.add('active');
-            } catch (error) {
-                console.error('Error loading session:', error);
-            }
-        }
-
-        async function deleteSession(event, sessionId) {
+        async function deleteSessionDuplicate(event, sessionId) {
             event.stopPropagation();
             if (!confirm('Delete this chat?')) return;
 
             try {
                 await fetch(`/chat/sessions/${sessionId}`, { method: 'DELETE' });
                 if (currentSessionId === sessionId) {
-                    createNewSession();
+                    // Reset to new session
+                    currentSessionId = null;
+                    chatContainer.innerHTML = '';
                 }
                 loadSessions();
             } catch (error) {
                 console.error('Error deleting session:', error);
             }
         }
-
-        function appendMessage(role, text, citations = null) {
-            const messageDiv = createMessageElement(role);
-            chatContainer.appendChild(messageDiv);
-            const textContentDiv = messageDiv.querySelector('.text-content');
-            textContentDiv.innerHTML = marked.parse(text);
-
-            // Apply citations if available
-            if (citations && Object.keys(citations).length > 0) {
-                applyCitations(textContentDiv, citations);
-            }
-
-            lucide.createIcons({ root: messageDiv });
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
+        
+        // Duplicate appendMessage removed - using the one defined above
     </script>
 </body>
 

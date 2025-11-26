@@ -347,9 +347,20 @@
     }
 
     @keyframes dots {
-      0%, 20% { content: '.'; }
-      40% { content: '..'; }
-      60%, 100% { content: '...'; }
+
+      0%,
+      20% {
+        content: '.';
+      }
+
+      40% {
+        content: '..';
+      }
+
+      60%,
+      100% {
+        content: '...';
+      }
     }
 
     /* ПРАВАЯ ЧАСТЬ — поля */
@@ -466,64 +477,137 @@
       width: 100%;
     }
 
-    .field-value-table {
-      overflow-x: auto;
-      margin: 8px 0;
+    .field-value-markdown {
+      color: var(--text);
+      line-height: 1.6;
     }
 
-    .field-value-table table {
-      width: 100%;
+    .field-value-markdown table {
+      width: auto !important;
+      min-width: auto !important;
+      max-width: none !important;
       border-collapse: collapse;
       background: rgba(15, 23, 42, 0.5);
       border-radius: 8px;
-      overflow: hidden;
+      overflow: visible;
+      border: 1px solid var(--border);
+      margin: 12px 0;
+      font-size: 13px;
+      table-layout: auto !important;
+      display: table !important;
+    }
+    
+    /* Specific styles for tables in modal view mode */
+    #tableModal .field-value-markdown table {
+      width: auto !important;
+      min-width: auto !important;
+      max-width: none !important;
+      table-layout: auto !important;
+    }
+    
+    #tableModal .field-value-markdown th,
+    #tableModal .field-value-markdown td {
+      width: auto !important;
+      min-width: auto !important;
+      max-width: none !important;
+      white-space: nowrap !important;
+    }
+
+    .field-value-markdown th {
+      padding: 10px 12px;
+      text-align: left;
+      border: 1px solid var(--border);
+      border-bottom: 2px solid var(--border);
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      font-weight: 600;
+      white-space: nowrap !important;
+      width: auto !important;
+      min-width: auto !important;
+      max-width: none !important;
+    }
+
+    .field-value-markdown td {
+      padding: 8px 12px;
+      border: 1px solid rgba(56, 189, 248, 0.1);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap !important;
+      width: auto !important;
+      min-width: auto !important;
+      max-width: none !important;
+    }
+
+    .field-value-markdown tr:last-child td {
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .field-value-markdown tr:hover {
+      background: rgba(56, 189, 248, 0.05);
+    }
+    
+    .table-editor table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(15, 23, 42, 0.3);
+      font-size: 13px;
+    }
+    
+    .table-editor th input,
+    .table-editor td input {
+      transition: all 0.2s ease;
+    }
+    
+    .table-editor th input:focus,
+    .table-editor td input:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: rgba(56, 189, 248, 0.1);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+    }
+
+    .field-value-markdown p {
+      margin: 8px 0;
+    }
+
+    .field-value-markdown code {
+      background: rgba(56, 189, 248, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.9em;
+    }
+
+    .field-value-markdown pre {
+      background: rgba(15, 23, 42, 0.5);
+      padding: 12px;
+      border-radius: 8px;
+      overflow-x: auto;
       border: 1px solid var(--border);
     }
 
-    .field-value-table th {
-      padding: 8px 12px;
-      text-align: left;
-      border-bottom: 2px solid var(--border);
-      background: rgba(56, 189, 248, 0.1);
+    .field-value-markdown pre code {
+      background: transparent;
+      padding: 0;
+    }
+
+    .field-value-markdown ul,
+    .field-value-markdown ol {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+
+    .field-value-markdown li {
+      margin: 4px 0;
+    }
+
+    .field-value-markdown h1,
+    .field-value-markdown h2,
+    .field-value-markdown h3,
+    .field-value-markdown h4,
+    .field-value-markdown h5,
+    .field-value-markdown h6 {
+      margin: 16px 0 8px;
       color: var(--accent);
-      font-weight: 600;
-    }
-
-    .field-value-table td {
-      padding: 8px 12px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .field-value-table tr:last-child td {
-      border-bottom: none;
-    }
-
-    .field-value-table.editable-mode {
-      padding: 12px;
-      background: rgba(15, 23, 42, 0.3);
-      border-radius: 8px;
-      margin: 12px 0;
-    }
-
-    .field-value-table.editable-mode table {
-      border-spacing: 4px;
-    }
-
-    .field-value-table.editable-mode th,
-    .field-value-table.editable-mode td {
-      padding: 12px 16px;
-      min-width: 120px;
-    }
-
-    .field-value-table.editable-mode input {
-      min-height: 36px;
-      font-size: 13px;
-      padding: 8px 10px;
-    }
-
-    .field-value-table.editable-mode input:focus {
-      outline: none;
-      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3);
     }
 
     .panel-header {
@@ -588,16 +672,15 @@
       <div class="panel-header">
         <h2>Fields</h2>
         <button id="addFieldBtn">Add field</button>
-        <label class="checkbox-label small">
-          <input type="checkbox" id="viewAllFields" />
+        <label class="checkbox-label small" style="display: none;">
+          <input type="checkbox" id="viewAllFields" checked />
           View all pages
         </label>
       </div>
       <span class="small">
         • Click "Add field" to create a new field.<br />
         • Click on a field row to select/edit its region.<br />
-        • Fields without regions are always visible.<br />
-        • When "View all pages" is unchecked, only fields for current page are shown.
+        • All fields are shown on all pages, but values are only displayed for the current page.
       </span>
       <table>
         <thead>
@@ -614,6 +697,8 @@
 
   <!-- pdf.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <!-- marked.js for markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
     // pdf.js worker
     window.pdfjsLib = window["pdfjsLib"];
@@ -737,21 +822,76 @@
         const response = await fetch(`/documents/${documentId}/fields`);
         const fieldsData = await response.json();
 
-        fields = fieldsData.map(f => ({
-          id: f.id,
-          field_id: f.field_id,
-          custom_field_name: f.custom_field_name,
-          name: f.field_name,
-          value: f.value || null, // Keep null for empty values
-          region: f.bbox && f.page_number ? {
-            page: f.page_number,
-            x1: f.bbox[0],
-            y1: f.bbox[1],
-            x2: f.bbox[2],
-            y2: f.bbox[3]
-          } : null
-        }));
+        // Group fields by name/identifier to handle multiple occurrences
+        // One field can appear on multiple pages - group them together
+        const fieldsMap = new Map();
+        
+        fieldsData.forEach(f => {
+          // Create unique key: use field_id if exists, otherwise use custom_field_name
+          // If both are null, use field_name as fallback
+          const key = f.field_id 
+            ? `field_${f.field_id}` 
+            : (f.custom_field_name 
+              ? `custom_${f.custom_field_name}` 
+              : `name_${f.field_name}`);
+          const name = f.field_name;
+          
+          if (!fieldsMap.has(key)) {
+            fieldsMap.set(key, {
+              id: f.id, // Keep first id for reference
+              field_id: f.field_id,
+              custom_field_name: f.custom_field_name,
+              name: name,
+              occurrences: [] // Store all occurrences (one per page)
+            });
+          }
+          
+          // Add this occurrence (one per page)
+          // Only add if it has valid data (value or region)
+          if (f.value || (f.bbox && f.page_number)) {
+            fieldsMap.get(key).occurrences.push({
+              id: f.id,
+              value: f.value || null,
+              region: f.bbox && f.page_number ? {
+                page: f.page_number,
+                x1: f.bbox[0],
+                y1: f.bbox[1],
+                x2: f.bbox[2],
+                y2: f.bbox[3]
+              } : null,
+              page_number: f.page_number
+            });
+          }
+        });
+        
+        // Convert to flat array - one field entry per field name
+        // Each field has multiple occurrences stored in _occurrences
+        // Show ALL fields even if they have no occurrences yet
+        const newFields = [];
+        fieldsMap.forEach((fieldGroup, key) => {
+          // Add field even if it has no occurrences (for UI consistency)
+          newFields.push({
+            id: fieldGroup.id,
+            field_id: fieldGroup.field_id,
+            custom_field_name: fieldGroup.custom_field_name,
+            name: fieldGroup.name,
+            value: null, // Will be set based on current page
+            region: null, // Will be set based on current page
+            _occurrences: fieldGroup.occurrences // Store all occurrences (can be empty)
+          });
+          if (fieldGroup.occurrences.length > 0) {
+            console.log(`[loadFields] Added field '${fieldGroup.name}' with ${fieldGroup.occurrences.length} occurrences on pages:`, 
+              fieldGroup.occurrences.map(o => o.page_number).filter(p => p));
+          } else {
+            console.log(`[loadFields] Added field '${fieldGroup.name}' with no occurrences yet`);
+          }
+        });
 
+        // Update fields array atomically to avoid race conditions
+        fields = newFields;
+        console.log(`[loadFields] Total fields loaded: ${fields.length}`);
+        
+        // Always render fields after loading
         renderFields();
       } catch (error) {
         console.error('Error loading fields:', error);
@@ -807,6 +947,8 @@
       pdfViewerWrapper.classList.remove("global-dim");
       pdfViewerWrapper.innerHTML = "";
       currentPageNum = pageNum;
+      
+      console.log(`[renderPage] Rendering page ${pageNum}, fields count: ${fields.length}`);
 
       const page = await pdfDoc.getPage(pageNum);
       const viewport = page.getViewport({ scale });
@@ -831,8 +973,19 @@
 
       // Render all boxes for fields on this page
       fields.forEach((field, idx) => {
-        if (field.region && field.region.page === pageNum) {
-          const r = field.region;
+        // Check if field has occurrence on this page
+        let regionToRender = null;
+        if (field._occurrences && field._occurrences.length > 0) {
+          const occ = field._occurrences.find(o => o.region && o.region.page === pageNum);
+          if (occ) {
+            regionToRender = occ.region;
+          }
+        } else if (field.region && field.region.page === pageNum) {
+          regionToRender = field.region;
+        }
+        
+        if (regionToRender) {
+          const r = regionToRender;
           const left = r.x1 * canvas.width;
           const top = r.y1 * canvas.height;
           const width = (r.x2 - r.x1) * canvas.width;
@@ -844,6 +997,13 @@
 
       updatePageInfo();
       activeFieldIndex = null;
+      
+      // Ensure fields are loaded before rendering
+      if (fields.length === 0) {
+        console.warn(`[renderPage] Fields array is empty on page ${pageNum}, reloading...`);
+        await loadFields();
+      }
+      
       renderFields();
     }
 
@@ -903,11 +1063,25 @@
             <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">Identifier: <span id="fieldIdentifierPreview" style="color: var(--accent);"></span></div>
           </div>
           <div>
-            <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary);">Description</label>
-            <textarea id="fieldDescriptionInput" placeholder="Describe what to extract" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 14px; min-height: 60px; resize: vertical;"></textarea>
+            <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary);">Extraction By</label>
+            <select id="extractionByInput" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 14px;">
+              <option value="DOCUMENT_AI">Document AI (Custom Extractor)</option>
+              <option value="GEMINI_AI" selected>Gemini AI (Generative)</option>
+            </select>
           </div>
           <div>
-            <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary);">Occurrence</label>
+            <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary);">Field Type</label>
+            <select id="fieldTypeInput" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 14px;">
+              <option value="TEXT">Text</option>
+              <option value="CLAUSE">Clause</option>
+              <option value="DATE">Date</option>
+              <option value="NUMBER">Number</option>
+              <option value="BOOL">Boolean</option>
+              <option value="TABLE">Table</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary);">Occurrence (DocAI only)</label>
             <select id="fieldOccurrenceInput" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 14px;">
               <option value="OPTIONAL_ONCE">Optional Once</option>
               <option value="REQUIRED_ONCE">Required Once</option>
@@ -915,9 +1089,9 @@
               <option value="REQUIRED_MULTIPLE">Required Multiple</option>
             </select>
           </div>
-          <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
-            <input type="checkbox" id="useAiCheckbox" style="cursor: pointer; width: 16px; height: 16px;">
-            <label for="useAiCheckbox" style="font-size: 13px; color: var(--text); cursor: pointer; user-select: none;">Use AI (Custom Extractor)</label>
+          <div>
+            <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary);">Prompt / Description</label>
+            <textarea id="fieldDescriptionInput" placeholder="Describe what to extract (or prompt for Gemini)" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 14px; min-height: 80px; resize: vertical;"></textarea>
           </div>
           <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
             <button id="cancelAddFieldBtn" style="padding: 8px 16px; background: transparent; border: 1px solid var(--border); color: var(--text);">Cancel</button>
@@ -941,7 +1115,8 @@
     const fieldIdentifierPreview = document.getElementById("fieldIdentifierPreview");
     const fieldDescriptionInput = document.getElementById("fieldDescriptionInput");
     const fieldOccurrenceInput = document.getElementById("fieldOccurrenceInput");
-    const useAiCheckbox = document.getElementById("useAiCheckbox");
+    const extractionByInput = document.getElementById("extractionByInput");
+    const fieldTypeInput = document.getElementById("fieldTypeInput");
     const cancelAddFieldBtn = document.getElementById("cancelAddFieldBtn");
     const confirmAddFieldBtn = document.getElementById("confirmAddFieldBtn");
 
@@ -955,13 +1130,15 @@
       fieldNameInput.value = "";
       fieldDescriptionInput.value = "";
       fieldOccurrenceInput.value = "OPTIONAL_ONCE";
-      useAiCheckbox.checked = false;
+      extractionByInput.value = "GEMINI_AI";
+      fieldTypeInput.value = "TEXT";
     });
 
     addFieldBtn.addEventListener("click", () => {
       addFieldModal.style.display = "flex";
       fieldNameInput.focus();
       fieldIdentifierPreview.textContent = "";
+      extractionByInput.value = "GEMINI_AI"; // Set default to Gemini AI
     });
 
     confirmAddFieldBtn.addEventListener("click", async () => {
@@ -972,107 +1149,114 @@
       }
 
       const identifier = nameToIdentifier(name);
-      const description = fieldDescriptionInput.value.trim() || `Extract ${name} from document`;
+      const description = fieldDescriptionInput.value.trim();
       const occurrence = fieldOccurrenceInput.value;
-      const useAi = useAiCheckbox.checked;
+      const extractionBy = extractionByInput.value;
+      const type = fieldTypeInput.value;
 
       // Close modal
       addFieldModal.style.display = "none";
 
-      // Add field
+      // Add field temporarily (will be replaced after extraction)
       const fieldIndex = fields.length;
       fields.push({
         name: name,
         custom_field_name: identifier,
         value: null, // Empty initially
-        region: null
+        region: null,
+        _processing: true, // Always processing initially for AI
+        _occurrences: [] // Will be populated after extraction
       });
       renderFields();
 
-      if (useAi) {
-        // Use AI extraction
-        fields[fieldIndex]._processing = true;
-        fields[fieldIndex].value = "processing";
-        renderFields();
+      // Use AI extraction (always true now as we use either DocAI or Gemini)
+      fields[fieldIndex].value = "processing...";
+      renderFields();
 
-        try {
-          // Call extractor
-          const formData = new FormData();
-          formData.append('custom_field_name', identifier);
-          formData.append('description', description);
-          formData.append('occurrence', occurrence);
+      try {
+        // Call extractor
+        const formData = new FormData();
+        formData.append('custom_field_name', identifier);
+        formData.append('description', description || `Extract ${name} from document`);
+        formData.append('occurrence', occurrence);
+        // For Gemini AI, don't send page_number - it searches all pages
+        // For Document AI, send current page for filtering
+        if (extractionBy !== 'GEMINI_AI') {
           formData.append('page_number', currentPageNum);
-
-          const response = await fetch(`/documents/${documentId}/extract-field`, {
-            method: 'POST',
-            body: formData
-          });
-
-          const result = await response.json();
-
-          // Update field with result
-          const field = fields[fieldIndex];
-          field._processing = false;
-
-          if (result.found && result.value) {
-            field.value = result.value;
-            field.confidence = result.confidence || 1.0;
-
-            // Set region if bbox exists
-            if (result.bbox && result.page_number) {
-              const bbox = result.bbox;
-              field.region = {
-                page: result.page_number,
-                x1: bbox[0] || bbox.x1 || 0,
-                y1: bbox[1] || bbox.y1 || 0,
-                x2: bbox[2] || bbox.x2 || 1,
-                y2: bbox[3] || bbox.y2 || 1
-              };
-            }
-          } else {
-            field.value = null; // Will show as "----"
-          }
-
-          renderFields();
-          await renderPage(currentPageNum); // Re-render to show bbox if exists
-        } catch (error) {
-          console.error('Error extracting field:', error);
-          const field = fields[fieldIndex];
-          field._processing = false;
-          field.value = null; // Will show as "----"
-          renderFields();
         }
-      } else {
-        // Manual mode - field is ready for manual selection
-        // User can click on the field to start selection
+        formData.append('extraction_by', extractionBy);
+        formData.append('type', type);
+        formData.append('prompt', description); // Use description as prompt
+
+        const response = await fetch(`/documents/${documentId}/extract-field`, {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+
+        // Update field with result
+        const field = fields[fieldIndex];
+        field._processing = false;
+
+        if (result.found && result.value) {
+          // Reload all fields from server to get all occurrences
+          // This ensures we have all pages' values
+          await loadFields();
+          // Don't navigate - stay on current page
+        } else {
+          field.value = null; // Will show as "----"
+        }
+
+        renderFields();
+      } catch (error) {
+        console.error('Error extracting field:', error);
+        const field = fields[fieldIndex];
+        field._processing = false;
+        field.value = null; // Will show as "----"
         renderFields();
       }
-
-      // Clear form
-      fieldNameInput.value = "";
-      fieldDescriptionInput.value = "";
-      fieldOccurrenceInput.value = "OPTIONAL_ONCE";
-      useAiCheckbox.checked = false;
     });
 
     saveBtn.addEventListener("click", async () => {
       try {
-        const fieldValues = fields
-          .filter(f => {
-            // Skip processing fields and empty/null values
-            if (f._processing) return false;
+        // Collect all occurrences from all fields
+        const fieldValues = [];
+        fields.forEach(f => {
+          // Skip processing fields
+          if (f._processing) return;
+          
+          if (f._occurrences && f._occurrences.length > 0) {
+            // Save all occurrences
+            f._occurrences.forEach(occ => {
+              if (occ.value && occ.value !== "----" && occ.value !== null && occ.value.trim() && occ.region) {
+                fieldValues.push({
+                  id: occ.id || null,
+                  field_id: f.field_id || null,
+                  custom_field_name: f.custom_field_name || (f.field_id ? null : f.name),
+                  value: occ.value,
+                  confidence: 1.0,
+                  bbox: occ.region ? [occ.region.x1, occ.region.y1, occ.region.x2, occ.region.y2] : null,
+                  page_number: occ.region ? occ.region.page : null
+                });
+              }
+            });
+          } else {
+            // Backward compatibility - single occurrence
             const val = f.value;
-            return val && val !== "----" && val !== null && val.trim() && f.region;
-          })
-          .map(f => ({
-            id: f.id || null, // Include id if exists - for updating existing records
-            field_id: f.field_id || null,
-            custom_field_name: f.custom_field_name || (f.field_id ? null : f.name),
-            value: f.value,
-            confidence: 1.0,
-            bbox: f.region ? [f.region.x1, f.region.y1, f.region.x2, f.region.y2] : null,
-            page_number: f.region ? f.region.page : null
-          }));
+            if (val && val !== "----" && val !== null && val.trim() && f.region) {
+              fieldValues.push({
+                id: f.id || null,
+                field_id: f.field_id || null,
+                custom_field_name: f.custom_field_name || (f.field_id ? null : f.name),
+                value: f.value,
+                confidence: 1.0,
+                bbox: f.region ? [f.region.x1, f.region.y1, f.region.x2, f.region.y2] : null,
+                page_number: f.region ? f.region.page : null
+              });
+            }
+          }
+        });
 
         const formData = new FormData();
         formData.append('field_values', JSON.stringify(fieldValues));
@@ -1105,222 +1289,33 @@
       return div.innerHTML;
     }
 
-    // Convert markdown table to editable HTML table
-    function convertMarkdownTableToEditableHTML(markdown, fieldIndex) {
-      const lines = markdown.trim().split('\n');
-      if (lines.length === 0) {
-        return '<div class="field-value-text">Empty table</div>';
-      }
-
-      const tableData = [];
-      let headerRow = null;
-      let headerProcessed = false;
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-
-        // Skip empty lines
-        if (!line) {
-          continue;
-        }
-
-        // Skip code block markers
-        if (line.startsWith('```')) {
-          continue;
-        }
-
-        // Check if this is a separator line
-        const isSeparator = line.match(/^\|[\s\-:|]+\|$/);
-
-        if (isSeparator) {
-          if (!headerProcessed && i > 0) {
-            const prevLine = lines[i - 1].trim();
-            if (prevLine.startsWith('|') && prevLine.endsWith('|')) {
-              headerRow = prevLine.slice(1, -1).split('|').map(cell => cell.trim());
-              headerProcessed = true;
-            }
-          }
-          continue;
-        }
-
-        // Parse table row
-        if (line.startsWith('|') && line.endsWith('|')) {
-          const cells = line.slice(1, -1).split('|').map(cell => cell.trim());
-
-          if (!headerProcessed) {
-            headerRow = cells;
-            headerProcessed = true;
-          } else {
-            tableData.push(cells);
-          }
-        }
-      }
-
-      if (!headerRow) {
-        return '<div class="field-value-text">Invalid table</div>';
-      }
-
-      // Build editable HTML table with more spacious design
-      let html = '<div class="field-value-table editable-mode" style="overflow-x: auto; margin: 12px 0; padding: 8px; background: rgba(15, 23, 42, 0.3); border-radius: 8px;"><table class="editable-table" style="width: 100%; border-collapse: separate; border-spacing: 4px; background: rgba(15, 23, 42, 0.5); border-radius: 8px; overflow: hidden; border: 1px solid var(--border);">';
-
-      // Header row
-      html += '<thead><tr>';
-      headerRow.forEach((cell, colIdx) => {
-        html += `<th style="padding: 12px 16px; text-align: left; border-bottom: 2px solid var(--border); background: rgba(56, 189, 248, 0.15); color: var(--accent); font-weight: 600; min-width: 120px;">`;
-        html += `<input type="text" value="${escapeHtml(cell)}" data-row="-1" data-col="${colIdx}" style="width: 100%; min-width: 100px; background: rgba(56, 189, 248, 0.1); border: 1px solid var(--accent); border-radius: 4px; color: var(--text); font-weight: 600; padding: 8px 10px; font-size: 13px; box-sizing: border-box;" readonly>`;
-        html += '</th>';
+    // Configure marked.js for markdown rendering
+    if (typeof marked !== 'undefined') {
+      marked.setOptions({
+        breaks: true,
+        gfm: true,
+        tables: true
       });
-      html += '</tr></thead><tbody>';
-
-      // Data rows
-      tableData.forEach((row, rowIdx) => {
-        html += '<tr>';
-        row.forEach((cell, colIdx) => {
-          html += `<td style="padding: 12px 16px; border-bottom: 1px solid var(--border); min-width: 120px;">`;
-          html += `<input type="text" value="${escapeHtml(cell)}" data-row="${rowIdx}" data-col="${colIdx}" style="width: 100%; min-width: 100px; background: rgba(56, 189, 248, 0.05); border: 1px solid var(--border); border-radius: 4px; color: var(--text); padding: 8px 10px; font-size: 13px; box-sizing: border-box;" readonly>`;
-          html += '</td>';
-        });
-        html += '</tr>';
-      });
-
-      html += '</tbody></table></div>';
-      return html;
-    }
-
-    // Save table changes and convert back to markdown
-    function saveTableChanges(fieldIndex) {
-      const container = document.querySelector(`.field-value-container[data-field-index="${fieldIndex}"]`);
-      if (!container) return;
-
-      const table = container.querySelector('table.editable-table');
-      if (!table) return;
-
-      const headerRow = [];
-      const headerInputs = table.querySelectorAll('thead input');
-      headerInputs.forEach(input => {
-        headerRow.push(input.value.trim());
-      });
-
-      const rows = [];
-      const rowInputs = table.querySelectorAll('tbody tr');
-      rowInputs.forEach(row => {
-        const cells = [];
-        const cellInputs = row.querySelectorAll('td input');
-        cellInputs.forEach(input => {
-          cells.push(input.value.trim());
-        });
-        if (cells.length > 0) {
-          rows.push(cells);
-        }
-      });
-
-      // Convert back to markdown
-      let markdown = '| ' + headerRow.join(' | ') + ' |\n';
-      markdown += '| ' + headerRow.map(() => '---').join(' | ') + ' |\n';
-      rows.forEach(row => {
-        markdown += '| ' + row.join(' | ') + ' |\n';
-      });
-
-      fields[fieldIndex].value = markdown.trim();
-    }
-
-    // Convert markdown table to HTML (read-only view)
-    function convertMarkdownTableToHTML(markdown) {
-      const lines = markdown.trim().split('\n');
-      if (lines.length === 0) {
-        return '<div class="field-value-text">Empty table</div>';
-      }
-
-      let html = '<div class="field-value-table" style="overflow-x: auto; margin: 8px 0;"><table style="width: 100%; border-collapse: collapse; background: rgba(15, 23, 42, 0.5); border-radius: 8px; overflow: hidden; border: 1px solid var(--border);">';
-      let headerProcessed = false;
-      let tbodyOpened = false;
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-
-        // Skip empty lines
-        if (!line) {
-          continue;
-        }
-
-        // Skip code block markers
-        if (line.startsWith('```')) {
-          continue;
-        }
-
-        // Check if this is a separator line (|---|, |-|-|-|, etc.)
-        const isSeparator = line.match(/^\|[\s\-:|]+\|$/);
-
-        if (isSeparator) {
-          // If we haven't processed header yet, the previous line was header
-          if (!headerProcessed && i > 0) {
-            const prevLine = lines[i - 1].trim();
-            if (prevLine.startsWith('|') && prevLine.endsWith('|')) {
-              const cells = prevLine.slice(1, -1).split('|').map(cell => cell.trim());
-              html += '<thead><tr>';
-              cells.forEach(cell => {
-                html += `<th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid var(--border); background: rgba(56, 189, 248, 0.1); color: var(--accent); font-weight: 600;">${escapeHtml(cell)}</th>`;
-              });
-              html += '</tr></thead><tbody>';
-              tbodyOpened = true;
-              headerProcessed = true;
-            }
-          }
-          continue;
-        }
-
-        // Parse table row
-        if (line.startsWith('|') && line.endsWith('|')) {
-          const cells = line.slice(1, -1).split('|').map(cell => cell.trim());
-
-          // If header not processed and this is first data row
-          if (!headerProcessed) {
-            // First row is header
-            html += '<thead><tr>';
-            cells.forEach(cell => {
-              html += `<th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid var(--border); background: rgba(56, 189, 248, 0.1); color: var(--accent); font-weight: 600;">${escapeHtml(cell)}</th>`;
-            });
-            html += '</tr></thead><tbody>';
-            tbodyOpened = true;
-            headerProcessed = true;
-          } else {
-            if (!tbodyOpened) {
-              html += '<tbody>';
-              tbodyOpened = true;
-            }
-            html += '<tr>';
-            cells.forEach(cell => {
-              html += `<td style="padding: 8px 12px; border-bottom: 1px solid var(--border);">${escapeHtml(cell)}</td>`;
-            });
-            html += '</tr>';
-          }
-        }
-      }
-
-      if (!tbodyOpened) {
-        html += '<tbody>';
-      }
-      html += '</tbody></table></div>';
-      return html;
     }
 
     function renderFields() {
       fieldsTableBody.innerHTML = "";
-      const viewAll = viewAllFieldsCheckbox.checked;
-
-      const visibleIndices = fields
-        .map((_, idx) => idx)
-        .filter((idx) => {
-          const f = fields[idx];
-          if (!viewAll) {
-            if (!f.region) return true;
-            return f.region.page === currentPageNum;
-          }
-          return true;
+      
+      // Show ALL fields for the document ALWAYS (never filter them out)
+      // Value will be shown only if there's an occurrence on current page
+      console.log(`[renderFields] Rendering ${fields.length} fields on page ${currentPageNum}`);
+      
+      if (fields.length === 0) {
+        console.warn(`[renderFields] WARNING: fields array is empty! This should not happen.`);
+        // Try to reload fields if empty
+        loadFields().then(() => {
+          console.log(`[renderFields] Reloaded fields, now have ${fields.length} fields`);
+          renderFields(); // Re-render after reload
         });
+        return;
+      }
 
-      visibleIndices.forEach((index) => {
-        const field = fields[index];
+      fields.forEach((field, index) => {
         const tr = document.createElement("tr");
         tr.className = "field-row" + (index === activeFieldIndex ? " active" : "");
         tr.dataset.fieldIndex = index;
@@ -1329,10 +1324,40 @@
         const tdValue = document.createElement("td");
 
         tdName.textContent = field.name;
+        
+        // Find occurrence for current page (if field has multiple occurrences)
+        let fieldValueToShow = null;
+        let fieldRegionToShow = null;
+        let shouldShowValue = false;
+        
+        let isProcessingOccurrence = false;
+        
+        if (field._occurrences && field._occurrences.length > 0) {
+          // Find occurrence for current page
+          const currentPageOccurrence = field._occurrences.find(occ => 
+            occ.region && occ.region.page === currentPageNum
+          );
+          
+          if (currentPageOccurrence) {
+            fieldValueToShow = currentPageOccurrence.value;
+            fieldRegionToShow = currentPageOccurrence.region;
+            isProcessingOccurrence = currentPageOccurrence._processing === true;
+            shouldShowValue = true;
+          } else {
+            // Should not happen as we filtered above, but just in case
+            shouldShowValue = false;
+          }
+        } else {
+          // No occurrences stored - use field.value and field.region (backward compatibility)
+          fieldValueToShow = field.value;
+          fieldRegionToShow = field.region;
+          isProcessingOccurrence = field._processing === true;
+          shouldShowValue = !field.region || field.region.page === currentPageNum;
+        }
 
         // Add hover effects to link field row with selection box
         tr.addEventListener("mouseenter", () => {
-          if (field.region) {
+          if (fieldRegionToShow) {
             tr.classList.add("hover-highlight");
             // Highlight corresponding box on document
             const boxes = document.querySelectorAll(`.selection-box[data-field-index="${index}"]`);
@@ -1351,128 +1376,639 @@
           });
         });
 
-        // Check if value is a markdown table
-        const fieldValue = field.value || "";
-        const isMarkdownTable = fieldValue.trim().startsWith('|') &&
-          (fieldValue.includes('---') || fieldValue.includes('|-')) &&
-          fieldValue.split('\n').filter(l => l.trim().startsWith('|')).length >= 2;
-
-        if (isMarkdownTable && !field._processing) {
-          // Display as editable HTML table
-          const tableContainer = document.createElement("div");
-          tableContainer.className = "field-value-container";
-          tableContainer.setAttribute("data-field-index", index);
-          tableContainer.style.position = "relative";
-
+        // Display field value (use fieldValueToShow if multiple occurrences)
+        // Value is shown ONLY if there's an occurrence on current page
+        const fieldValue = shouldShowValue ? (fieldValueToShow || "") : "";
+        
+        if (!shouldShowValue) {
+          // Field exists but no value on current page - show placeholder
+          const placeholder = document.createElement("div");
+          placeholder.textContent = "----";
+          placeholder.style.color = "var(--subtle)";
+          placeholder.style.opacity = "0.5";
+          placeholder.style.padding = "8px";
+          placeholder.title = field._occurrences && field._occurrences.length > 0 
+            ? `Field exists on pages: ${field._occurrences.map(o => o.page_number).filter(p => p).join(", ")}`
+            : "No value on this page";
+          tdValue.appendChild(placeholder);
+        } else if (isProcessingOccurrence) {
+          // Show processing state for this specific occurrence
+          const processing = document.createElement("div");
+          processing.textContent = "processing...";
+          processing.style.color = "var(--subtle)";
+          processing.style.opacity = "0.6";
+          processing.style.fontStyle = "italic";
+          processing.style.padding = "8px";
+          tdValue.appendChild(processing);
+        } else if (!fieldValueToShow || fieldValueToShow === null || fieldValueToShow === "processing...") {
+          // Show empty state
+          const empty = document.createElement("div");
+          empty.textContent = "----";
+          empty.style.color = "var(--subtle)";
+          empty.style.padding = "8px";
+          tdValue.appendChild(empty);
+        } else {
+          // Display markdown content
+          const valueContainer = document.createElement("div");
+          valueContainer.className = "field-value-container";
+          valueContainer.setAttribute("data-field-index", index);
+          valueContainer.style.position = "relative";
+          
           // Store editing state
           let isEditing = false;
-
-          function renderTable() {
-            const tableHtml = isEditing
-              ? convertMarkdownTableToEditableHTML(fieldValue, index)
-              : convertMarkdownTableToHTML(fieldValue);
-            tableContainer.innerHTML = tableHtml;
-
-            // Add edit/view toggle button
-            const toggleBtn = document.createElement("button");
-            toggleBtn.textContent = isEditing ? "Save" : "Edit";
-            toggleBtn.style.cssText = "position: absolute; top: 8px; right: 8px; padding: 4px 8px; font-size: 11px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; z-index: 10;";
-            toggleBtn.onclick = () => {
-              if (isEditing) {
-                // Save changes and switch to view mode
-                saveTableChanges(index);
-                isEditing = false;
-                fieldValue = fields[index].value;
-                renderTable();
+          
+          // Helper function to check if value is a markdown table
+          function isMarkdownTable(text) {
+            if (!text || typeof text !== 'string') return false;
+            const lines = text.trim().split('\n');
+            if (lines.length < 2) return false;
+            // Check if first line starts with |
+            if (!lines[0].trim().startsWith('|')) return false;
+            // Check if there's a separator line (|---| or similar)
+            const hasSeparator = lines.some(line => 
+              line.trim().match(/^\|[\s\-:|]+\|$/)
+            );
+            // Check if multiple lines start with |
+            const tableRows = lines.filter(line => line.trim().startsWith('|')).length;
+            return hasSeparator || tableRows >= 2;
+          }
+          
+          // Helper function to parse markdown table to array
+          function parseMarkdownTable(markdown) {
+            const lines = markdown.trim().split('\n').filter(l => l.trim());
+            const rows = [];
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (trimmed.match(/^\|[\s\-:|]+\|$/)) continue; // Skip separator
+              if (!trimmed.startsWith('|')) continue;
+              const cells = trimmed.slice(1, -1).split('|').map(c => c.trim());
+              rows.push(cells);
+            }
+            return rows;
+          }
+          
+          // Helper function to convert table array to markdown
+          function tableToMarkdown(table) {
+            if (!table || table.length === 0) return '';
+            const rows = table.map(row => '| ' + row.join(' | ') + ' |');
+            if (rows.length > 0) {
+              const colCount = table[0].length;
+              const separator = '| ' + Array(colCount).fill('---').join(' | ') + ' |';
+              return rows[0] + '\n' + separator + '\n' + rows.slice(1).join('\n');
+            }
+            return rows.join('\n');
+          }
+          
+          function renderValue() {
+            const valueToRender = fieldValueToShow || field.value || "";
+            const isTable = isMarkdownTable(valueToRender);
+            
+            if (isEditing) {
+              if (isTable) {
+                // Render editable table
+                const tableData = parseMarkdownTable(valueToRender);
+                const tableEditor = document.createElement("div");
+                tableEditor.className = "table-editor";
+                tableEditor.style.cssText = "overflow-x: auto; max-width: 100%; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 8px; border: 1px solid var(--border);";
+                
+                // Prevent table editor events from triggering document selection
+                tableEditor.addEventListener("mousedown", (e) => e.stopPropagation());
+                tableEditor.addEventListener("mouseup", (e) => e.stopPropagation());
+                tableEditor.addEventListener("mousemove", (e) => e.stopPropagation());
+                tableEditor.addEventListener("click", (e) => e.stopPropagation());
+                
+                const table = document.createElement("table");
+                table.style.cssText = "width: 100%; border-collapse: collapse; background: rgba(15, 23, 42, 0.3);";
+                
+                // Render header row
+                if (tableData.length > 0) {
+                  const headerRow = document.createElement("tr");
+                  tableData[0].forEach((cell, idx) => {
+                    const th = document.createElement("th");
+                    th.style.cssText = "padding: 8px; border: 1px solid var(--border); background: rgba(56, 189, 248, 0.15); text-align: left; min-width: 80px;";
+                    const input = document.createElement("input");
+                    input.type = "text";
+                    input.value = cell || "";
+                    input.style.cssText = "width: 100%; padding: 4px 8px; background: transparent; border: none; color: var(--text); font-weight: 600; font-size: 13px; box-sizing: border-box;";
+                    input.addEventListener("mousedown", (e) => e.stopPropagation());
+                    input.addEventListener("click", (e) => e.stopPropagation());
+                    input.oninput = () => {
+                      tableData[0][idx] = input.value;
+                      updateFieldValue();
+                    };
+                    th.appendChild(input);
+                    headerRow.appendChild(th);
+                  });
+                  table.appendChild(headerRow);
+                }
+                
+                // Render body rows
+                for (let i = 1; i < tableData.length; i++) {
+                  const tr = document.createElement("tr");
+                  // Ensure row has same number of cells as header
+                  const expectedCols = tableData[0] ? tableData[0].length : 0;
+                  const rowCells = tableData[i] || [];
+                  for (let idx = 0; idx < Math.max(expectedCols, rowCells.length); idx++) {
+                    const td = document.createElement("td");
+                    td.style.cssText = "padding: 6px; border: 1px solid var(--border); min-width: 80px;";
+                    const input = document.createElement("input");
+                    input.type = "text";
+                    input.value = rowCells[idx] || "";
+                    input.style.cssText = "width: 100%; padding: 4px 8px; background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 4px; color: var(--text); font-size: 13px; box-sizing: border-box;";
+                    input.addEventListener("mousedown", (e) => e.stopPropagation());
+                    input.addEventListener("click", (e) => e.stopPropagation());
+                    input.oninput = () => {
+                      if (!tableData[i]) tableData[i] = [];
+                      tableData[i][idx] = input.value;
+                      updateFieldValue();
+                    };
+                    td.appendChild(input);
+                    tr.appendChild(td);
+                  }
+                  table.appendChild(tr);
+                }
+                
+                tableEditor.appendChild(table);
+                
+                // Function to update field value from table data
+                function updateFieldValue() {
+                  const markdown = tableToMarkdown(tableData);
+                  if (field._occurrences) {
+                    const occ = field._occurrences.find(o => o.region && o.region.page === currentPageNum);
+                    if (occ) {
+                      occ.value = markdown;
+                    }
+                  } else {
+                    field.value = markdown;
+                  }
+                }
+                
+                valueContainer.innerHTML = "";
+                valueContainer.appendChild(tableEditor);
               } else {
-                // Switch to edit mode
-                isEditing = true;
-                renderTable();
+                // Show textarea for non-table editing
+                const textarea = document.createElement("textarea");
+                textarea.className = "field-value-input";
+                textarea.value = valueToRender;
+                textarea.style.width = "100%";
+                textarea.style.minHeight = "80px";
+                textarea.style.maxHeight = "400px";
+                
+                // Prevent textarea events from triggering document selection
+                textarea.addEventListener("mousedown", (e) => e.stopPropagation());
+                textarea.addEventListener("mouseup", (e) => e.stopPropagation());
+                textarea.addEventListener("mousemove", (e) => e.stopPropagation());
+                textarea.addEventListener("click", (e) => e.stopPropagation());
+                
+                textarea.onchange = (e) => {
+                  // Update the occurrence for current page
+                  if (field._occurrences) {
+                    const occ = field._occurrences.find(o => o.region && o.region.page === currentPageNum);
+                    if (occ) {
+                      occ.value = e.target.value;
+                    }
+                  } else {
+                    field.value = e.target.value;
+                  }
+                };
+                textarea.oninput = (e) => {
+                  // Update the occurrence for current page
+                  if (field._occurrences) {
+                    const occ = field._occurrences.find(o => o.region && o.region.page === currentPageNum);
+                    if (occ) {
+                      occ.value = e.target.value;
+                    }
+                  } else {
+                    field.value = e.target.value;
+                  }
+                };
+                
+                valueContainer.innerHTML = "";
+                valueContainer.appendChild(textarea);
+              }
+            } else {
+              // View mode
+              const valueToRender = fieldValueToShow || field.value || "";
+              
+              if (isTable) {
+                // For tables, show compact preview with View/Edit buttons
+                const previewContainer = document.createElement("div");
+                previewContainer.style.cssText = "padding: 12px; background: rgba(15, 23, 42, 0.3); border-radius: 8px; border: 1px solid var(--border);";
+                
+                // Show table preview (first 2 rows)
+                const tableData = parseMarkdownTable(valueToRender);
+                const previewRows = Math.min(2, tableData.length);
+                const previewText = tableData.slice(0, previewRows).map(row => row.join(' | ')).join('\n');
+                
+                const previewTextEl = document.createElement("div");
+                previewTextEl.style.cssText = "font-size: 11px; color: var(--subtle); font-family: monospace; margin-bottom: 8px; max-height: 50px; overflow: hidden; line-height: 1.4;";
+                previewTextEl.textContent = previewText + (tableData.length > previewRows ? ' ...' : '');
+                
+                const buttonsContainer = document.createElement("div");
+                buttonsContainer.style.cssText = "display: flex; gap: 6px;";
+                
+                const viewBtn = document.createElement("button");
+                viewBtn.textContent = "View";
+                viewBtn.style.cssText = "padding: 4px 10px; font-size: 11px; background: rgba(56, 189, 248, 0.2); color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; cursor: pointer;";
+                viewBtn.addEventListener("click", (e) => {
+                  e.stopPropagation();
+                  openTableModal(field, valueToRender, false);
+                });
+                
+                const editBtn = document.createElement("button");
+                editBtn.textContent = "Edit";
+                editBtn.style.cssText = "padding: 4px 10px; font-size: 11px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer;";
+                editBtn.addEventListener("click", (e) => {
+                  e.stopPropagation();
+                  openTableModal(field, valueToRender, true);
+                });
+                
+                buttonsContainer.appendChild(viewBtn);
+                buttonsContainer.appendChild(editBtn);
+                
+                previewContainer.appendChild(previewTextEl);
+                previewContainer.appendChild(buttonsContainer);
+                
+                valueContainer.innerHTML = "";
+                valueContainer.appendChild(previewContainer);
+              } else {
+                // Render markdown for non-table content
+                let html = "";
+                if (typeof marked !== 'undefined') {
+                  html = marked.parse(valueToRender);
+                } else {
+                  html = escapeHtml(valueToRender).replace(/\n/g, '<br>');
+                }
+                
+                const markdownContent = document.createElement("div");
+                markdownContent.className = "field-value-markdown";
+                markdownContent.style.cssText = "padding: 12px; background: rgba(15, 23, 42, 0.3); border-radius: 8px; border: 1px solid var(--border); overflow-x: auto;";
+                markdownContent.innerHTML = html;
+                
+                // Add edit button for non-table content
+                const editBtn = document.createElement("button");
+                editBtn.textContent = "Edit";
+                editBtn.style.cssText = "position: absolute; top: 8px; right: 8px; padding: 4px 8px; font-size: 11px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; z-index: 10;";
+                editBtn.addEventListener("click", (e) => {
+                  e.stopPropagation();
+                  isEditing = true;
+                  renderValue();
+                });
+                
+                valueContainer.innerHTML = "";
+                valueContainer.appendChild(markdownContent);
+                valueContainer.appendChild(editBtn);
+              }
+            }
+            
+            // Add save button if editing (non-table)
+            if (isEditing && !isTable) {
+              const saveBtn = document.createElement("button");
+              saveBtn.textContent = "Save";
+              saveBtn.style.cssText = "position: absolute; top: 8px; right: 8px; padding: 4px 8px; font-size: 11px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; z-index: 10;";
+              saveBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                isEditing = false;
+                renderValue();
+              });
+              valueContainer.appendChild(saveBtn);
+            }
+          }
+          
+          // Function to open table modal for viewing/editing
+          function openTableModal(field, tableValue, editMode) {
+            // Remove existing modal if any
+            const existingModal = document.getElementById("tableModal");
+            if (existingModal) {
+              document.body.removeChild(existingModal);
+            }
+            
+            const tableModal = document.createElement("div");
+            tableModal.id = "tableModal";
+            tableModal.style.cssText = `
+              display: flex;
+              position: fixed;
+              top: 0;
+              left: 0;
+              width: 100%;
+              height: 100%;
+              background: rgba(0, 0, 0, 0.75);
+              z-index: 10000;
+              align-items: center;
+              justify-content: center;
+              padding: 20px;
+            `;
+            
+            const modalContent = document.createElement("div");
+            modalContent.style.cssText = `
+              background: var(--card);
+              border-radius: 12px;
+              border: 1px solid var(--border);
+              max-width: 98%;
+              max-height: 90vh;
+              width: 100%;
+              display: flex;
+              flex-direction: column;
+              overflow: hidden;
+              box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            `;
+            
+            const modalHeader = document.createElement("div");
+            modalHeader.style.cssText = "padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;";
+            modalHeader.innerHTML = `
+              <h3 style="margin: 0; font-size: 1.1rem; color: var(--text);">${escapeHtml(field.name)} ${editMode ? '(Editing)' : '(Viewing)'}</h3>
+              <button id="closeTableModal" style="background: transparent; border: none; color: var(--text); font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px; line-height: 24px;">×</button>
+            `;
+            
+            const modalBody = document.createElement("div");
+            modalBody.style.cssText = "padding: 20px; overflow-x: auto; overflow-y: auto; flex: 1; background: var(--bg); min-height: 0; position: relative;";
+            
+            let tableData = parseMarkdownTable(tableValue);
+            let isEditingInModal = editMode;
+            
+            function renderTableInModal() {
+              modalBody.innerHTML = "";
+              
+              if (isEditingInModal) {
+                // Editable table
+                const tableEditor = document.createElement("div");
+                tableEditor.className = "table-editor";
+                tableEditor.style.cssText = "overflow-x: auto; width: 100%; min-width: 100%;";
+                
+                const table = document.createElement("table");
+                table.style.cssText = "width: auto; min-width: 100%; border-collapse: collapse; background: rgba(15, 23, 42, 0.3); font-size: 13px; table-layout: auto;";
+                
+                // Header row
+                if (tableData.length > 0) {
+                  const headerRow = document.createElement("tr");
+                  tableData[0].forEach((cell, idx) => {
+                    const th = document.createElement("th");
+                    th.style.cssText = "padding: 10px; border: 1px solid var(--border); background: rgba(56, 189, 248, 0.15); text-align: left; min-width: 120px; white-space: nowrap;";
+                    const input = document.createElement("input");
+                    input.type = "text";
+                    input.value = cell || "";
+                    input.style.cssText = "width: 100%; padding: 6px 8px; background: transparent; border: none; color: var(--text); font-weight: 600; font-size: 13px; box-sizing: border-box;";
+                    input.addEventListener("mousedown", (e) => e.stopPropagation());
+                    input.addEventListener("click", (e) => e.stopPropagation());
+                    input.oninput = () => {
+                      tableData[0][idx] = input.value;
+                    };
+                    th.appendChild(input);
+                    headerRow.appendChild(th);
+                  });
+                  table.appendChild(headerRow);
+                }
+                
+                // Body rows
+                for (let i = 1; i < tableData.length; i++) {
+                  const tr = document.createElement("tr");
+                  const expectedCols = tableData[0] ? tableData[0].length : 0;
+                  const rowCells = tableData[i] || [];
+                  for (let idx = 0; idx < Math.max(expectedCols, rowCells.length); idx++) {
+                    const td = document.createElement("td");
+                    td.style.cssText = "padding: 8px; border: 1px solid var(--border); min-width: 100px; white-space: nowrap;";
+                    const input = document.createElement("input");
+                    input.type = "text";
+                    input.value = rowCells[idx] || "";
+                    input.style.cssText = "width: 100%; padding: 6px 8px; background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 4px; color: var(--text); font-size: 13px; box-sizing: border-box;";
+                    input.addEventListener("mousedown", (e) => e.stopPropagation());
+                    input.addEventListener("click", (e) => e.stopPropagation());
+                    input.oninput = () => {
+                      if (!tableData[i]) tableData[i] = [];
+                      tableData[i][idx] = input.value;
+                    };
+                    td.appendChild(input);
+                    tr.appendChild(td);
+                  }
+                  table.appendChild(tr);
+                }
+                
+                tableEditor.appendChild(table);
+                modalBody.appendChild(tableEditor);
+              } else {
+                // View mode - render markdown table with full width and horizontal scroll
+                let html = "";
+                if (typeof marked !== 'undefined') {
+                  html = marked.parse(tableValue);
+                } else {
+                  html = escapeHtml(tableValue).replace(/\n/g, '<br>');
+                }
+                
+                // Create scrollable wrapper - must allow content to overflow
+                const scrollWrapper = document.createElement("div");
+                scrollWrapper.style.cssText = "overflow-x: auto; overflow-y: visible; width: 100%; min-width: 0; -webkit-overflow-scrolling: touch; position: relative;";
+                
+                const markdownContent = document.createElement("div");
+                markdownContent.className = "field-value-markdown";
+                markdownContent.style.cssText = "padding: 16px; display: block; width: max-content; min-width: 100%;";
+                markdownContent.innerHTML = html;
+                
+                // Fix table display - ensure all columns are visible
+                setTimeout(() => {
+                  const tables = markdownContent.querySelectorAll('table');
+                  tables.forEach(tbl => {
+                    // Remove ALL width restrictions
+                    tbl.style.setProperty('width', 'auto', 'important');
+                    tbl.style.setProperty('min-width', 'auto', 'important');
+                    tbl.style.setProperty('max-width', 'none', 'important');
+                    tbl.style.setProperty('table-layout', 'auto', 'important');
+                    tbl.style.borderCollapse = 'collapse';
+                    tbl.style.display = 'table';
+                    
+                    // Get all rows and cells
+                    const rows = Array.from(tbl.querySelectorAll('tr'));
+                    if (rows.length === 0) return;
+                    
+                    // Get column count from first row
+                    const firstRowCells = rows[0].querySelectorAll('th, td');
+                    const colCount = firstRowCells.length;
+                    if (colCount === 0) return;
+                    
+                    // Calculate width for each column based on content
+                    const columnWidths = [];
+                    for (let colIdx = 0; colIdx < colCount; colIdx++) {
+                      let maxWidth = 0;
+                      
+                      // Check all cells in this column
+                      rows.forEach(row => {
+                        const cells = row.querySelectorAll('th, td');
+                        if (cells[colIdx]) {
+                          const cell = cells[colIdx];
+                          
+                          // Remove any width restrictions temporarily
+                          const oldWidth = cell.style.width;
+                          const oldMinWidth = cell.style.minWidth;
+                          const oldMaxWidth = cell.style.maxWidth;
+                          cell.style.width = 'auto';
+                          cell.style.minWidth = 'auto';
+                          cell.style.maxWidth = 'none';
+                          cell.style.whiteSpace = 'nowrap';
+                          
+                          // Measure the cell content
+                          const text = cell.textContent || cell.innerText || '';
+                          const tempDiv = document.createElement('div');
+                          tempDiv.style.cssText = `
+                            position: absolute;
+                            visibility: hidden;
+                            white-space: nowrap;
+                            font-size: 13px;
+                            font-weight: ${cell.tagName === 'TH' ? '600' : '400'};
+                            padding: ${cell.tagName === 'TH' ? '10px 12px' : '8px 12px'};
+                            font-family: "Inter", system-ui, -apple-system, sans-serif;
+                          `;
+                          tempDiv.textContent = text;
+                          document.body.appendChild(tempDiv);
+                          const contentWidth = tempDiv.offsetWidth;
+                          document.body.removeChild(tempDiv);
+                          
+                          // Restore old styles
+                          cell.style.width = oldWidth;
+                          cell.style.minWidth = oldMinWidth;
+                          cell.style.maxWidth = oldMaxWidth;
+                          
+                          maxWidth = Math.max(maxWidth, contentWidth);
+                        }
+                      });
+                      
+                      // Set minimum width per column
+                      columnWidths.push(Math.max(maxWidth + 20, 100));
+                    }
+                    
+                    // Apply calculated widths to all cells
+                    rows.forEach(row => {
+                      const cells = row.querySelectorAll('th, td');
+                      cells.forEach((cell, idx) => {
+                        if (columnWidths[idx]) {
+                          cell.style.setProperty('width', columnWidths[idx] + 'px', 'important');
+                          cell.style.setProperty('min-width', columnWidths[idx] + 'px', 'important');
+                          cell.style.setProperty('max-width', 'none', 'important');
+                          cell.style.setProperty('white-space', 'nowrap', 'important');
+                        }
+                      });
+                    });
+                    
+                    // Set total table width
+                    const totalWidth = columnWidths.reduce((sum, w) => sum + w, 0);
+                    tbl.style.setProperty('width', totalWidth + 'px', 'important');
+                    
+                    // Ensure markdownContent is wide enough
+                    markdownContent.style.width = Math.max(totalWidth + 32, scrollWrapper.offsetWidth) + 'px';
+                  });
+                }, 100);
+                
+                scrollWrapper.appendChild(markdownContent);
+                modalBody.appendChild(scrollWrapper);
+              }
+            }
+            
+            const modalFooter = document.createElement("div");
+            modalFooter.style.cssText = "padding: 16px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end;";
+            
+            function updateFooter() {
+              modalFooter.innerHTML = "";
+              
+              if (isEditingInModal) {
+                const saveBtn = document.createElement("button");
+                saveBtn.textContent = "Save";
+                saveBtn.style.cssText = "padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;";
+                saveBtn.addEventListener("click", () => {
+                  const markdown = tableToMarkdown(tableData);
+                  // Update field value
+                  if (field._occurrences) {
+                    const occ = field._occurrences.find(o => o.region && o.region.page === currentPageNum);
+                    if (occ) {
+                      occ.value = markdown;
+                    }
+                  } else {
+                    field.value = markdown;
+                  }
+                  renderFields(); // Refresh display
+                  document.body.removeChild(tableModal);
+                });
+                
+                const cancelBtn = document.createElement("button");
+                cancelBtn.textContent = "Cancel";
+                cancelBtn.style.cssText = "padding: 8px 16px; background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 13px;";
+                cancelBtn.addEventListener("click", () => {
+                  document.body.removeChild(tableModal);
+                });
+                
+                modalFooter.appendChild(cancelBtn);
+                modalFooter.appendChild(saveBtn);
+              } else {
+                const editBtn = document.createElement("button");
+                editBtn.textContent = "Edit";
+                editBtn.style.cssText = "padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;";
+                editBtn.addEventListener("click", () => {
+                  isEditingInModal = true;
+                  renderTableInModal();
+                  updateFooter();
+                });
+                
+                const closeBtn = document.createElement("button");
+                closeBtn.textContent = "Close";
+                closeBtn.style.cssText = "padding: 8px 16px; background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 13px;";
+                closeBtn.addEventListener("click", () => {
+                  document.body.removeChild(tableModal);
+                });
+                
+                modalFooter.appendChild(closeBtn);
+                modalFooter.appendChild(editBtn);
+              }
+            }
+            
+            modalContent.appendChild(modalHeader);
+            modalContent.appendChild(modalBody);
+            modalContent.appendChild(modalFooter);
+            tableModal.appendChild(modalContent);
+            
+            document.body.appendChild(tableModal);
+            
+            // Close on X button
+            document.getElementById("closeTableModal").addEventListener("click", () => {
+              document.body.removeChild(tableModal);
+            });
+            
+            // Close on background click
+            tableModal.addEventListener("click", (e) => {
+              if (e.target === tableModal) {
+                document.body.removeChild(tableModal);
+              }
+            });
+            
+            // Close on Escape key
+            const escapeHandler = (e) => {
+              if (e.key === 'Escape' && document.getElementById("tableModal")) {
+                document.body.removeChild(tableModal);
+                document.removeEventListener("keydown", escapeHandler);
               }
             };
-            tableContainer.appendChild(toggleBtn);
-
-            // If in edit mode, make inputs editable with better styling
-            if (isEditing) {
-              const inputs = tableContainer.querySelectorAll('input[type="text"]');
-              inputs.forEach(input => {
-                input.removeAttribute('readonly');
-                input.style.cursor = 'text';
-                input.style.transition = 'all 0.2s ease';
-
-                // Add focus styles
-                input.addEventListener('focus', function () {
-                  this.style.background = 'rgba(56, 189, 248, 0.2)';
-                  this.style.borderColor = 'var(--accent)';
-                  this.style.boxShadow = '0 0 0 2px rgba(56, 189, 248, 0.2)';
-                });
-
-                input.addEventListener('blur', function () {
-                  this.style.background = this.dataset.row === '-1'
-                    ? 'rgba(56, 189, 248, 0.1)'
-                    : 'rgba(56, 189, 248, 0.05)';
-                  this.style.borderColor = this.dataset.row === '-1'
-                    ? 'var(--accent)'
-                    : 'var(--border)';
-                  this.style.boxShadow = 'none';
-                });
-              });
-            }
+            document.addEventListener("keydown", escapeHandler);
+            
+            renderTableInModal();
+            updateFooter();
           }
-
-          renderTable();
-          tdValue.appendChild(tableContainer);
-        } else {
-          // Display as textarea
-          const valueInput = document.createElement("textarea");
-          valueInput.className = "field-value-input";
-          // Show "----" for empty/null values, "processing..." for processing state
-          if (field._processing) {
-            valueInput.value = "processing...";
-            valueInput.disabled = true;
-            valueInput.style.opacity = "0.6";
-            valueInput.style.fontStyle = "italic";
-          } else if (!field.value || field.value === null) {
-            valueInput.value = "----";
-            valueInput.style.color = "var(--text-secondary)";
-          } else {
-            valueInput.value = field.value;
-          }
-
-          // Prevent textarea events from triggering document selection
-          valueInput.addEventListener("mousedown", (e) => {
-            e.stopPropagation();
-          });
-          valueInput.addEventListener("mouseup", (e) => {
-            e.stopPropagation();
-          });
-          valueInput.addEventListener("mousemove", (e) => {
-            e.stopPropagation();
-          });
-          valueInput.addEventListener("click", (e) => {
-            e.stopPropagation();
-          });
-
-          valueInput.onchange = (e) => {
-            const val = e.target.value;
-            fields[index].value = val === "----" ? null : val;
-          };
-          valueInput.oninput = (e) => {
-            const val = e.target.value;
-            fields[index].value = val === "----" ? null : val;
-            if (val !== "----") {
-              valueInput.style.color = "var(--text)";
-              valueInput.style.opacity = "1";
-              valueInput.style.fontStyle = "normal";
-            }
-          };
-          tdValue.appendChild(valueInput);
+          
+          renderValue();
+          tdValue.appendChild(valueContainer);
         }
 
+        // Show coordinates only if field is on current page
         let coordsText = "";
-        if (field.region) {
-          const r = field.region;
-          coordsText = `\n\n(page=${r.page}, x1=${r.x1.toFixed(3)}, y1=${r.y1.toFixed(3)}, x2=${r.x2.toFixed(3)}, y2=${r.y2.toFixed(3)})`;
+        if (shouldShowValue && fieldRegionToShow && fieldRegionToShow.page === currentPageNum) {
+          const r = fieldRegionToShow;
+          // Check that all coordinates exist before calling toFixed
+          if (r.x1 != null && r.y1 != null && r.x2 != null && r.y2 != null) {
+            coordsText = `\n\n(page=${r.page}, x1=${r.x1.toFixed(3)}, y1=${r.y1.toFixed(3)}, x2=${r.x2.toFixed(3)}, y2=${r.y2.toFixed(3)})`;
+          } else {
+            coordsText = `\n\n(page=${r.page})`;
+          }
+        } else if (field._occurrences && field._occurrences.length > 0) {
+          // Show that field exists on other pages
+          const pages = field._occurrences.map(occ => occ.page_number).filter(p => p).join(", ");
+          if (pages) {
+            coordsText = `\n\n(pages: ${pages})`;
+          }
         }
         if (coordsText) {
           const coordsDiv = document.createElement("div");
@@ -1495,31 +2031,123 @@
         deleteBtn.style.cursor = "pointer";
         deleteBtn.onclick = async (e) => {
           e.stopPropagation();
-          if (!confirm(`Delete field "${field.name}"?`)) return;
+          
+          // Determine which occurrence to delete - prefer current page's occurrence
+          let occurrenceToDelete = null;
+          if (field._occurrences && field._occurrences.length > 0) {
+            // Find occurrence for current page
+            occurrenceToDelete = field._occurrences.find(occ => 
+              occ.region && occ.region.page === currentPageNum
+            );
+            console.log("Delete: current page", currentPageNum, "occurrenceToDelete:", occurrenceToDelete, "all occurrences:", field._occurrences.map(o => ({ id: o.id, page: o.region?.page })));
+          }
+          
+          // Determine what to delete
+          const hasMultipleOccurrences = field._occurrences && field._occurrences.length > 1;
+          const hasOccurrenceOnCurrentPage = occurrenceToDelete !== null;
+          
+          let confirmMessage = '';
+          if (hasMultipleOccurrences && hasOccurrenceOnCurrentPage) {
+            confirmMessage = `Delete occurrence of "${field.name}" on page ${currentPageNum}?`;
+          } else {
+            confirmMessage = `Delete field "${field.name}"?`;
+          }
+          
+          if (!confirm(confirmMessage)) return;
 
-          if (field.id) {
-            try {
-              const response = await fetch(`/documents/field-values/${field.id}`, {
-                method: 'DELETE'
-              });
-              const result = await response.json();
-              if (result.success) {
+          try {
+            if (hasMultipleOccurrences && hasOccurrenceOnCurrentPage) {
+              // Delete only the occurrence for current page
+              const occurrenceId = occurrenceToDelete.id;
+              console.log("Deleting occurrence ID:", occurrenceId, "for page", currentPageNum);
+              
+              if (occurrenceId) {
+                // Delete from server
+                const response = await fetch(`/documents/field-values/${occurrenceId}`, {
+                  method: 'DELETE'
+                });
+                const result = await response.json();
+                console.log("Delete response:", result);
+                if (!result.success) {
+                  alert('Error deleting occurrence');
+                  return;
+                }
+              } else {
+                console.warn("No ID for occurrence on page", currentPageNum, "- removing from local array only");
+              }
+              
+              // Remove occurrence from local array
+              field._occurrences = field._occurrences.filter(occ => 
+                !(occ.region && occ.region.page === currentPageNum)
+              );
+              
+              // If no occurrences left, remove the field entirely
+              if (field._occurrences.length === 0) {
+                fields = fields.filter((_, i) => i !== index);
+              }
+              
+              // Remove bbox from current page
+              const boxesToRemove = pdfViewerWrapper.querySelectorAll(
+                `.selection-box[data-field-index="${index}"][data-page-index="${currentPageNum}"]`
+              );
+              boxesToRemove.forEach(box => box.remove());
+              
+              await loadFields(); // Reload to sync with server
+              await renderPage(currentPageNum); // Re-render current page
+            } else {
+              // Delete entire field - delete all occurrences
+              if (field._occurrences && field._occurrences.length > 0) {
+                // Delete all occurrences from server
+                const deletePromises = field._occurrences
+                  .filter(occ => occ.id)
+                  .map(occ => 
+                    fetch(`/documents/field-values/${occ.id}`, { method: 'DELETE' })
+                      .then(res => res.json())
+                  );
+                
+                if (deletePromises.length > 0) {
+                  const results = await Promise.all(deletePromises);
+                  const allSuccess = results.every(r => r.success);
+                  if (!allSuccess) {
+                    alert('Error deleting some occurrences');
+                    return;
+                  }
+                }
+                
+                // Remove all bboxes for this field
+                const boxesToRemove = pdfViewerWrapper.querySelectorAll(
+                  `.selection-box[data-field-index="${index}"]`
+                );
+                boxesToRemove.forEach(box => box.remove());
+                
                 // Remove from local array
                 fields = fields.filter((_, i) => i !== index);
                 await loadFields(); // Reload to sync with server
                 await renderPage(currentPageNum); // Re-render current page
+              } else if (field.id) {
+                // Backward compatibility - single occurrence with field.id
+                const response = await fetch(`/documents/field-values/${field.id}`, {
+                  method: 'DELETE'
+                });
+                const result = await response.json();
+                if (result.success) {
+                  // Remove from local array
+                  fields = fields.filter((_, i) => i !== index);
+                  await loadFields(); // Reload to sync with server
+                  await renderPage(currentPageNum); // Re-render current page
+                } else {
+                  alert('Error deleting field');
+                }
               } else {
-                alert('Error deleting field');
+                // Just remove from local array if no id (not saved yet)
+                fields = fields.filter((_, i) => i !== index);
+                renderFields();
+                await renderPage(currentPageNum);
               }
-            } catch (error) {
-              console.error('Error deleting field:', error);
-              alert('Error deleting field: ' + error.message);
             }
-          } else {
-            // Just remove from local array if no id (not saved yet)
-            fields = fields.filter((_, i) => i !== index);
-            renderFields();
-            await renderPage(currentPageNum);
+          } catch (error) {
+            console.error('Error deleting:', error);
+            alert('Error deleting: ' + error.message);
           }
         };
         tdActions.appendChild(deleteBtn);
@@ -1535,7 +2163,7 @@
             e.target.tagName === 'BUTTON' ||
             e.target.tagName === 'INPUT' ||
             e.target.closest('.field-value-container') ||
-            e.target.closest('.field-value-table')) {
+            e.target.closest('.field-value-markdown')) {
             return;
           }
           startSelectionForField(index);
@@ -1579,54 +2207,74 @@
         b.classList.remove("editing")
       );
 
-      if (field.region) {
+      // Determine which occurrence to use - ALWAYS prefer current page's occurrence
+      let regionToUse = null;
+      let occurrenceToUse = null;
+      
+      if (field._occurrences && field._occurrences.length > 0) {
+        // ALWAYS find occurrence for current page first - stay on current page!
+        occurrenceToUse = field._occurrences.find(occ => 
+          occ.region && occ.region.page === currentPageNum
+        );
+        
+        if (occurrenceToUse && occurrenceToUse.region) {
+          regionToUse = occurrenceToUse.region;
+        }
+      } else if (field.region && field.region.page === currentPageNum) {
+        // Backward compatibility - only use field.region if it's on current page
+        regionToUse = field.region;
+      }
+
+      if (regionToUse) {
+        // Found occurrence on current page - stay here and edit it
         createMode = false;
         editMode = true;
-        const r = field.region;
-        if (currentPageNum !== r.page) {
-          await renderPage(r.page);
-        }
+        const r = regionToUse;
+        // Don't change page - stay on currentPageNum
         const pageDiv = currentPageDiv;
         const canvas = currentPageCanvas;
         if (!pageDiv || !canvas) return;
-        currentPageIndex = r.page;
+        currentPageIndex = currentPageNum; // Use current page, not r.page
 
+        // Find or create box for this field and current page
         let box = pdfViewerWrapper.querySelector(
-          `.selection-box[data-field-index="${index}"]`
+          `.selection-box[data-field-index="${index}"][data-page-index="${currentPageNum}"]`
         );
         if (!box) {
           const left = r.x1 * canvas.width;
           const top = r.y1 * canvas.height;
           const width = (r.x2 - r.x1) * canvas.width;
           const height = (r.y2 - r.y1) * canvas.height;
-          box = createSelectionBox(left, top, width, height, index, r.page);
+          box = createSelectionBox(left, top, width, height, index, currentPageNum);
           pageDiv.appendChild(box);
         }
         box.classList.add("active", "editing");
         box.classList.remove("handles-hidden", "hidden");
         currentSelectionBox = box;
-        
+
         // Store original region for cancel AFTER box is created and positioned
         originalRegion = {
-          page: r.page,
+          page: currentPageNum, // Store current page, not r.page
           x1: r.x1,
           y1: r.y1,
           x2: r.x2,
           y2: r.y2
         };
-        console.log("startSelectionForField: stored originalRegion", originalRegion);
-        
+        console.log("startSelectionForField: stored originalRegion", originalRegion, "for field index", index, "on current page", currentPageNum);
+
         updateOverlays(pageDiv, box);
       } else {
+        // No occurrence on current page - stay on current page and allow creating new one
         createMode = true;
         editMode = false;
         currentPageDiv = currentPageDiv || pdfViewerWrapper.querySelector(".page");
         currentPageCanvas = currentPageDiv
           ? currentPageDiv.querySelector("canvas")
           : null;
-        currentPageIndex = currentPageNum;
+        currentPageIndex = currentPageNum; // Stay on current page
         currentSelectionBox = null;
         pdfViewerWrapper.classList.add("global-dim");
+        console.log("startSelectionForField: no occurrence on current page", currentPageNum, "- allowing creation");
       }
       renderFields();
     }
@@ -1767,10 +2415,10 @@
         return;
       }
       // Don't process if clicking on confirm buttons or their children
-      if (e.target.closest('.selection-confirm-buttons') || 
-          e.target.classList.contains('btn-confirm') || 
-          e.target.classList.contains('btn-cancel') ||
-          e.target.tagName === 'BUTTON' && e.target.closest('.selection-confirm-buttons')) {
+      if (e.target.closest('.selection-confirm-buttons') ||
+        e.target.classList.contains('btn-confirm') ||
+        e.target.classList.contains('btn-cancel') ||
+        e.target.tagName === 'BUTTON' && e.target.closest('.selection-confirm-buttons')) {
         return;
       }
       if (!isDragging || !selectionMode || !currentPageDiv || !currentSelectionBox || isProcessing) return;
@@ -1810,7 +2458,7 @@
         activeFieldIndex,
         isProcessing
       });
-      
+
       if (!currentPageDiv || !currentSelectionBox || activeFieldIndex === null || isProcessing) {
         console.log("extractRegionAndUpdateField: early return");
         return;
@@ -1837,12 +2485,58 @@
 
       const fieldIndex = activeFieldIndex;
       const fld = fields[fieldIndex];
+      
+      // Determine which occurrence to update - prefer current page's occurrence
+      let occurrenceToUpdate = null;
+      if (fld._occurrences && fld._occurrences.length > 0) {
+        // Find occurrence for current page - check both region.page and page_number
+        occurrenceToUpdate = fld._occurrences.find(occ => 
+          (occ.region && occ.region.page === currentPageIndex) || 
+          occ.page_number === currentPageIndex
+        );
+        
+        console.log("Looking for occurrence on page", currentPageIndex, "found:", occurrenceToUpdate, "all occurrences:", fld._occurrences.map(o => ({ 
+          id: o.id, 
+          page_from_region: o.region?.page, 
+          page_number: o.page_number 
+        })));
+        
+        // If no occurrence on current page, create a new one
+        if (!occurrenceToUpdate) {
+          occurrenceToUpdate = {
+            id: null,
+            value: null,
+            region: null,
+            page_number: currentPageIndex
+          };
+          if (!fld._occurrences) {
+            fld._occurrences = [];
+          }
+          fld._occurrences.push(occurrenceToUpdate);
+          console.log("Created new occurrence for page", currentPageIndex);
+        } else {
+          console.log("Found existing occurrence to update:", occurrenceToUpdate.id);
+        }
+      } else {
+        // No occurrences array - initialize it and create first occurrence
+        if (!fld._occurrences) {
+          fld._occurrences = [];
+        }
+        occurrenceToUpdate = {
+          id: fld.id || null, // Use field.id if available (backward compatibility)
+          value: fld.value || null,
+          region: fld.region || null,
+          page_number: currentPageIndex
+        };
+        fld._occurrences.push(occurrenceToUpdate);
+        console.log("Initialized occurrences array and added first occurrence");
+      }
 
       // Set processing state
       isProcessing = true;
       hideConfirmButtons();
       showProcessingOverlay(currentSelectionBox);
-      
+
       // Disable interactions
       currentSelectionBox.style.pointerEvents = "none";
       if (confirmButtonsContainer) {
@@ -1850,9 +2544,14 @@
         buttons.forEach(btn => btn.disabled = true);
       }
 
-      // Show processing state in field
-      fld._processing = true;
-      fld.value = "processing...";
+      // Show processing state in field - only for the specific occurrence
+      if (occurrenceToUpdate) {
+        occurrenceToUpdate._processing = true;
+        occurrenceToUpdate.value = "processing...";
+      } else {
+        fld._processing = true;
+        fld.value = "processing...";
+      }
       renderFields();
 
       try {
@@ -1910,18 +2609,72 @@
           console.log(`Found ${result.tables.length} table(s) in selected region`);
         }
 
-        fld.value = extractedText || "";
-        console.log("Field value set to:", fld.value);
-        fld.region = {
+        // Update the correct occurrence for current page
+        const newRegion = {
           page: currentPageIndex,
           x1: x1Norm,
           y1: y1Norm,
           x2: x2Norm,
           y2: y2Norm,
         };
-
-        // Clear processing state
-        fld._processing = false;
+        
+        if (occurrenceToUpdate) {
+          // Update existing occurrence
+          occurrenceToUpdate.value = extractedText || "";
+          occurrenceToUpdate.region = newRegion;
+          occurrenceToUpdate.page_number = currentPageIndex;
+          // Clear processing flag for this occurrence
+          delete occurrenceToUpdate._processing;
+          console.log("Updated occurrence for page", currentPageIndex, ":", {
+            id: occurrenceToUpdate.id,
+            value: occurrenceToUpdate.value,
+            region: occurrenceToUpdate.region,
+            _processing: occurrenceToUpdate._processing
+          });
+          
+          // Save to server immediately
+          const fieldValues = [{
+            id: occurrenceToUpdate.id || null, // Use existing ID if available
+            field_id: fld.field_id || null,
+            custom_field_name: fld.custom_field_name || (fld.field_id ? null : fld.name),
+            value: occurrenceToUpdate.value,
+            confidence: 1.0,
+            bbox: occurrenceToUpdate.region ? [
+              occurrenceToUpdate.region.x1,
+              occurrenceToUpdate.region.y1,
+              occurrenceToUpdate.region.x2,
+              occurrenceToUpdate.region.y2
+            ] : null,
+            page_number: occurrenceToUpdate.page_number
+          }];
+          
+          const formData = new FormData();
+          formData.append('field_values', JSON.stringify(fieldValues));
+          
+          try {
+            const saveResponse = await fetch(`/documents/${documentId}/save-field-values`, {
+              method: 'POST',
+              body: formData
+            });
+            const saveResult = await saveResponse.json();
+            if (saveResult.success) {
+              console.log("Successfully saved occurrence to server");
+              // Reload fields to get updated IDs
+              await loadFields();
+            } else {
+              console.error("Failed to save occurrence:", saveResult.error);
+            }
+          } catch (saveError) {
+            console.error("Error saving occurrence:", saveError);
+          }
+        } else {
+          // Backward compatibility - update field directly
+          fld.value = extractedText || "";
+          fld.region = newRegion;
+          fld._processing = false;
+          console.log("Updated field directly:", fld);
+        }
+        
         isProcessing = false;
         hideProcessingOverlay();
         if (currentSelectionBox) {
@@ -1930,21 +2683,29 @@
 
         activeFieldIndex = null;
         originalRegion = null;
+        
+        // Force re-render to update display
+        console.log("Rendering fields after extraction...");
         renderFields();
         resetSelectionState(false);
       } catch (err) {
         console.error("Error extracting text from region:", err);
         alert("Ошибка при извлечении текста: " + (err.message || "Неизвестная ошибка"));
-        
+
         // Clear processing state
-        fld._processing = false;
-        fld.value = null;
+        if (occurrenceToUpdate) {
+          delete occurrenceToUpdate._processing;
+          occurrenceToUpdate.value = null;
+        } else {
+          fld._processing = false;
+          fld.value = null;
+        }
         isProcessing = false;
         hideProcessingOverlay();
         if (currentSelectionBox) {
           currentSelectionBox.style.pointerEvents = "auto";
         }
-        
+
         if (dragType === "create" && currentSelectionBox.parentNode) {
           currentSelectionBox.parentNode.removeChild(currentSelectionBox);
         }
@@ -1955,12 +2716,12 @@
     // Show processing overlay
     function showProcessingOverlay(box) {
       hideProcessingOverlay(); // Remove any existing overlay
-      
+
       const overlay = document.createElement("div");
       overlay.className = "selection-processing";
       overlay.textContent = "Processing, wait for";
       overlay.id = "processingOverlay";
-      
+
       const boxParent = box.parentElement;
       if (boxParent) {
         boxParent.appendChild(overlay);
@@ -2000,7 +2761,7 @@
 
       const container = document.createElement("div");
       container.className = "selection-confirm-buttons";
-      
+
       const confirmBtn = document.createElement("button");
       confirmBtn.className = "btn-confirm";
       confirmBtn.innerHTML = "✓";
@@ -2035,7 +2796,7 @@
 
       container.appendChild(confirmBtn);
       container.appendChild(cancelBtn);
-      
+
       // Position relative to the selection box - attach directly to the box
       box.appendChild(container);
       confirmButtonsContainer = container;
@@ -2057,7 +2818,7 @@
         activeFieldIndex,
         isProcessing
       });
-      
+
       if (!originalRegion || !currentSelectionBox || activeFieldIndex === null || isProcessing) {
         console.log("cancelSelectionEdit: early return");
         return;
@@ -2066,7 +2827,7 @@
       const field = fields[activeFieldIndex];
       const pageDiv = currentPageDiv;
       const canvas = currentPageCanvas;
-      
+
       if (!pageDiv || !canvas) {
         console.log("cancelSelectionEdit: no pageDiv or canvas");
         return;
@@ -2087,22 +2848,39 @@
       currentSelectionBox.style.width = width + "px";
       currentSelectionBox.style.height = height + "px";
 
-      // Restore field region
-      field.region = {
+      // Restore field region - update the correct occurrence
+      const restoredRegion = {
         page: r.page,
         x1: r.x1,
         y1: r.y1,
         x2: r.x2,
         y2: r.y2
       };
+      
+      // Find and update the correct occurrence
+      if (field._occurrences && field._occurrences.length > 0) {
+        const occurrenceToRestore = field._occurrences.find(occ => 
+          occ.region && occ.region.page === r.page
+        );
+        if (occurrenceToRestore) {
+          occurrenceToRestore.region = restoredRegion;
+          console.log("cancelSelectionEdit: restored occurrence for page", r.page);
+        } else {
+          // If no occurrence found, update field.region (backward compatibility)
+          field.region = restoredRegion;
+        }
+      } else {
+        // Backward compatibility - update field.region directly
+        field.region = restoredRegion;
+      }
 
       // Update overlays and hide buttons
       updateOverlays(pageDiv, currentSelectionBox);
       hideConfirmButtons();
-      
+
       // Force re-render to update display
       renderFields();
-      
+
       console.log("cancelSelectionEdit: completed, region restored");
       // Keep originalRegion for potential future cancels
     }
@@ -2145,9 +2923,34 @@
       });
 
       box.addEventListener("mousedown", (e) => {
-        if (!selectionMode || !editMode || isProcessing) return;
+        if (!selectionMode || isProcessing) return;
         if (Object.values(handles).includes(e.target)) return;
-        if (activeFieldIndex !== fieldIndex) return;
+        
+        // Always ensure the field is active when clicking on its bbox
+        if (activeFieldIndex !== fieldIndex) {
+          activeFieldIndex = fieldIndex;
+          const field = fields[fieldIndex];
+          // Find the occurrence for this page
+          let regionToUse = null;
+          if (field._occurrences && field._occurrences.length > 0) {
+            const occurrence = field._occurrences.find(occ => 
+              occ.region && occ.region.page === pageIndex
+            );
+            if (occurrence && occurrence.region) {
+              regionToUse = occurrence.region;
+            }
+          } else if (field.region && field.region.page === pageIndex) {
+            regionToUse = field.region;
+          }
+          
+          if (regionToUse) {
+            editMode = true;
+            createMode = false;
+          }
+          renderFields();
+        }
+        
+        if (!editMode) return;
         e.stopPropagation();
         isDragging = true;
         dragType = "move";
@@ -2170,8 +2973,33 @@
       Object.entries(handles).forEach(([type, handle]) => {
         if (!handle) return;
         handle.addEventListener("mousedown", (e) => {
-          if (!selectionMode || !editMode || isProcessing) return;
-          if (activeFieldIndex !== fieldIndex) return;
+          if (!selectionMode || isProcessing) return;
+          
+          // Always ensure the field is active when clicking on its bbox handle
+          if (activeFieldIndex !== fieldIndex) {
+            activeFieldIndex = fieldIndex;
+            const field = fields[fieldIndex];
+            // Find the occurrence for this page
+            let regionToUse = null;
+            if (field._occurrences && field._occurrences.length > 0) {
+              const occurrence = field._occurrences.find(occ => 
+                occ.region && occ.region.page === pageIndex
+              );
+              if (occurrence && occurrence.region) {
+                regionToUse = occurrence.region;
+              }
+            } else if (field.region && field.region.page === pageIndex) {
+              regionToUse = field.region;
+            }
+            
+            if (regionToUse) {
+              editMode = true;
+              createMode = false;
+            }
+            renderFields();
+          }
+          
+          if (!editMode) return;
           e.stopPropagation();
           isDragging = true;
           dragType = type;

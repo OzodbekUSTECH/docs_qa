@@ -2,6 +2,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import ForeignKey, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.entities.base import Base
@@ -29,7 +30,9 @@ class ChatMessage(Base):
     session_id: Mapped[UUID] = mapped_column(ForeignKey("chat_sessions.id", ondelete="CASCADE"))
     role: Mapped[str] = mapped_column(Text)  # "user" or "model"
     content: Mapped[str] = mapped_column(Text)
-    citations: Mapped[dict] = mapped_column(nullable=True)  # Store citation metadata
+    citations: Mapped[dict] = mapped_column(JSONB, nullable=True)  # Store citation metadata
+    search_results: Mapped[dict] = mapped_column(JSONB, nullable=True)  # Store all search results from hybrid_search
+    thinking_process: Mapped[dict] = mapped_column(JSONB, nullable=True)  # Store thinking process data
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
     session: Mapped["ChatSession"] = relationship(back_populates="messages")

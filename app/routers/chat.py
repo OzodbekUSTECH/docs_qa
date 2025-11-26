@@ -84,15 +84,23 @@ async def get_session_messages(
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
         
-        return [
-            {
+        messages_list = []
+        for msg in session.messages:
+            # JSONB fields should already be dicts from SQLAlchemy, but ensure they're serializable
+            citations = msg.citations if msg.citations is not None else None
+            search_results = msg.search_results if msg.search_results is not None else None
+            thinking_process = msg.thinking_process if msg.thinking_process is not None else None
+            
+            messages_list.append({
                 "role": msg.role,
                 "content": msg.content,
-                "citations": msg.citations,
+                "citations": citations,
+                "search_results": search_results,
+                "thinking_process": thinking_process,
                 "created_at": msg.created_at,
-            }
-            for msg in session.messages
-        ]
+            })
+        
+        return messages_list
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid session ID")
 

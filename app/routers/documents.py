@@ -111,19 +111,30 @@ async def extract_single_field(
     description: str = Form(None),
     occurrence: str = Form(None),
     page_number: int = Form(None),
+    extraction_by: str = Form(None),
+    type: str = Form(None),
+    prompt: str = Form(None),
     extract_service: FromDishka[ExtractDocumentFieldValuesService] = None,
 ):
     """Extract single field from document. Supports both extraction fields (field_id) and custom fields (custom_field_name)."""
     if not field_id and not custom_field_name:
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Either field_id or custom_field_name must be provided")
+    
+    # Map prompt to description if description is missing (for Gemini consistency)
+    if prompt and not description:
+        description = prompt
+
     result = await extract_service.extract_single_field(
         id, 
         field_id=field_id, 
         custom_field_name=custom_field_name,
         description=description,
         occurrence=occurrence,
-        page_number=page_number
+        page_number=page_number,
+        extraction_by=extraction_by,
+        type=type,
+        prompt=prompt
     )
     return result
 
@@ -206,7 +217,14 @@ async def get_document_fields(
             "value": fv.value_text if fv.value_text else None,  # Return None for empty values
             "confidence": fv.confidence,
             "page_number": int(fv.page_num) if fv.page_num and fv.page_num.isdigit() else None,
-            "bbox": fv.bbox.get(str(fv.page_num), []) if fv.bbox and fv.page_num and isinstance(fv.bbox, dict) else (fv.bbox if isinstance(fv.bbox, list) else None),
+            "bbox": (
+                fv.bbox.get(str(fv.page_num), []) 
+                if fv.bbox and fv.page_num and isinstance(fv.bbox, dict) 
+                else (
+                    fv.bbox[0] if isinstance(fv.bbox, list) and len(fv.bbox) > 0 
+                    else None
+                )
+            ),
         }
         for fv in field_values
     ]

@@ -34,8 +34,15 @@ class ChatRepository(BaseRepository):
         await self.session.execute(stmt)
         await self.session.commit()
 
-    async def add_message(self, session_id: UUID, role: str, content: str, citations: dict | None = None) -> ChatMessage:
-        message = ChatMessage(session_id=session_id, role=role, content=content, citations=citations)
+    async def add_message(self, session_id: UUID, role: str, content: str, citations: dict | None = None, search_results: dict | None = None, thinking_process: dict | None = None) -> ChatMessage:
+        message = ChatMessage(
+            session_id=session_id, 
+            role=role, 
+            content=content, 
+            citations=citations,
+            search_results=search_results,
+            thinking_process=thinking_process
+        )
         self.session.add(message)
         
         # Update session updated_at
