@@ -298,31 +298,39 @@ class ExtractDocumentFieldValuesService:
             # 2. Build improved prompt with clear rules
             prompt = f"""You are a precise document extraction assistant. Extract the requested fields from this document.
 
+## FIELD TYPE DEFINITIONS:
+- **CLAUSE / paragraph**: Extract the BODY text of a numbered section/paragraph (e.g., "9. PAYMENT" → extract the payment terms text, NOT the heading)
+- **TEXT**: Extract a simple value from a key-value pair (e.g., "Contract No: 12345" → extract "12345")
+- **TABLE**: Extract as markdown table with | separators
+- **ADDRESS**: Extract full address including company name, street, city, country
+- **DATE**: Extract date value
+- **NUMBER**: Extract numeric value
+
 ## CRITICAL EXTRACTION RULES:
 
 ### 1. VALUE EXTRACTION:
 - Extract the ACTUAL content, never placeholders like "___", "...", or blank lines
-- If a field label exists but content is on the next page, extract content from that page
-- For paragraphs/clauses: extract the BODY text, not just the heading
-- Use markdown format for tables and structured content
+- For CLAUSE/paragraph: extract the BODY text, NOT the heading/title
+- For TEXT: extract only the value part, not the label
 
-### 2. MULTI-PAGE CONTENT:
-- If field content spans multiple pages, create SEPARATE entries for each page
-- Each entry must have its own value, bbox_anchor, and page number
-- Example: "6. QUALITY" heading on page 1, but quality specs on page 10 → extract from page 10
+### 2. PAGE BOUNDARIES - ABSOLUTELY CRITICAL:
+⚠️ **NEVER combine text from different pages into one entry!**
+- If a paragraph STARTS on page 2 and CONTINUES on page 3, you MUST create TWO separate entries:
+  - Entry 1: page=2, value=text that is ON page 2 only
+  - Entry 2: page=3, value=text that is ON page 3 only
+- Each entry's value must contain ONLY text from that ONE page
+- Check where each sentence physically appears in the PDF
 
-### 3. BBOX_ANCHOR - UNIQUENESS IS CRITICAL:
-- start_words: First 5-10 consecutive words from YOUR extracted value
-- end_words: Last 5-10 consecutive words from YOUR extracted value  
-- BOTH must be EXACT verbatim quotes from the document
-- BOTH must appear ONLY ONCE on that page (to avoid bbox confusion)
-- For addresses/companies: include the FULL company name + first line of address as start_words
-- For paragraphs: include section number + first words as start_words
+### 3. BBOX_ANCHOR RULES:
+- start_words: First 5-10 consecutive words from the VALUE on THIS page
+- end_words: Last 5-10 consecutive words from the VALUE on THIS page
+- NO newlines or special characters - use only plain text words
+- MUST be unique on that specific page
+- For CLAUSE: include section number like "9. PAYMENT IN US DOLLARS"
 
-### 4. AVOIDING DUPLICATE ANCHORS:
-- DON'T use generic phrases that repeat (like just "UNITED KINGDOM" or just company name)
-- DO include context: "GLENCORE ENERGY UK LTD 50, BERKELEY STREET" instead of just "GLENCORE ENERGY UK LTD"
-- For similar sections (buyer/seller), use DIFFERENT unique identifiers
+### 4. UNIQUENESS:
+- Include enough context to be unique: "GLENCORE ENERGY UK LTD 50, BERKELEY STREET"
+- For similar sections, use different identifying words
 
 ## FIELDS TO EXTRACT:
 """
@@ -335,8 +343,8 @@ class ExtractDocumentFieldValuesService:
             prompt += """
 
 ## RESPONSE FORMAT:
-Return a JSON with "fields" array. Each field occurrence is a separate entry.
-If content continues on multiple pages, create multiple entries with same name but different pages."""
+Return JSON with "fields" array. 
+⚠️ If content spans pages, create SEPARATE entries for EACH page with only that page's text."""
 
             # 3. Call Gemini 2.5 Flash
             uploaded_file = await self.gemini_client.files.upload(

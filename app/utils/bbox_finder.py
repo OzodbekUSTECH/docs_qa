@@ -85,13 +85,42 @@ def find_bbox_by_anchors(
     Returns bbox coordinates as list [x1, y1, x2, y2] or None.
     
     Improved logic:
+    - Truncates overly long anchors to first/last ~100 chars
     - Finds ALL occurrences of start_words and picks the best match
     - Uses both start AND end anchors together for disambiguation
-    - Handles cases where anchors appear multiple times on page
     """
     if not ocr_data or not start_words or not end_words:
         logger.debug("Missing ocr_data or start/end words for find_bbox_by_anchors")
         return None
+
+    # Truncate very long anchors - Gemini sometimes dumps entire paragraphs
+    # Take first ~100 chars for start, last ~100 chars for end
+    MAX_ANCHOR_LEN = 120
+    if len(start_words) > MAX_ANCHOR_LEN:
+        # Take first N words that fit in MAX_ANCHOR_LEN
+        words = start_words.split()
+        truncated = []
+        length = 0
+        for w in words:
+            if length + len(w) + 1 > MAX_ANCHOR_LEN:
+                break
+            truncated.append(w)
+            length += len(w) + 1
+        start_words = " ".join(truncated) if truncated else start_words[:MAX_ANCHOR_LEN]
+        logger.debug(f"Truncated start_words to: '{start_words[:60]}...'")
+    
+    if len(end_words) > MAX_ANCHOR_LEN:
+        # Take last N words that fit in MAX_ANCHOR_LEN
+        words = end_words.split()
+        truncated = []
+        length = 0
+        for w in reversed(words):
+            if length + len(w) + 1 > MAX_ANCHOR_LEN:
+                break
+            truncated.insert(0, w)
+            length += len(w) + 1
+        end_words = " ".join(truncated) if truncated else end_words[-MAX_ANCHOR_LEN:]
+        logger.debug(f"Truncated end_words to: '...{end_words[-60:]}'")
 
     start_norm = normalize_text(start_words)
     end_norm = normalize_text(end_words)
@@ -185,15 +214,28 @@ def find_bbox_by_anchors(
 
 
 def sanitize_anchor_input(text: str) -> str:
-    """Convert escaped control characters (e.g. '\\n') into spaces and collapse whitespace.
-    For backward compatibility with extract_field_values.py
+    """Convert newlines, escaped control characters, and special chars into spaces.
+    Critical for PyMuPDF matching which works line-by-line.
     """
     if not text:
         return ""
     import re
+    
+    # Replace escaped sequences like \n, \r, \t
     _ESCAPE_SEQUENCE_RE = re.compile(r"\\[nrt]")
     text = _ESCAPE_SEQUENCE_RE.sub(" ", text)
-    return " ".join(text.replace("\n", " ").replace("\r", " ").replace("\t", " ").split())
+    
+    # Replace actual newlines, carriage returns, tabs
+    text = text.replace("\n", " ").replace("\r", " ").replace("\t", " ")
+    
+    # Replace common problematic characters
+    text = text.replace("|", " ")  # Table separators
+    text = text.replace("•", " ")  # Bullets
+    
+    # Collapse multiple spaces into single space
+    text = " ".join(text.split())
+    
+    return text.strip()
 
 
 def normalize_anchor_text(text: str) -> str:
